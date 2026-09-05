@@ -16,6 +16,31 @@ import { C } from './theme'
  * the game's face, the title and the money, and not for prose. Everything else stays on
  * the platform font, which is perfectly readable at the sizes the type scale sets.
  *
+ * WHERE THIS FACE IS USED, AND WHY NOT EVERYWHERE (owner's question, 5 Sep).
+ *
+ * The rule: this face carries VALUE AND IDENTITY in short strings, the platform font carries
+ * everything the player has to READ. Money, a rung's name, a panel's title, a base's sign, the
+ * word on the ground where you are about to build. Not: rows in a list, prices in a table,
+ * refusals, anything a player types, anything with a sentence in it.
+ *
+ * Three reasons, and the first one is not a preference:
+ *
+ *   IT CANNOT. The atlas holds fifty signs, the digits, A to Z, a little punctuation and
+ *   exactly one lowercase letter, the `x` of a multiplier. No accents. `Glyphs` upper-cases
+ *   what it is given, so a player's name, an item's description or the middle dot in
+ *   "Legendary · 1.9K/s" either shout or simply do not draw.
+ *
+ *   IT COSTS. One UI element per letter. The interface holds sixty-three Labels; the same text
+ *   in this face would be around seven hundred and fifty elements, on a scene tick already
+ *   measured at 31 to 34 ms against a 30 ms target.
+ *
+ *   IT WOULD FLATTEN THE HIERARCHY. A type system works by contrast of roles: one display face
+ *   for the moments that matter, one neutral face for the information. Set everything in an
+ *   ExtraBold display face and nothing stands out any more, which is the opposite of what a
+ *   money counter is for. And the legibility literature has been consistent since Tinker that
+ *   all capitals are read more slowly than mixed case, which is fine for two words and wrong
+ *   for a line a player has to parse.
+ *
  * There is one atlas per colour, and that is not a choice.
  *
  * The obvious build is a white atlas tinted at render time by `uiBackground.color`, and it is
