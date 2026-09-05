@@ -282,15 +282,11 @@ const MenuWindow = () => {
 
   return (
     /*
-      A modal is a wall across the WHOLE screen, not only under its window. The window
-      already swallowed presses on itself; a press beside it went to the world, bought a
-      crate or clicked a lift through the menu (owner, 6 Sep). This invisible sheet takes
-      every pointer press outside the window; the keys are refused in the system above.
+      No sheet across the screen while the menu is up: a press beside the window must still
+      turn the camera on a phone, and a sheet would take that drag. What must NOT answer is
+      the world, and the world is refused at its five click checks (client/monde.ts) and at
+      the keys in the system above (owner, 6 Sep).
     */
-    <UiEntity
-      uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 }, pointerFilter: 'block' }}
-      onMouseDown={() => {}}
-    >
     <UiEntity
       uiTransform={{
         width: strip(MENU_W).width, height: h, positionType: 'absolute',
@@ -408,7 +404,6 @@ const MenuWindow = () => {
             }} />
         )}
       </UiEntity>
-    </UiEntity>
     </UiEntity>
   )
 }

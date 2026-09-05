@@ -156,9 +156,10 @@ def construire():
         m.boite((0, pont - 0.06, z + (0.13 if z > 0 else -0.13)), (LONG - 0.6, 0.12, 0.03), JAUNE)
 
     # A drum at each end: the one shape that says the thing turns.
+    # The drum alone. A dark hub ring, two centimetres proud of the drum at its middle, read
+    # as an odd disc standing across the belt right where the crates arrive (owner, 6 Sep).
     for x in (-DEMI, DEMI):
         m.cylindre((x, pont, 0), 0.30, MAILLE - 0.30, METAL)
-        m.cylindre((x, pont, 0), 0.32, 0.10, SOMBRE)
 
     # Rollers under the deck, seen between the legs as you walk past.
     for i in range(9):

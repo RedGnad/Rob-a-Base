@@ -10,6 +10,7 @@ import { crate, formatIncome } from '../shared/loot-table'
 import { alerter, myClientAddress } from './theft'
 import { TOAST } from './theme'
 import { cue } from './ui-kit'
+import { clicMonde } from './monde'
 
 type View = { body: Entity; label: Entity; texte: string }
 const views = new Map<number, View>()
@@ -127,9 +128,7 @@ export function setupConvoy(): void {
         })
       }
 
-      if (
-        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.body)
-      ) {
+      if (clicMonde(v.body)) {
         if (mine) alerter('THIS ONE IS ALREADY YOURS', '#ffd166', TOAST.warning)
         else void room.send('outbid', { convoyId: c.convoyId })
       }

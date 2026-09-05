@@ -4,6 +4,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , FALL_END} from '../shared/schemas'
+import { clicMonde } from './monde'
 import { room } from '../shared/messages'
 import { crate, formatIncome, crateSummary } from '../shared/loot-table'
 import { HUE, lisible } from './theme'
@@ -212,9 +213,7 @@ export function setupBelt(): void {
         }
       }
 
-      if (
-        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.item)
-      ) {
+      if (clicMonde(v.item)) {
         void room.send('buyBelt', { articleId: b.articleId })
       }
     }

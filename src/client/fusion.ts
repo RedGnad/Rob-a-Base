@@ -9,6 +9,7 @@ import { alerter, pushToFeed } from './theft'
 import { revealItem } from './box'
 import { openFuser } from './fusion-ui'
 import { TOAST } from './theme'
+import { clicMonde } from './monde'
 
 /**
  * The fusion machine, client side: a drum on a plinth beside the records board, three
@@ -107,7 +108,7 @@ export function setupFuser(): void {
   let fusionLocal = -1e9
   engine.addSystem(() => {
     // A toy in hand feeds the machine; empty hands open the panel that fuses from the shelves.
-    if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, tambour)) {
+    if (clicMonde(tambour)) {
       if (carryView.code < 0) openFuser()
       else void room.send('feedFusion', {})
     }

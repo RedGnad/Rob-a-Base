@@ -11,6 +11,7 @@ import { carryView } from './carry'
 import { sendOrHold } from './intent'
 import { TOAST } from './theme'
 import { preparerRevealToy, ouvrirRevealToy, fermerRevealToy, revealToyView } from './reveal-toy'
+import { clicMonde } from './monde'
 
 let monAdresse = ''
 
@@ -264,7 +265,7 @@ export function setupBox(): void {
   })
 
   engine.addSystem((dt: number) => {
-    if (boxView.opening && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, crateMesh)) {
+    if (boxView.opening && clicMonde(crateMesh)) {
       frapper()
     }
 

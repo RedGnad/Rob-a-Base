@@ -67,6 +67,7 @@ import { boltBetween } from './combat'
 import { room } from '../shared/messages'
 import { moveTo } from './deplacer'
 import { serverNow } from './clock'
+import { clicMonde } from './monde'
 import { pickUp } from './carry'
 import { HUE, TOAST } from './theme'
 import { isMobile } from '@dcl/sdk/platform'
@@ -1135,9 +1136,7 @@ export function setupPlots(): void {
         }
       }
 
-      if (
-        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.ascenseur)
-      ) {
+      if (clicMonde(v.ascenseur)) {
         if (v.ownerId.toLowerCase() !== myClientAddress()) {
           alerter('NOT YOUR ELEVATOR  ·  TAKE THE RAMP', '#ffd166', TOAST.warning)
           return
