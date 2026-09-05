@@ -79,7 +79,7 @@ export const PrestigePanel = () => {
 
   return (
     <UiEntity
-      uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center' }}
+      uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center', pointerFilter: 'block' }}
       uiBackground={{ color: SURF.voile }}
     >
       <UiEntity

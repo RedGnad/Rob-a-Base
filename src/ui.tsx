@@ -265,7 +265,16 @@ const MenuWindow = () => {
         width: strip(MENU_W).width, height: h, positionType: 'absolute',
         position: { top: '50%', left: '50%' },
         margin: { left: strip(MENU_W).margin.left, top: -h / 2 },
-        flexDirection: 'column', padding: MENU_PAD
+        flexDirection: 'column', padding: MENU_PAD,
+        /*
+          The window swallows every press that lands on it, button or not.
+
+          A plate carries no handler, so a press beside a button went through it to the
+          world, where the client grabs the cursor back; our own system frees it a frame
+          later, so that press was spent recapturing the cursor and the player pressed twice
+          (owner, 2 Sep on START, 5 Sep in the shop, after the first fix). A panel is a wall.
+        */
+        pointerFilter: 'block'
       }}
       /*
         The window wears the same plate as everything inside it.

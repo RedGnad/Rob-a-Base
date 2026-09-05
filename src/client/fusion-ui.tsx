@@ -83,7 +83,7 @@ export const FusionPanel = () => {
   const fusibles = RARITIES.slice(0, RARITIES.length - 1)
   return (
     <UiEntity
-      uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center' }}
+      uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center', pointerFilter: 'block' }}
       uiBackground={{ color: SURF.voile }}
     >
       <UiEntity
