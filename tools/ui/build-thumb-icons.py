@@ -25,8 +25,11 @@ VENDOR = os.path.join(HERE, 'vendor', 'joypad')
 OUT = os.path.abspath(os.path.join(HERE, '..', '..', 'assets', 'ui'))
 N = 256
 CREME = '#F2E9D8'
-# The glyph's longest side on the 256 canvas: the client's own proportion on its disc.
-GLYPH_EXTENT = 196
+# The glyph's longest side on the 256 canvas. It matched the client's own proportion while
+# these two pictures went onto the client's native buttons; the scene draws its own pad now,
+# so they follow the same extent as every other button glyph. `tools/ui/normalise-glyphs.py`
+# is the authority and would correct this anyway: the number here only saves it a resample.
+GLYPH_EXTENT = 246
 
 # The client draws the strokes in lavender at 80 % on its dark disc; ours are cream, full.
 def recolour(svg: str) -> str:

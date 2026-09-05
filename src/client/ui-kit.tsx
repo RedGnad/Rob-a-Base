@@ -217,8 +217,23 @@ export const Pouce = (props: {
       uiInputBinding={props.actions !== undefined && props.disabled !== true ? { actions: props.actions } : undefined}
       onMouseDown={props.disabled === true ? undefined : () => { presse.set(cle, Date.now()); props.onClick?.() }}
     >
+      {/*
+        The glyph takes the disc, measured against the platform's own pad.
+
+        It was 0.56 of the diameter, and since every icon filled a different share of its own
+        file, from 60 to 92 per cent, the size a player saw ran from 35 to 52 per cent of the
+        button: the padlock came out the smallest of the set and read as thin on a phone
+        (owner, 5 Sep). The files are now normalised to one extent by
+        `tools/ui/normalise-glyphs.py`, so this single number decides the size of every verb.
+
+        The number itself: on the client's own HUD, measured on `native-hud-grid.png`, the
+        jump disc is 359 px and its chevron 215, so Decentraland draws its glyph at 59.9% of
+        the diameter. Our disc's rim takes 4.7%, leaving a clear circle of 90.6%, and the
+        largest square inside that circle is 64.1% of the button: 0.62 is just under that
+        ceiling and puts an open glyph at 59.5% of the disc, the native pad's proportion.
+      */}
       <UiEntity
-        uiTransform={{ width: Math.round(d * 0.56 * gonfle), height: Math.round(d * 0.56 * gonfle), positionType: 'absolute' }}
+        uiTransform={{ width: Math.round(d * 0.62 * gonfle), height: Math.round(d * 0.62 * gonfle), positionType: 'absolute' }}
         uiBackground={{ texture: { src: `assets/ui/${icone}.png` }, textureMode: 'stretch' }} />
       {props.touche !== undefined && (
         <UiEntity
