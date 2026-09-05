@@ -47,30 +47,6 @@ export function setReference(w: number, h: number): void { active.w = w; active.
  * dividing here cancels it out. Missing or unreported means zero, which is the honest
  * answer for a client that has not told us anything.
  */
-/**
- * The real screen, measured in OUR units. Not the same thing as the reference we author in.
- *
- * The renderer scales our 1920 by 1080 canvas by the SMALLER of the two ratios, so on a screen
- * wider than 16:9 the canvas covers the full height and only part of the width: on a 2694 by
- * 1170 monitor the scale is 1.083 and our canvas paints 2080 px, leaving 614 px of screen that
- * no interface element can reach. Two things broke on that strip and both were visible in one
- * screenshot (owner, 5 Sep): a full screen veil that stopped short of the right edge, and a
- * hole cut at "the middle of the canvas" while the 3D piece behind it sat at the middle of the
- * SCREEN, three hundred pixels apart.
- *
- * So anything that must cover or centre against the physical screen asks here instead of
- * assuming the reference. A phone is close to our mobile reference (2340 by 1080 against 1600
- * by 720, a 2 percent difference in height) and a wide monitor is not, which is exactly why a
- * measurement beats an assumption.
- */
-export function ecranVirtuel(): { w: number; h: number } {
-  const info = UiCanvasInformation.getOrNull(engine.RootEntity)
-  if (info === null) return { w: active.w, h: active.h }
-  const scale = Math.min(info.width / active.w, info.height / active.h)
-  if (!(scale > 0)) return { w: active.w, h: active.h }
-  return { w: info.width / scale, h: info.height / scale }
-}
-
 export function clientEdges(): { left: number; right: number } {
   const info = UiCanvasInformation.getOrNull(engine.RootEntity)
   if (info === null || info.interactableArea === undefined) return { left: 0, right: 0 }

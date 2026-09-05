@@ -63,19 +63,27 @@ const PIQUE = -7
  * darken what is behind it, so the darkness has to be an object too: one plane, parented to
  * the same camera, just behind the piece, big enough to fill the window from that distance.
  */
-const FOND_Z = 0.55
 /*
-  Sized to the window and no wider.
+  THE DARKNESS IS THE PLANE, and there is no hole anywhere.
 
-  It was 3.2 by 2.2 m at two metres, which covers nearly the whole screen: on a monitor wider
-  than the interface canvas it showed as a black slab beside the veil (owner, 5 Sep). The
-  window the interface cuts is about 380 units of a 1080 tall canvas, a bit over a third of
-  the height, so at 1.7 m with a sixty degree field the plate needs about 0.8 m of height and
-  a little more width. Pure black, like the veil around it, so the two read as one field
-  rather than as two different darks.
+  The first design cut a window in the interface's veil and stood the piece in it. That cannot
+  be made to work, and the reason is worth writing down: the piece hangs off the CAMERA, so it
+  sits at the middle of the screen, while an interface element sits on a canvas whose aspect
+  ratio is fixed. On any screen that is not that aspect the two centres are different points,
+  and no amount of measuring makes a rectangle drawn in one space line up with an object living
+  in the other. The owner's instruction settles it: this must not depend on the screen, on
+  desktop or on a phone (5 Sep).
+
+  So the veil is not drawn at all while the piece is out, and the plate behind the piece is
+  what darkens the world. It is a world object parented to the camera, so it is centred on the
+  view by construction, at any aspect, forever. Sized once to cover the widest screen anyone
+  will bring: at 1.7 m, a sixty degree vertical field shows 1.96 m of height, and 5.6 m of
+  width covers an aspect of 2.85, well past the 2.30 of an ultra wide monitor and the 2.22 of a
+  phone. Two triangles and one material for a thing that cannot be misaligned.
 */
-const FOND_L = 1.25
-const FOND_H = 0.95
+const FOND_Z = 0.55
+const FOND_L = 5.6
+const FOND_H = 2.4
 /** The scene is 12 by 12 parcels; a metre of margin keeps the holder honestly inside. */
 const BORD = 2
 
@@ -184,7 +192,11 @@ export function setupRevealToy(): void {
     const poser = (k: number): void => {
       t.scale = Vector3.create(HAUTEUR * k, HAUTEUR * k, HAUTEUR * k)
       t.position = Vector3.create(0, 0, DIST_POP + (DIST - DIST_POP) * Math.min(1, k))
-      if (tf !== null) tf.scale = Vector3.create(FOND_L * Math.min(1, k * 1.6), FOND_H * Math.min(1, k * 1.6), 1)
+      // The plate opens FIRST and closes last: the room goes dark, then the piece arrives.
+      if (tf !== null) {
+        const kf = Math.min(1, k * 2.2)
+        tf.scale = Vector3.create(FOND_L * kf, FOND_H * kf, 1)
+      }
     }
 
     if (phase === 'entre') {

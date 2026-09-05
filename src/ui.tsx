@@ -10,7 +10,7 @@ import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference, ecranVirtuel } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -1259,7 +1259,6 @@ function CrateReveal(): ReactEcs.JSX.Element {
     reveal read as bright and busy (owner, 5 Sep). At 0.86 the rest of the screen is nearly
     gone, which is what a reveal is for, and the piece has its own dark plate behind it.
   */
-  const voile = objet3D ? Math.min(0.86, fond + 0.24) : fond
   const cote = Math.max(icone, 380)
   const hublot = { cote, gauche: (active.w - cote) / 2, haut: (active.h - cote) / 2 - 40 }
 
@@ -1268,27 +1267,18 @@ function CrateReveal(): ReactEcs.JSX.Element {
       {/*
         Le fond s'assombrit pendant le tour et se ferme sur le heros: jamais un eclair.
 
-        Et quand la vraie piece est devant la camera, le voile se troue. L'interface d'une
-        scene est un calque ecran toujours dessine PAR-DESSUS le monde: il n'existe aucun
-        moyen de mettre un objet 3D dans un panneau. Le voile devient donc quatre bandes
-        autour d'une fenetre carree de la taille du heros, l'objet se voit par la fenetre, et
-        les rayons de l'eclat continuent de passer devant lui, ce qui est exactement le
-        rendu voulu. Sans piece, une seule plaque: quatre elements pour rien serait du gaspillage.
+        Et quand la vraie piece est devant la camera, ce voile-ci ne se dessine PAS: c'est le
+        plan noir de `reveal-toy` qui fait la nuit, parce qu'il est parente a la camera et donc
+        centre sur la vue quel que soit l'ecran. Un rectangle d'interface, lui, vit sur une
+        toile au rapport fixe: sur un ecran d'un autre rapport son centre n'est pas celui de
+        l'ecran, et aucune mesure ne fait coincider les deux (proprietaire, 5 Sep: "ca doit pas
+        etre en fonction des ecrans"). Une seule chose assombrit a la fois.
       */}
-      {objet3D ? (
-        [
-          { left: 0, top: 0, width: '100%' as const, height: hublot.haut },
-          { left: 0, top: hublot.haut + hublot.cote, width: '100%' as const, height: Math.max(0, active.h - hublot.haut - hublot.cote) },
-          { left: 0, top: hublot.haut, width: hublot.gauche, height: hublot.cote },
-          { left: hublot.gauche + hublot.cote, top: hublot.haut, width: Math.max(0, active.w - hublot.gauche - hublot.cote), height: hublot.cote }
-        ].map((b, i) => (
-          <UiEntity key={i}
-            uiTransform={{ width: b.width, height: b.height, positionType: 'absolute', position: { left: b.left, top: b.top } }}
-            uiBackground={{ color: Color4.create(0, 0, 0, voile * sortie) }} />
-        ))
-      ) : (
+      {!objet3D && (
         <UiEntity
-          uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+          uiTransform={{
+            width: '150%', height: '150%', positionType: 'absolute', position: { left: '-25%', top: '-25%' }
+          }}
           uiBackground={{ color: Color4.create(0, 0, 0, fond * sortie) }} />
       )}
 
