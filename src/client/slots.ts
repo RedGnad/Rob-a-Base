@@ -1,4 +1,5 @@
 import { TOY, plasticDe } from './toy'
+import { place3DText } from './texte3d'
 import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
@@ -18,6 +19,7 @@ export const slotView = { active: false, valid: false, reason: '', auto: false }
 
 let fantome: Entity
 let label: Entity
+let glyphes: Entity | null = null
 let autres: Array<{ x: number; z: number }> = []
 /** Vrai quand le marqueur s'est allume tout seul, faux quand le joueur l'a demande. */
 let auto = false
@@ -152,10 +154,32 @@ export function setupSlots(): void {
       te.position = Vector3.create(x, 2.4, z)
       te.scale = muet ? Vector3.Zero() : Vector3.create(0.7, 0.7, 0.7)
     }
+    /*
+      BUILD HERE is written in the game's own face, like everything else the WORLD says.
+
+      The platform font with an outline was readable, and readable was all it was. Look at what
+      else is written out there: a base's name and its owner, both in the atlas face through
+      `place3DText`. The world speaks in one voice and the interface in another, and this line
+      belongs to the world (owner's question, 5 Sep: redundant? It is the opposite, it is what
+      makes the two lines look like the same game).
+
+      It costs one quad per letter, nine here, and only while somebody is placing a base. The
+      REFUSALS keep the platform font: a reason is a sentence, and prose is exactly what an
+      atlas of capitals is not for.
+    */
     const ts = TextShape.getMutableOrNull(label)
     if (ts !== null) {
-      ts.text = slotView.valid ? 'BUILD HERE' : slotView.reason
+      ts.text = slotView.valid || muet ? '' : slotView.reason
       ts.textColor = c
+    }
+    const veutGlyphes = slotView.valid && !muet
+    if (veutGlyphes !== (glyphes !== null)) {
+      if (glyphes !== null) {
+        engine.removeEntity(glyphes)
+        glyphes = null
+      } else {
+        glyphes = place3DText(label, [{ texte: 'BUILD HERE', role: 'money', taille: 0.42 }], false)
+      }
     }
   })
 }
