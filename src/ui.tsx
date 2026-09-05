@@ -1097,7 +1097,15 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
       uiTransform={{
         width: REEL_W * k, height: REEL_H * k, positionType: 'absolute',
         position: { left: props.x, top: props.haut },
-        flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: 8,
+        /*
+          Nine, four times. The card holds three things and therefore four gaps, the one
+          above the piece, the two between the rows, and the one under the last line. The
+          padding was 8 while the pill also carried a 4 margin, so the piece sat 8 from the
+          top and 12 from the pill and read as pushed up (owner, 5 Sep). With 264 of height,
+          172 of picture, 26 of pill and 30 of line, what is left is 36, which is 9 four
+          times: the padding takes two of them and `space-between` lays the other two.
+        */
+        flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: 9 * k,
         opacity: props.opacite
       }}
       uiBackground={{ ...SKIN.card, color: Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1) }}
@@ -1147,7 +1155,7 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
       <UiEntity
         uiTransform={{
           width: (glyphWidth(rar.name, 20) + 22) * k, height: 26 * k, borderRadius: 13 * k,
-          margin: { top: 4 * k }, justifyContent: 'center', alignItems: 'center'
+          justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: brut }}
       >
