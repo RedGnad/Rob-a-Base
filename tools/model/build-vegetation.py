@@ -86,8 +86,16 @@ def placer_arbres():
     La bande reste celle ou aucune base ne peut se poser, et le point d'apparition reste vide:
     la lisibilite du terrain de jeu ne se negocie pas contre du decor.
     """
-    out = []
-    return _rang_arbres(0.55, 0.0, 13.0)
+    """
+    Deux rangs, finalement. Un seul rang a treize metres lisait comme un entre-deux, ni la haie
+    claire d'avant ni une lisiere (proprietaire, 6 Sep: "limite c'etait mieux quand il y en
+    avait moins... on peut en mettre plein ?"). Le prix, mesure: le fichier passe d'environ 3 a
+    6 Mo, sur 120 Mo de contenu, et 30 000 triangles de plus sur le million; zero appel de rendu,
+    zero materiau, la vegetation restant UN objet. Le second rang est en quinconce, un demi-pas
+    plus loin le long du bord et plus profond dans la bande, pour que les deux ne fassent pas
+    une double ligne.
+    """
+    return _rang_arbres(0.45, 0.0, 12.0) + _rang_arbres(0.85, 6.0, 12.0)
 
 
 def _rang_arbres(facteur, phase, pas):

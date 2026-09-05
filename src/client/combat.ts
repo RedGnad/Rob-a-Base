@@ -70,6 +70,16 @@ const FLASH_TEXTURE = 'assets/ui/flash.png'
 
 const MODELE = 'assets/Models/gun.glb'
 /**
+ * The same pistol without its outline hull, for the first person view only.
+ *
+ * `gun.glb` carries a second shell two millimetres outside the body, normals turned in, which
+ * is the toon outline: a drawn rim in third person, and at fifty centimetres from the camera
+ * two surfaces fighting for the same pixels at every step, a rim that sparkled and read as
+ * the gun flickering while running (owner, 5 Sep). `tools/model/build-gun-view.py` writes
+ * the body alone from the same file.
+ */
+const MODELE_VUE = 'assets/Models/gun-view.glb'
+/**
  * The two avatar clips, built against the Decentraland reference rig.
  *
  * AIM is a single held pose, looped, so the arms stay up for as long as the player holds
@@ -218,7 +228,7 @@ function weaponItem(poignee: Entity, pos: Vector3, scale: Vector3, hex: string, 
   Material.setPbrMaterial(e, plasticDe(Color4.fromHexString(hex + 'ff'), glow))
   return e
 }
-function modeleArme(poignee: Entity, type: ArmeType): Entity[] {
+function modeleArme(poignee: Entity, type: ArmeType, contour = true): Entity[] {
   const V = Vector3.create
   if (type === 'slap') {
     return [
@@ -238,19 +248,19 @@ function modeleArme(poignee: Entity, type: ArmeType): Entity[] {
   }
   const modele = engine.addEntity()
   Transform.create(modele, { parent: poignee, position: PIVOT, rotation: MODEL_ROT })
-  GltfContainer.create(modele, { src: MODELE, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  GltfContainer.create(modele, { src: contour ? MODELE : MODELE_VUE, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   return [modele]
 }
-function construireArme(parent: Entity, pos: Vector3, rot: Quaternion, type: ArmeType = 'shoot'): Gun {
+function construireArme(parent: Entity, pos: Vector3, rot: Quaternion, type: ArmeType = 'shoot', contour = true): Gun {
   const poignee = engine.addEntity()
   Transform.create(poignee, { parent, position: pos, rotation: rot })
-  return { racine: parent, poignee, parts: modeleArme(poignee, type), type }
+  return { racine: parent, poignee, parts: modeleArme(poignee, type, contour), type }
 }
 /** Swap the held model to another weapon, keeping the grip and the flash in place. */
 function equiperArme(g: Gun | null, type: ArmeType): void {
   if (g === null || g.type === type) return
   for (const e of g.parts) engine.removeEntity(e)
-  g.parts = modeleArme(g.poignee, type)
+  g.parts = modeleArme(g.poignee, type, g !== vue)
   g.type = type
   // The sound follows the weapon: a paddle thwacks, a taser crackles, only a gun reports.
   const s = AudioSource.getMutableOrNull(g.racine)
@@ -310,7 +320,7 @@ export function setupCombat(): void {
   // View model: one entity parented to the camera, shown only in first person.
   const ancre = engine.addEntity()
   Transform.create(ancre, { parent: engine.CameraEntity, position: VIEW_POS, rotation: VIEW_ROT })
-  vue = construireArme(ancre, Vector3.Zero(), Quaternion.Identity())
+  vue = construireArme(ancre, Vector3.Zero(), Quaternion.Identity(), 'shoot', false)
   montrer(vue, false)
 
   /*
