@@ -23,7 +23,8 @@ import { bannerLine, nextBigText, rushChip, eventView, openRushCard, closeRushCa
 import { beltView, crateInReach, buyCrate } from './client/belt'
 import { convoyInReach, surencherir } from './client/convoy'
 import { fuserInReach, agirSurFuser } from './client/fusion'
-import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
+import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN, revealHold } from './client/box'
+import { revealToyView } from './client/reveal-toy'
 
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
 import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
@@ -1079,10 +1080,6 @@ function easeOutBack(t: number): number {
 const REEL_FADE_MS = 200
 const REVEAL_CLOSE_MS = 260
 
-/** The beat before the hero rises, matched to the sting's riser so the glyph lands ON the
-    impact: nothing for the small pulls, the riser's length for Epic and above. */
-function revealHold(rarete: number): number { return rarete >= 5 ? 340 : rarete >= 3 ? 220 : 0 }
-
 function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v }
 
 /** One card of the strip, at a fixed size: the strip never reflows. */
@@ -1204,13 +1201,44 @@ function CrateReveal(): ReactEcs.JSX.Element {
   const icone = 290 * heroPop * echelle
   const rayon = (520 + 140 * heroPop) * echelle
   const eclat = Math.max(0, 1 - h / 900)
+  /*
+    The real toy is out there, so the veil gets a window and the picture stands down. The
+    window is the hero box, a touch wider, and it only exists while the piece is really
+    visible: a model still loading, or a camera whose front is outside the parcels, keeps
+    the card and nobody sees a hole with nothing in it.
+  */
+  const objet3D = heroVisible && revealToyView.visible
+  const cote = Math.max(icone, 320)
+  const hublot = { cote, gauche: (active.w - cote) / 2, haut: (active.h - cote) / 2 - 40 }
 
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}>
-      {/* Le fond s'assombrit pendant le tour et se ferme sur le heros: jamais un eclair. */}
-      <UiEntity
-        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-        uiBackground={{ color: Color4.create(0, 0, 0, fond * sortie) }} />
+      {/*
+        Le fond s'assombrit pendant le tour et se ferme sur le heros: jamais un eclair.
+
+        Et quand la vraie piece est devant la camera, le voile se troue. L'interface d'une
+        scene est un calque ecran toujours dessine PAR-DESSUS le monde: il n'existe aucun
+        moyen de mettre un objet 3D dans un panneau. Le voile devient donc quatre bandes
+        autour d'une fenetre carree de la taille du heros, l'objet se voit par la fenetre, et
+        les rayons de l'eclat continuent de passer devant lui, ce qui est exactement le
+        rendu voulu. Sans piece, une seule plaque: quatre elements pour rien serait du gaspillage.
+      */}
+      {objet3D ? (
+        [
+          { left: 0, top: 0, width: '100%' as const, height: hublot.haut },
+          { left: 0, top: hublot.haut + hublot.cote, width: '100%' as const, height: Math.max(0, active.h - hublot.haut - hublot.cote) },
+          { left: 0, top: hublot.haut, width: hublot.gauche, height: hublot.cote },
+          { left: hublot.gauche + hublot.cote, top: hublot.haut, width: Math.max(0, active.w - hublot.gauche - hublot.cote), height: hublot.cote }
+        ].map((b, i) => (
+          <UiEntity key={i}
+            uiTransform={{ width: b.width, height: b.height, positionType: 'absolute', position: { left: b.left, top: b.top } }}
+            uiBackground={{ color: Color4.create(0, 0, 0, fond * sortie) }} />
+        ))
+      ) : (
+        <UiEntity
+          uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+          uiBackground={{ color: Color4.create(0, 0, 0, fond * sortie) }} />
+      )}
 
       {bandeVisible && (
         <Centre bottom={250}>
@@ -1283,9 +1311,11 @@ function CrateReveal(): ReactEcs.JSX.Element {
                 }}
                 uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch', color: gagne }} />
             )}
-            <UiEntity
-              uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-              uiBackground={{ texture: { src: `assets/ui/toy-${rarete}.png` }, textureMode: 'stretch' }} />
+            {!objet3D && (
+              <UiEntity
+                uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+                uiBackground={{ texture: { src: `assets/ui/toy-${rarete}.png` }, textureMode: 'stretch' }} />
+            )}
           </UiEntity>
           <UiEntity uiTransform={{ height: 52, margin: { top: 6 }, opacity: clamp01(nomPop) }}>
             <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}

@@ -9,6 +9,7 @@ import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTER, occupe } from '../shared/
 import { room } from '../shared/messages'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
+import { setupRevealToy } from './reveal-toy'
 import { setupPlots } from './plots'
 import { setupTheft, setClientAddress, theftView, alerter } from './theft'
 import { sendOrHold } from './intent'
@@ -117,6 +118,7 @@ export function startClient(): void {
   setupJuiceSound()
   setupVenue()
   setupBox()
+  setupRevealToy()
   setupPlots()
   setupStress()
   setupTheft()

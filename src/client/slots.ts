@@ -3,7 +3,7 @@ import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
-import { Color4, Vector3 } from '@dcl/sdk/math'
+import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
@@ -53,7 +53,21 @@ export function setupSlots(): void {
   label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(0, 2.2, 0), scale: Vector3.create(0, 0, 0) })
   Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White() })
+  /*
+    The line a player reads while standing on grass, so it carries its own contrast.
+
+    It was white text at size 3 with nothing behind it, over a bright green field, and the
+    owner could not read it while placing a base (5 Sep). A world-space label has no plate to
+    sit on, so the platform's own answer is the outline: `outlineWidth` with a dark
+    `outlineColor` draws the glyph's own edge, which holds on grass, on lava and on the sky
+    alike. The size goes up with it, because this is the one sentence in the game a player
+    reads before they own anything.
+  */
+  TextShape.create(label, {
+    text: '', fontSize: 4.2, textColor: Color4.White(),
+    outlineWidth: 0.28, outlineColor: Color3.fromHexString('#0b1018'),
+    shadowBlur: 0.5, shadowColor: Color3.fromHexString('#0b1018')
+  })
 
   room.onMessage('basePositions', (d) => {
     autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))

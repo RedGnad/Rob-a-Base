@@ -10,6 +10,7 @@ import { verb } from './verb'
 import { carryView } from './carry'
 import { sendOrHold } from './intent'
 import { TOAST } from './theme'
+import { preparerRevealToy, ouvrirRevealToy, fermerRevealToy } from './reveal-toy'
 
 let monAdresse = ''
 
@@ -104,6 +105,15 @@ let reelS = 1
  */
 const REEL_LEN = 44
 export const REEL_WIN = 38
+
+/**
+ * The beat between the strip stopping and the hero rising, matched to the sting's riser so
+ * the glyph lands ON the impact: nothing for the small pulls, the riser's length above.
+ *
+ * It lives here rather than in the interface because the 3D piece keys on the same beat, and
+ * two copies of one number is how a picture and an object end up arriving apart.
+ */
+export function revealHold(rarete: number): number { return rarete >= 5 ? 340 : rarete >= 3 ? 220 : 0 }
 const REEL_BASE_S = 3.0
 const REEL_PER_RARITY_S = 0.55
 
@@ -207,6 +217,8 @@ export function setupBox(): void {
     boxView.state = d.state
     boxView.reel = Array.from({ length: REEL_LEN }, () => rareteDecor())
     boxView.reel[REEL_WIN] = d.rarity
+    // The real toy, mounted now and hidden: it has the whole spin to load.
+    preparerRevealToy(d.rarity * 100 + d.mutation)
     boxView.progres = 0
     boxView.dernierPas = 0
     reelS = REEL_BASE_S + d.rarity * REEL_PER_RARITY_S
@@ -242,6 +254,7 @@ export function setupBox(): void {
         // The stop has its own weight, under the sting that climbs out of it.
         jouer(sonLand)
         jouerReveal(boxView.resultat)
+        timers.setTimeout(ouvrirRevealToy, revealHold(boxView.resultat))
         // Long enough to read the name once, gone before it outstays the win: the
         // genre closes its reveals fast and lets the item in the hand carry the memory.
         boxView.resultatJusqua = Date.now() + 2200
@@ -250,6 +263,7 @@ export function setupBox(): void {
     } else if (boxView.resultat >= 0 && Date.now() > boxView.resultatJusqua) {
       boxView.resultat = -1
       boxView.message = ''
+      fermerRevealToy()
     }
 
     // The two waits end on what they wait for, or on a timeout when it never comes: the
@@ -329,6 +343,9 @@ export function revealItem(code: number): void {
   boxView.gagneA = Date.now()
   boxView.resultatJusqua = Date.now() + 2600
   jouerReveal(boxView.resultat)
+  // A fusion has no strip, so the piece has no spin to load in: it shows if it makes it.
+  preparerRevealToy(code)
+  timers.setTimeout(ouvrirRevealToy, revealHold(boxView.resultat))
 }
 
 export function refuseWithSound(): void { jouer(refuseSound) }

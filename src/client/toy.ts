@@ -391,6 +391,11 @@ export function sansOmbre(primitive: Entity): void {
 }
 
 /** Take the model off a mount and bring the stand-in back, for a pedestal that emptied. */
+/** Whether the GLB on this mount has really landed: the reveal asks before it shows one. */
+export function monte(primitive: Entity): boolean {
+  return montages.get(primitive)?.charge === true
+}
+
 export function demonter(primitive: Entity): void {
   const m = montages.get(primitive)
   if (m === undefined) return
