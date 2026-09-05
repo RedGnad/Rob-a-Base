@@ -318,21 +318,30 @@ function place(x: number, y: number, z: number): Entity {
  * etage de chaque base. On monte a la premiere charge, on demonte a la derniere.
  */
 /*
-  The sentry is the cone, on purpose. A turret model was tried for a day and taken down: a
-  turret says "this shoots", and the sentry does not shoot, it seals, freezes and shakes
-  coins loose; the abstract cone reads as an automatic field, which is what it is (owner,
-  4 Sep). One primitive, cyan, no file to load, nothing to mount.
+  The sentry is still the CONE, and now it is a made thing.
+
+  A turret model was tried for a day and taken down, and that judgement stands: a turret says
+  "this shoots", and the sentry does not shoot, it seals, freezes and shakes coins loose (owner,
+  4 Sep). What was wrong was the other end, a bare primitive that read as a placeholder (owner,
+  5 Sep). `tools/model/build-sentry.py` keeps the silhouette and the envelope to the millimetre,
+  radius 0.30 at the foot, one unit tall, centred like the cylinder was, and spends 348
+  triangles on what the cone never had: a hexagonal pad, three blades leaning in, a ring, a
+  core. Abstract, technical, symmetrical; nothing that resembles a barrel.
+
+  The cyan and its glow are baked into the file, so every sentry in the world shares ONE
+  material. Tinting through a node would have cost one material per floor on a phone
+  (invariant 478).
 */
 function armSentry(sentry: Entity, armee: boolean): void {
-  const monte = MeshRenderer.has(sentry)
+  const monte = GltfContainer.has(sentry)
   if (armee && !monte) {
-    // Slimmer than it was (0.25/0.45): a narrow cone can stand three metres tall in the
-    // elevator's square without touching a wall, and height is what reads from the door.
-    MeshRenderer.setCylinder(sentry, 0.15, 0.30)
-    Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
+    GltfContainer.create(sentry, {
+      src: 'assets/Models/sentry.glb',
+      visibleMeshesCollisionMask: 0,
+      invisibleMeshesCollisionMask: 0
+    })
   } else if (!armee && monte) {
-    MeshRenderer.deleteFrom(sentry)
-    Material.deleteFrom(sentry)
+    GltfContainer.deleteFrom(sentry)
   }
 }
 

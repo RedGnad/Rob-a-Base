@@ -234,12 +234,17 @@ def construire_atlas(j, binaire, prims):
 
 # ----------------------------------------------------------------------------- ecriture
 
-def ecrire_glb(chemin, groupes, atlas, image_uri=None):
+def ecrire_glb(chemin, groupes, atlas, image_uri=None, emissif=None, force_emissive=1.0):
     """`groupes`: liste de (double_face, primitives). Un materiau par groupe, une image.
 
     `image_uri` sort l'image du fichier et la remplace par un chemin relatif. Neuf modeles qui
     embarquent chacun leur atlas font neuf textures a charger; le meme atlas cite par son nom
     n'en fait qu'une, partagee. A n'utiliser que si le .png est bien livre a cote du .glb.
+
+    `emissif` allume le materiau: un triplet 0..1 plus une force, cuits DANS le fichier, ce qui
+    veut dire que toutes les instances partagent une seule couleur emissive. Teinter a
+    l'execution ferait l'inverse: le client mobile duplique un materiau par piece modifiee par
+    noeud, donc une sentinelle par etage couterait un materiau par etage.
     """
     bin_parts = []
     buffer_views = []
@@ -290,13 +295,20 @@ def ecrire_glb(chemin, groupes, atlas, image_uri=None):
         a_nor = accesseur(pousser(b''.join(struct.pack('<fff', *v) for v in N), 34962), 5126, len(N), 'VEC3')
         a_uv = accesseur(pousser(b''.join(struct.pack('<ff', *v) for v in UV), 34962), 5126, len(UV), 'VEC2')
         a_idx = accesseur(pousser(b''.join(struct.pack('<I', i) for i in I), 34963), 5125, len(I), 'SCALAR')
-        materials.append({
+        mat = {
             'name': f'plat{gi}',
             'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': 0.0, 'roughnessFactor': 0.9},
             'doubleSided': bool(double)
-        })
+        }
+        if emissif is not None:
+            mat['emissiveFactor'] = list(emissif)
+            mat['emissiveTexture'] = {'index': 0}
+            if force_emissive != 1.0:
+                mat['extensions'] = {'KHR_materials_emissive_strength': {'emissiveStrength': force_emissive}}
+        materials.append(mat)
         meshes_prims.append({'attributes': {'POSITION': a_pos, 'NORMAL': a_nor, 'TEXCOORD_0': a_uv}, 'indices': a_idx, 'material': gi})
 
+    utilisees = ['KHR_materials_emissive_strength'] if (emissif is not None and force_emissive != 1.0) else []
     j = {
         'asset': {'version': '2.0', 'generator': 'aplatir-glb.py'},
         'scene': 0, 'scenes': [{'nodes': [0]}],
@@ -309,6 +321,8 @@ def ecrire_glb(chemin, groupes, atlas, image_uri=None):
         'accessors': accessors, 'bufferViews': buffer_views,
         'buffers': [{'byteLength': 0}]
     }
+    if utilisees:
+        j['extensionsUsed'] = utilisees
     binaire = b''.join(bin_parts)
     while len(binaire) % 4:
         binaire += b'\x00'

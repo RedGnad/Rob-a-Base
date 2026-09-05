@@ -103,6 +103,35 @@ class Maillage:
                 else:
                     self.idx.extend([centre_i, centre_i + 2 + i, centre_i + 1 + i])
 
+    def prisme(self, bas, haut, couleur):
+        """Six faces from eight corners: the only way to lean a shape without a rotation.
+
+        `bas` and `haut` are four points each, in the same order. A fin that leans in, a ramp,
+        a wedge: anything a box cannot be because a box is axis aligned.
+        """
+        import math as _m
+        cotes = [(0, 1), (1, 2), (2, 3), (3, 0)]
+        for i, j in cotes:
+            quad = [bas[i], bas[j], haut[j], haut[i]]
+            ux = tuple(quad[1][k] - quad[0][k] for k in range(3))
+            vx = tuple(quad[3][k] - quad[0][k] for k in range(3))
+            n = (ux[1] * vx[2] - ux[2] * vx[1], ux[2] * vx[0] - ux[0] * vx[2], ux[0] * vx[1] - ux[1] * vx[0])
+            ln = _m.sqrt(sum(c * c for c in n)) or 1
+            n = tuple(c / ln for c in n)
+            base = len(self.pos)
+            for p in quad:
+                self.pos.append(p)
+                self.nor.append(n)
+                self.uv.append(uv(couleur, self.n))
+            self.idx.extend([base, base + 1, base + 2, base, base + 2, base + 3])
+        for quad, n in ((haut, (0, 1, 0)), (list(reversed(bas)), (0, -1, 0))):
+            base = len(self.pos)
+            for p in quad:
+                self.pos.append(p)
+                self.nor.append(n)
+                self.uv.append(uv(couleur, self.n))
+            self.idx.extend([base, base + 1, base + 2, base, base + 2, base + 3])
+
     def prim(self):
         return {'pos': self.pos, 'nor': self.nor, 'uv_atlas': self.uv, 'idx': self.idx}
 
