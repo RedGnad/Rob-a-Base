@@ -91,10 +91,15 @@ def construire():
     global m
     m = blocs.Maillage(len(COULEURS))
     a, b = EP / 2, COTE - EP / 2
-    cote(m, 'x', a, TOUR, COTE - TOUR, -1)
-    cote(m, 'x', b, TOUR, COTE - TOUR, +1)
-    cote(m, 'z', a, TOUR, COTE - TOUR, -1)
-    cote(m, 'z', b, TOUR, COTE - TOUR, +1)
+    # Each run starts INSIDE its corner tower. The towers are centred on the wall line, so a
+    # tower spans a - TOUR/2 to a + TOUR/2 (minus 0.8 m to 1.6 m), and a run that started at
+    # TOUR (2.4 m) left 0.8 m of daylight between the two at all eight ends (owner, 5 Sep:
+    # "la muraille n'est pas continue, il y a des trous"). Fifteen centimetres of overlap.
+    d0, d1 = a + TOUR / 2 - 0.15, b - TOUR / 2 + 0.15
+    cote(m, 'x', a, d0, d1, -1)
+    cote(m, 'x', b, d0, d1, +1)
+    cote(m, 'z', a, d0, d1, -1)
+    cote(m, 'z', b, d0, d1, +1)
 
     # A tower at each corner: the wall has to END somewhere, and a corner that just stops is
     # what makes a perimeter look like a placeholder.
