@@ -228,13 +228,14 @@ function piece(fx, fy, cx, cy, grossi) {
 }
 
 /**
- * The stack, with its top coin lifted by `envol`.
+ * The stack. `envol` lifts the top coin, and nothing calls it with anything but zero.
  *
- * The still picture says money; the button says COLLECT by MOVING it. `Pouce` plays a pose
- * for 220 ms, the next for 100, then holds the rest pose, so the three files read as one coin
- * dropping onto the pile, which is the act the button performs. A trail or a second coin in
- * the air was tried instead and failed its own silhouette test: at 87 px on a phone the
- * strokes vanish and the flying coin reads as a second stack (rendered and measured, 5 Sep).
+ * Two ways of showing the ACT rather than the object were drawn, rendered and rejected. A
+ * trail or a second coin in the air failed the silhouette test: at 87 px the strokes vanish
+ * and the flying coin reads as a second stack. Animating the button instead worked, and was
+ * refused for a better reason: collecting is the state a player is in most of the time, so a
+ * button that moves by default is noise (owner, 5 Sep). The parameter stays because it costs
+ * one line and it is how those poses were rendered for the comparison.
  */
 function collectIcon(envol = 0) {
   const px = Buffer.alloc(SIZE * SIZE * 4)
@@ -522,13 +523,7 @@ for (const [nom, dessin] of VERBES) {
   ENCRE = NAVY
   fichiers.push([`encre-${nom}.png`, dessin()])
 }
-// The coin drop, two poses beside the rest pose already written above.
-for (const [pose, envol] of [['raised', 0.17], ['mid', 0.07]]) {
-  ENCRE = BLANC
-  fichiers.push([`icon-collect-${pose}.png`, collectIcon(envol)])
-  ENCRE = NAVY
-  fichiers.push([`encre-collect-${pose}.png`, collectIcon(envol)])
-}
+
 
 /*
   With no argument this writes the whole set, which is how it has always run. With one or more

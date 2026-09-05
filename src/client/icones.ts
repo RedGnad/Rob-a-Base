@@ -25,9 +25,16 @@ const PREFIXE = { blanc: 'icon', encre: 'encre', plaque: 'act' } as const
   porte la difference. Une tremie de plus n'apprenait rien et faisait un dessin a reconnaitre
   pour un contexte deja identifie (proprietaire, 2 Sep).
 */
+/*
+  Un verbe n'est ici que s'il est DESSINE sur un bouton. La cape avait le sien, du temps ou
+  elle etait passee dans la chaine contextuelle; elle a ete rendue a la rangee d'equipement le
+  jour meme (proprietaire, 5 Sep: "on ne peut pas ajouter des commandes sur le bouton
+  contextuel comme ca"), et son icone est restee la, prechauffee a chaque partie pour une
+  image que rien n'affiche. Elle part avec ses deux fichiers.
+*/
 const VERBES = [
   'build', 'crate', 'place', 'give', 'drop', 'recover', 'collect', 'fire',
-  'pickup', 'steal', 'up', 'fuse', 'outbid', 'buy', 'lock', 'cloak'
+  'pickup', 'steal', 'up', 'fuse', 'outbid', 'buy', 'lock'
 ] as const
 
 export function ico(nom: (typeof VERBES)[number]): string {

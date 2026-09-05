@@ -453,15 +453,16 @@ function gainMonte(): number { return Math.min(1, (Date.now() - gainA) / 900) }
 function gainRecent(): string { return gainMontant > 0 && Date.now() - gainA < 900 ? `+${formatIncome(gainMontant)}` : '' }
 
 /*
-  The verbs that MOVE, and the two poses each of them plays.
+  The verbs that MOVE, and the two poses each plays. There is exactly one.
 
-  A mallet strikes and a coin drops onto the pile: both are gestures, not objects. `Pouce`
-  shows the first pose for 220 ms, the second for 100, then holds the still picture, so each
-  reads as one movement per beat and costs two texture swaps. Motion belongs here, in time,
-  and not inside the still drawing: a trail drawn into the coin glyph itself disappeared at
-  thumb size when it was tried and rendered (5 Sep).
+  The mallet strikes, and that beat is what says "press this to build". Collect was given the
+  same treatment, a coin dropping onto the pile, and it was wrong on its own terms: collecting
+  is the state the player is in most of the time, so a button that moves whenever there is
+  nothing special to say is noise, not a cue (owner, 5 Sep). Movement is a signal and a signal
+  spends itself. It also cost the still picture: grouping the three poses made the scale come
+  from the union, which shrank the resting pile by a tenth.
 */
-const POSES = ['build', 'collect'] as const
+const POSES = ['build'] as const
 function posesDe(icone: string | undefined): [string, string] | undefined {
   const nom = POSES.find((v) => icone === ico(v))
   return nom === undefined ? undefined : [`${ico(nom)}-raised`, `${ico(nom)}-mid`]
