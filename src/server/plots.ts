@@ -769,6 +769,8 @@ export function auRevoir(address: string): void {
 }
 
 export function coinsOf(address: string): number { return Math.floor(profiles.get(address)?.coins ?? 0) }
+/** Whether this player's profile is in memory, which it is whenever they are in the venue. */
+export function hasProfile(address: string): boolean { return profiles.has(address) }
 
 /** Time already spent here, across every visit and every server this scene has had. */
 export function playedTime(address: string): number { return profiles.get(address)?.playedS ?? 0 }
