@@ -1121,15 +1121,29 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         the guidelines set for text this size and weight, where white would fall to 1.2 on the
         Legendary and the Secret.
 
-        A PILL, not a header band. Full width, it sat against the top edge with corners that
-        did not follow the card's own, so it read as a strip laid over the card rather than a
-        part of it, and it took a fifth of the face from the piece, which is the thing being
-        won (owner, 5 Sep). Fitted to its own word and inset, it says the same colour and
-        gives the piece its room back: the picture grows from 168 to 180.
+        A PILL, not a header band, and at the FOOT of the card. Full width across the top it
+        sat over the plate's own gloss, the highlight `card.png` carries from y 4 to y 40 of
+        its 128, which the nine-slice draws at the top of every card: a solid block laid over
+        a shine reads as a sticker, not as part of the object (owner, 5 Sep). It also took a
+        fifth of the face from the piece, which is the thing being won.
+
+        So the top of the card is left to the plate's own material, the piece opens the card
+        at 172, and the two small facts sit under it: the rung's colour, then what it earns.
 
         Vertically: capitals occupy 0.211 to 0.742 of their cell, so their middle sits at
         0.4766 of the glyph size below the text box, which is what centres them in the chip.
       */}
+      {/*
+        Every rung shows the piece itself, rendered from the model it will be on the shelf.
+        The Secret is the one the game never shows before you own it, so the strip draws the
+        old star for it and the winner's card, which only appears once it IS yours, draws the
+        planet (owner, 5 Sep).
+      */}
+      <UiEntity uiTransform={{ width: 172 * k, height: 172 * k }}
+        uiBackground={{
+          texture: { src: `assets/ui/${props.rarete === 6 && props.devoile !== true ? 'toy-mystery' : `toy-${props.rarete}`}.png` },
+          textureMode: 'stretch'
+        }} />
       <UiEntity
         uiTransform={{
           width: (glyphWidth(rar.name, 20) + 22) * k, height: 26 * k, borderRadius: 13 * k,
@@ -1140,11 +1154,6 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         <Glyphs value={rar.name} size={20 * k} role="ink" align="center" box={(glyphWidth(rar.name, 20) + 22) * k}
           top={Math.round((26 * k) / 2 - 0.4766 * 20 * k)} />
       </UiEntity>
-      <UiEntity uiTransform={{ width: 180 * k, height: 180 * k }}
-        uiBackground={{
-          texture: { src: `assets/ui/${props.rarete === 6 && props.devoile !== true ? 'toy-mystery' : `toy-${props.rarete}`}.png` },
-          textureMode: 'stretch'
-        }} />
       <Label
         value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[props.rarete] ?? 1)}/s`}
         fontSize={24} textWrap="nowrap"
