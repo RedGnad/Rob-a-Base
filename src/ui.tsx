@@ -1090,7 +1090,6 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
   const rar = RARITIES[props.rarete] ?? RARITIES[0]
   const mut = mutation(props.mutId ?? 0)
   const brut = Color4.fromHexString(rar.color + 'ff')
-  const texte = Color4.fromHexString(lisible(rar.color) + 'ff')
   const mute = (props.mutId ?? 0) > 0 && mut.mult > 1
   const k = (props.taille ?? REEL_W) / REEL_W
   return (
@@ -1103,8 +1102,25 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
       }}
       uiBackground={{ ...SKIN.card, color: Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1) }}
     >
-      <Label value={rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap" color={texte}
-        uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+      {/*
+        The rung's name in the game's own face, and no longer at the floor of the type scale.
+
+        It was a platform Label at `caption`, 21 units, which theme.ts itself calls the floor
+        under which text stops being readable: the smallest size we own, on the card that IS
+        the moment (owner, 5 Sep). Measured against the atlas advances, the longest name,
+        UNCOMMON, is 153 units at size 32 inside 174 of usable width, so 32 is the largest
+        size that fits every rung without a special case. White, because the plate under it is
+        dark: measured on `card.png` tinted by each rung, white lands between 9.4 and 11.9 to
+        one, gold between 7.2 and 9.1, and the dark ink between 1.2 and 1.5, which is why the
+        ink families are not an option here.
+
+        Only the name is drawn this way. The face costs one element per letter, the strip holds
+        seven cards, and the scene tick already sits at 31 to 34 ms against a 30 ms target: the
+        second line stays a Label, one element, raised to `label`.
+      */}
+      <UiEntity uiTransform={{ width: '100%', height: 34 * k }}>
+        <Glyphs value={rar.name} size={32 * k} role="name" align="center" box={(REEL_W - 16) * k} />
+      </UiEntity>
       {/*
         The Secret keeps its star while it is only a candidate.
 
@@ -1120,7 +1136,7 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         }} />
       <Label
         value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[props.rarete] ?? 1)}/s`}
-        fontSize={TYPE.caption} textWrap="nowrap"
+        fontSize={TYPE.label} textWrap="nowrap"
         color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
         uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
     </UiEntity>
