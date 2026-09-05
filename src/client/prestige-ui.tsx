@@ -3,8 +3,7 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
 import { Btn, SURF } from './ui-kit'
-import { theftView, doPrestige, pinItem } from './theft'
-import { mesPieces } from './plots'
+import { theftView, doPrestige } from './theft'
 import { formatIncome, RARITIES, nomDuCode, rarityOf, mutationDe, itemColor } from '../shared/loot-table'
 import { prestigeTier, incomeMultiplier, REBIRTH_MAX } from '../shared/schemas'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
@@ -54,6 +53,8 @@ const Chip = (props: { width: number; height: number; children?: ReactEcs.JSX.El
 )
 
 const KEEP = Color4.fromHexString('#8fe08fff')
+/** Big enough that two digits sit inside the star's waist, which is 0.60 of its width. */
+const BADGE = 76
 
 export const PrestigePanel = () => {
   if (!prestigeView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
@@ -73,6 +74,10 @@ export const PrestigePanel = () => {
   const manque = max ? 'MAX PRESTIGE'
     : !assezDeCoins ? 'NEED MORE COINS'
     : `NEED ${(exige?.name ?? '').toUpperCase()}`
+  // The badge's own figure, and the piece the server spares. Both are read, never chosen.
+  const niveau = theftView.prestige + 1
+  const chiffre = niveau >= 10 ? 32 : 42
+  const sauve = theftView.spared
   const mange = theftView.prestigeEats >= 0
     ? nomDuCode(theftView.prestigeEats).toUpperCase()
     : `${(exige?.name ?? '').toUpperCase()} OR BETTER`
@@ -95,21 +100,28 @@ export const PrestigePanel = () => {
         */}
         <UiEntity uiTransform={{ width: '100%', height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 8 } }}>
           {/*
-            The star carries no number any more.
+            The star carries the level, placed on the star's own ink rather than on its box.
 
-            It wore one, small and dark, and it was never legible: measured on the file, the
-            star's ink sits between y 22 and 217 of a 256 box, so its visual centre is ABOVE
-            the box centre while the label was nudged three pixels BELOW it, and a caption on
-            a sixty pixel badge is too small to read at any position (owner, 4 and 5 Sep,
-            twice). The number is also said, in full, two centimetres to the right: PRESTIGE 5
-            in title glyphs. A badge and a heading saying the same number is the duplication
-            this interface removes everywhere else, so the badge keeps the meaning and the
-            heading keeps the number.
+            Two attempts put a platform Label in the badge and both sat wrong, because both
+            centred against the wrong thing: the star's ink runs from y 22 to y 218 of a 256
+            box, so its optical centre is at 0.469 of the height, not 0.5, and a caption at
+            badge size is unreadable wherever you put it (owner, 4 and 5 Sep). Removing the
+            number was worse: an empty badge (owner, 5 Sep, third report).
+
+            So it is drawn in the game's own face, big, and both centres are measured off the
+            files rather than guessed. A digit's ink occupies 0.215 to 0.738 of its cell, so
+            its middle is 0.4765 of the glyph size below the text box top, and the star's is
+            0.469 of the badge height: the difference between those two is the offset below.
+            The star's waist is 0.60 of its width, which two digits at 32 fit and one at 42
+            fills. The heading beside it no longer repeats the figure.
           */}
-          <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 14 } }}
-            uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }} />
+          <UiEntity uiTransform={{ width: BADGE, height: BADGE, margin: { right: 14 } }}
+            uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }}>
+            <Glyphs value={String(niveau)} size={chiffre} role="ink" align="center" box={BADGE}
+              top={Math.round(0.469 * BADGE - 0.4765 * chiffre)} />
+          </UiEntity>
           <UiEntity uiTransform={{ width: glyphWidth(`PRESTIGE ${theftView.prestige + 1}`, TYPE.title), height: TYPE.title + 8 }}>
-            <Glyphs value={`PRESTIGE ${theftView.prestige + 1}`} size={TYPE.title} role="bonus" />
+            <Glyphs value="PRESTIGE" size={TYPE.title} role="bonus" />
           </UiEntity>
         </UiEntity>
 
@@ -156,45 +168,39 @@ export const PrestigePanel = () => {
         </UiEntity>
 
         {/*
-          Your shelves, and one tap to save one of them.
+          What prestige spares, stated, never chosen.
 
-          The first try put a KEEP button on the line that names the eaten toy, and it failed
-          on its own terms: the word did not say what would change, and a player with a full
-          base could not see WHICH pieces were at stake, let alone pick a favourite (owner,
-          5 Sep). A row of the pieces themselves answers both at a glance: the one prestige is
-          about to eat wears a red ring, the one you saved wears a gold one, and a tap moves
-          the gold ring. Nothing is written that the rings do not already say.
+          Two interfaces were built to let a player protect one piece, a KEEP button and a
+          strip of every piece owned. The owner rejected both, the second in the terms that
+          settle it: slow, confusing, and far too small to read on a phone, and better to have
+          no choice at all than a screenful of tiny targets (5 Sep). Mobile guidance says the
+          same, minimise options and show only what is needed now.
+
+          So the server keeps the rarest MUTATION on the shelves, from the jaws and from the
+          cull alike, and this line says which one. It appears only when there is one to
+          spare, and never when that piece is the toy being eaten, which happens when it is
+          the only piece that can pay the rung.
         */}
-        <UiEntity uiTransform={{ width: 660, height: 30, margin: { bottom: 4 } }}>
-          <Label value={theftView.pinned >= 0 ? 'TAP A PIECE TO SAVE IT  ·  GOLD IS SAFE' : 'TAP A PIECE TO SAVE IT FROM PRESTIGE'}
-            fontSize={TYPE.caption} color={C.dim}
-            uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" textWrap="nowrap" />
-        </UiEntity>
-        <UiEntity uiTransform={{
-          width: 660, height: 116, flexDirection: 'row', flexWrap: 'wrap',
-          justifyContent: 'center', alignItems: 'center', margin: { bottom: 10 }
-        }}>
-          {mesPieces().slice(0, 24).map((code: number, i: number) => {
-            const garde = theftView.pinned === code
-            const mangee = theftView.prestigeEats === code && !garde
-            const teinte = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
-            return (
-              <UiEntity key={i}
-                uiTransform={{
-                  width: 52, height: 52, margin: { right: 4, bottom: 4 },
-                  justifyContent: 'center', alignItems: 'center', pointerFilter: 'block',
-                  borderWidth: garde || mangee ? 3 : 0, borderRadius: 12,
-                  borderColor: garde ? C.money : C.danger
-                }}
-                uiBackground={{ ...SKIN.inset, color: teinte }}
-                onMouseDown={() => pinItem(code)}
-              >
-                <UiEntity uiTransform={{ width: 40, height: 40 }}
-                  uiBackground={{ texture: { src: `assets/ui/toy-${rarityOf(code)}.png` }, textureMode: 'stretch' }} />
+        {sauve >= 0 && sauve !== theftView.prestigeEats && (
+          <UiEntity uiTransform={{ width: 752, height: 84, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', margin: { bottom: 12 } }}>
+            <UiEntity
+              uiTransform={{ width: 440, height: 84, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
+              uiBackground={SKIN.card}
+            >
+              <UiEntity uiTransform={{ width: 52, height: 52, margin: { right: 12 } }}
+                uiBackground={{
+                  texture: { src: `assets/ui/toy-${rarityOf(sauve)}.png` }, textureMode: 'stretch',
+                  color: Color4.fromHexString(itemColor(rarityOf(sauve), mutationDe(sauve)) + 'ff')
+                }} />
+              <UiEntity uiTransform={{ width: 340, height: 76, flexDirection: 'column', justifyContent: 'center' }}>
+                <Label value={nomDuCode(sauve).toUpperCase()} fontSize={TYPE.label} color={KEEP}
+                  uiTransform={{ width: '100%', height: 38 }} textAlign="middle-left" textWrap="nowrap" />
+                <Label value="IS SAFE, YOUR RAREST" fontSize={TYPE.caption} color={C.dim}
+                  uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
               </UiEntity>
-            )
-          })}
-        </UiEntity>
+            </UiEntity>
+          </UiEntity>
+        )}
 
         {/* What stays and what goes, one line each, no sentence. */}
         <UiEntity uiTransform={{ width: 660, height: 62, flexDirection: 'column', margin: { bottom: 14 } }}>

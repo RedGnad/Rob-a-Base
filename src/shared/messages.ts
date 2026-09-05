@@ -9,13 +9,11 @@ export const MESSAGES = {
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
-  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int64, pinned: Schemas.Int64, offlineGain: Schemas.Int64, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, luckSec: Schemas.Int, luckPrice: Schemas.Int64, coins: Schemas.Int64, nextPrestige: Schemas.Int64, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int64, rechargeSec: Schemas.Int, pending: Schemas.Int64, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int64, presents: Schemas.Int, prime: Schemas.Float }),
+  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int64, spared: Schemas.Int64, offlineGain: Schemas.Int64, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, luckSec: Schemas.Int, luckPrice: Schemas.Int64, coins: Schemas.Int64, nextPrestige: Schemas.Int64, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int64, rechargeSec: Schemas.Int, pending: Schemas.Int64, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int64, presents: Schemas.Int, prime: Schemas.Float }),
 
   claimSlot: Schemas.Map({ x: Schemas.Float, z: Schemas.Float }),
   basePositions: Schemas.Map({ xs: Schemas.Array(Schemas.Float), zs: Schemas.Array(Schemas.Float) }),
 
-  /** Pin the piece prestige must spare, or lift the pin by naming the same one again. */
-  pinItem: Schemas.Map({ code: Schemas.Int }),
   buyBelt: Schemas.Map({ articleId: Schemas.Int }),
   beltAlert: Schemas.Map({ crateTier: Schemas.Int }),
   bought: Schemas.Map({ byName: Schemas.String, crateTier: Schemas.Int, price: Schemas.Int64 }),

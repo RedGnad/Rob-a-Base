@@ -44,7 +44,7 @@ export const theftView = {
   /** The exact toy the next prestige would eat, as a code, or -1. */
   prestigeEats: -1,
   /** The piece prestige must spare, or -1. */
-  pinned: -1,
+  spared: -1,
   /** The prestige the next floor asks for. */
   floorNeedsPrestige: 0,
   /** Written by the interface every frame: whether an alert on screen can actually be seen. */
@@ -261,7 +261,7 @@ export function setupTheft(): void {
     theftView.luckSec = d.luckSec
     theftView.luckPrice = d.luckPrice
     theftView.prestigeEats = d.prestigeEats
-    theftView.pinned = d.pinned
+    theftView.spared = d.spared
     theftView.floorNeedsPrestige = d.floorNeedsPrestige
     // The offline sum, read off the tick and said once per cash-in (see the server's wallet tick).
     if (d.offlineAt > 0 && d.offlineGain > 0 && d.offlineAt !== derniereAnnonceHL) {
@@ -358,7 +358,6 @@ export function steal(ownerId = '', slot = -1): void {
   void room.send('stealItem', { ownerId, slot })
 }
 /** Keep this piece through prestige, or lift the pin by naming the same one again. */
-export function pinItem(code: number): void { sendOrHold(() => { void room.send('pinItem', { code }) }) }
 
 export function lockBase(): void { sendOrHold(() => { void room.send('activateLock', {}) }) }
 export function recover(): void { sendOrHold(() => { void room.send('reclaim', {}) }) }

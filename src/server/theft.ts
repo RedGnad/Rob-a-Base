@@ -9,7 +9,7 @@ const BUILD_RANGE = 7
 import { room } from '../shared/messages'
 import { noter } from './records'
 import {
-  advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, reclamerQuotidienne, declareName, epingler
+advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, reclamerQuotidienne, declareName
 } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
@@ -428,14 +428,6 @@ export function startTheft(): void {
     void room.send('floorBought', { floors: r.floors ?? 1, cost: r.cost ?? 0 }, { to: [a] })
   })
 
-
-  room.onMessage('pinItem', (d, ctx) => {
-    const a = ctx?.from?.toLowerCase()
-    if (!a) return
-    const code = Number.isInteger(d?.code) ? d.code : -1
-    const mis = epingler(a, code)
-    void room.send('actionRejected', { action: 'pin', reason: mis >= 0 ? 'kept' : 'no longer kept', antiCheat: false }, { to: [a] })
-  })
 
   room.onMessage('rebirth', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

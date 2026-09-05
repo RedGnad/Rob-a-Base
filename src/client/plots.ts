@@ -934,16 +934,6 @@ export function baseIci(): { ownerId: string; mienne: boolean } | null {
  * to say which floor that is before the button is pressed, because a purchase whose effect
  * depends on your feet has to name what your feet chose.
  */
-/** My own shelves, as codes, empty slots dropped: the prestige panel picks from them. */
-export function mesPieces(): number[] {
-  const moi = myClientAddress()
-  for (const [, p] of engine.getEntitiesWith(Plot)) {
-    if (p.ownerId.toLowerCase() !== moi) continue
-    return [...p.items].filter((c) => c !== VIDE)
-  }
-  return []
-}
-
 export function maDefense(): { etage: number; charges: number } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
