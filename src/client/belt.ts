@@ -1,6 +1,6 @@
 import { TOY, plastic, caisse, demolir , dimCrate} from './toy'
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer, AudioSource
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer, AudioSource, GltfContainer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , FALL_END} from '../shared/schemas'
@@ -52,14 +52,27 @@ export function setupBelt(): void {
     included, derives from this one length so they cannot disagree again.
   */
   const LONG_TAPIS = BELT_LENGTH + 0.2
-  const bande = engine.addEntity()
-  Transform.create(bande, {
-    position: Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z),
-    scale: Vector3.create(LONG_TAPIS, 0.35, 2.6)
+  /*
+    ONE object for the whole installation, frame and pit together.
+
+    It was twelve SDK primitives with six materials: a slab, two rails, seven posts, a pit
+    floor and four walls. Twelve rendered objects and six materials is a lot to spend on a
+    shape that still read as boxes standing where a conveyor should be, and those two counters
+    are exactly the ones that are tight on a phone (775 draw calls of 1000 and 295 materials of
+    400 on the full field, against 27 percent of the triangles used). `tools/model/build-belt.py`
+    bakes the frame, the end drums, the rollers, the legs, their floor beam, the safety stripe
+    and the pit into one mesh of about a thousand triangles with a single six colour swatch
+    atlas: one draw call, one material, and a silhouette that says conveyor from any angle.
+
+    The tread stays a plane of its own below, because it is the one part that has to scroll.
+  */
+  const chassis = engine.addEntity()
+  Transform.create(chassis, { position: Vector3.create(CENTER.x, 0, CENTER.z) })
+  GltfContainer.create(chassis, {
+    src: 'assets/Models/belt.glb',
+    visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS,
+    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
   })
-  MeshRenderer.setBox(bande)
-  MeshCollider.setBox(bande)
-  Material.setPbrMaterial(bande, plastic(TOY.belt))
 
   /*
     The belt moves, because a belt that does not is a table.
@@ -99,50 +112,6 @@ export function setupBelt(): void {
     roughness: 0.55
   })
   Tween.setTextureMoveContinuous(tapis, Vector2.create(BELT_DIRECTION, 0), (BELT_LENGTH / BELT_DURATION_S) / LONG_TAPIS, TextureMovementType.TMT_OFFSET)
-
-  for (let i = -3; i <= 3; i++) {
-    const pied = engine.addEntity()
-    Transform.create(pied, {
-      position: Vector3.create(CENTER.x + i * (LONG_TAPIS / 7), BELT_HEIGHT / 2, CENTER.z),
-      scale: Vector3.create(0.3, BELT_HEIGHT, 0.3)
-    })
-    MeshRenderer.setBox(pied)
-    MeshCollider.setBox(pied)
-    Material.setPbrMaterial(pied, plastic(TOY.beltLeg))
-  }
-  for (const dz of [-1.42, 1.42]) {
-    const r = engine.addEntity()
-    Transform.create(r, {
-      position: Vector3.create(CENTER.x, BELT_HEIGHT + 0.3, CENTER.z + dz),
-      scale: Vector3.create(LONG_TAPIS, 0.24, 0.16)
-    })
-    MeshRenderer.setBox(r)
-    Material.setPbrMaterial(r, plastic(TOY.beltRail))
-  }
-
-  const bx = CENTER.x + BELT_LENGTH / 2 + 1.3
-  const R = 2.2
-
-  const fond = engine.addEntity()
-  Transform.create(fond, { position: Vector3.create(bx, 0.1, CENTER.z), scale: Vector3.create(R * 2, 0.2, R * 2) })
-  MeshRenderer.setBox(fond)
-  MeshCollider.setBox(fond)
-  Material.setPbrMaterial(fond, plastic(TOY.beltPit))
-
-  const H = 0.9
-  for (const [dx, dz, sx, sz] of [
-    [0, R, R * 2, 0.2], [0, -R, R * 2, 0.2],
-    [R, 0, 0.2, R * 2], [-R, 0, 0.2, R * 2]
-  ]) {
-    const m = engine.addEntity()
-    Transform.create(m, {
-      position: Vector3.create(bx + dx, H / 2, CENTER.z + dz),
-      scale: Vector3.create(sx, H, sz)
-    })
-    MeshRenderer.setBox(m)
-    MeshCollider.setBox(m)
-    Material.setPbrMaterial(m, plastic(TOY.beltRing))
-  }
 
   /*
     Drawn from `progres`, advanced locally, corrected by the network.
