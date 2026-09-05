@@ -20,12 +20,14 @@ fills its own bounding box is taken down by that same tenth. With the 0.62 box t
 use, an open glyph lands at 59.5% of the disc and a solid one at 54.6%, which is the native
 pad's own proportion.
 
-Frames of one animation are normalised AS A GROUP, and the group has two references, not one.
-The SCALE comes from the union of every pose, so no pose is clipped; the CENTRING comes from
-the FIRST file alone, the pose at rest. Centring on the union instead put the menu's three
-bars off the middle of their button, because the alert version carries a pip up in the corner
-and the union stretched to include it (owner, 5 Sep). The rule is general: a badge, a spark or
-a raised hammer moves around the glyph, and it is the glyph that must sit in the middle.
+Frames of one animation are normalised AS A GROUP, on the union of every pose: the swing is
+then centred on the button, which is what a player watches, rather than the resting frame
+being centred and the swing drifting up and out of the disc (owner, 5 Sep). The scale is
+measured AROUND that same centre, so the two never fight and nothing has to be clamped.
+
+A group therefore holds POSES OF ONE OBJECT and nothing else. The menu's alert picture, which
+adds a pip beside the bars rather than moving them, was grouped with the plain one and dragged
+the bars off centre for a picture the scene never draws; it is its own group now.
 
 Idempotent: a file already at the target size and already centred is left untouched, so running
 it twice costs nothing and never resamples an image twice.
@@ -152,20 +154,18 @@ def main():
         images = [Image.open(p).convert('RGBA') for p in paths]
         n = images[0].size[0]
         box = ink_bbox(images)
-        rest = ink_bbox(images[:1])
-        if box is None or rest is None:
+        if box is None:
             continue
-        anchor = ((rest[0] + rest[2]) / 2, (rest[1] + rest[3]) / 2)
-        # The span is measured AROUND THE ANCHOR, not corner to corner: the box that must fit
-        # is the one centred on the pose at rest, so the scale and the centring never fight and
-        # nothing has to be clamped back towards an edge.
+        anchor = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+        # The span is measured AROUND THE ANCHOR, which for a single picture is its own middle
+        # and for a swing is the middle of the whole movement.
         reach = max(abs(box[0] - anchor[0]), abs(box[2] - anchor[0]),
                     abs(box[1] - anchor[1]), abs(box[3] - anchor[1]))
         span = 2 * reach
         cover = coverage(images, box)
         target = (DENSE_EXTENT if cover > DENSE_COVER else EXTENT) * n
         k = target / span
-        # How far the pose at rest sits from the middle today, in pixels.
+        # How far that centre sits from the middle of the canvas today, in pixels.
         drift = max(abs(anchor[0] - n / 2), abs(anchor[1] - n / 2))
         label = group[0] + (f' (+{len(group) - 1})' if len(group) > 1 else '')
         print(f'{label:34} {span / n * 100:6.1f}% {cover * 100:6.1f}% {target / n * 100:6.1f}% {k:6.3f} {drift:6.1f}')

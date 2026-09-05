@@ -3,14 +3,18 @@ The BUILD glyph: a wooden mallet, in one mass, with two swing frames.
 
 Drawn after the owner's reference (a line icon of a mallet, 3 Sep), measured rather than
 remembered: the head is a rounded block about 1.8 times as long as it is thick, set across
-the handle; the handle is a straight bar, 0.18 of the head's length wide and 1.3 times as
+the handle; the handle is a straight bar, HALF the head's thickness wide and 1.3 times as
 long as the head, passing THROUGH the head and showing a short square stub on the far side;
 the grip end is cut flat. The whole tool leans so the head sits top-right and the handle
 runs down-left. Nothing is drawn inside the shape: at 56 px on a phone only the silhouette
 survives. A first pass kept an older hammer and hung a cap on the head's END, which is not
 in the reference; this one follows it.
 
-Three poses, rotated about the grip end: raised (22 degrees), halfway (9) and struck (0).
+Three poses, rotated about the grip end: raised (15 degrees), halfway (6) and struck (0).
+The raise was 22, and a tool swung 22 degrees about its grip carries its head across a fifth
+of the icon: on a 104 pixel button the mallet left the middle of the disc and came back, which
+reads as the picture sliding rather than the tool striking (owner, 5 Sep). Fifteen keeps the
+travel near a tenth, which is the movement itself and not a journey.
 The struck pose is the icon at rest; the other two are shown briefly at the start of every
 period when the contextual button offers BUILD, see `Pouce` in src/client/ui-kit.tsx.
 
@@ -27,12 +31,18 @@ SS = 8
 WHITE = (255, 255, 255, 255)
 NAVY = (16, 26, 43, 255)
 TILT = -42          # degrees; the head top-right, the handle down-left
-POSES = {'raised': 22, 'mid': 9, 'struck': 0}
+POSES = {'raised': 15, 'mid': 6, 'struck': 0}
 
 # The upright design, in a 100 x 150 box (x, y), head on top, handle straight down.
+#
+# The handle was 13 wide, 0.18 of the head's length, which is what the reference LINE icon
+# had. Ours is not a line icon: every other verb in the set is a solid mass, and beside them
+# the mallet read as a tool with a stick (owner, 5 Sep: "manche tres fin"). At half the head's
+# thickness it is the same object drawn in the same weight as its neighbours, and the stub
+# that shows above the head follows it, because it is the same piece of wood.
 HEAD = (15, 14, 85, 53)       # 70 long, 39 thick
-STUB = (44, 4, 56, 18)        # the handle's end showing through the top of the head
-HANDLE = (43.5, 40, 56.5, 146)  # 13 wide, to a flat grip end
+STUB = (40.25, 4, 59.75, 18)  # the handle's end showing through the top of the head
+HANDLE = (40.25, 40, 59.75, 146)  # 19.5 wide, half the head's thickness, to a flat grip end
 PIVOT = (50, 144)             # the swing turns about the grip end
 
 
