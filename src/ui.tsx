@@ -1229,8 +1229,18 @@ function CrateReveal(): ReactEcs.JSX.Element {
   const mut = mutation(boxView.resultatMutation)
 
   // The strip: present while it turns, dissolving once the hero takes over.
-  const bandeVisible = !boxView.sansRoulette && (tourne || t < hold + REEL_FADE_MS)
-  const bandeOpacite = tourne ? 1 : clamp01(1 - (t - hold) / REEL_FADE_MS) * sortie
+  /*
+    The strip HANDS OVER to the piece, it is not cut.
+
+    The winning card has its own pop and it is the best moment the strip has; it was fading out
+    over 200 ms from the same instant the 3D piece started growing, so for a fraction of a
+    second neither was really there and the eye read a cut (owner, 5 Sep). The card now holds
+    while the piece grows and fades over the following 260, which is a cross fade: something is
+    always on screen.
+  */
+  const REEL_HOLD_MS = 180
+  const bandeVisible = !boxView.sansRoulette && (tourne || t < hold + REEL_HOLD_MS + REEL_FADE_MS)
+  const bandeOpacite = tourne ? 1 : clamp01(1 - (t - hold - REEL_HOLD_MS) / REEL_FADE_MS) * sortie
   const large = Math.min(active.w - 80, 1700)
   const bande = REEL_H + 12
   const pop = tourne ? 0 : easeOutBack(clamp01(t / 160))
@@ -1287,9 +1297,19 @@ function CrateReveal(): ReactEcs.JSX.Element {
           <UiEntity uiTransform={{ width: large, height: bande, overflow: 'hidden', opacity: bandeOpacite }}>
             {boxView.reel.map((r, i) => {
               const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
-              if (x < -REEL_W - REEL_GAP || x > large + REEL_GAP) return null
+              /*
+                Born three cards early, buried three cards late.
+
+                A card used to come into existence at the very edge of the view, so its first
+                frame on screen was also the frame the renderer discovered it: at full speed
+                they seemed to arrive late (owner, 5 Sep). Three card widths of margin costs
+                six more elements and gives every card a tenth of a second of existence before
+                anybody can see it.
+              */
+              const MARGE = 3 * (REEL_W + REEL_GAP)
+              if (x < -MARGE || x > large + MARGE) return null
               return <CarteReel key={i} rarete={r} x={x} haut={(bande - REEL_H) / 2} opacite={!tourne && i !== REEL_WIN ? 0.42 : 1} />
-            })}
+            }).filter((c) => c !== null)}
 
             {/* Les deux bords fondent dans le panneau: les cartes viennent de plus loin. */}
             <UiEntity

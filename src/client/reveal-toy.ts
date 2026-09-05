@@ -1,4 +1,4 @@
-import { engine, Entity, Transform, MeshRenderer, Material } from '@dcl/sdk/ecs'
+import { engine, Entity, Transform, MeshRenderer, Material, MaterialTransparencyMode } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { itemFile, montable, demonter, monte, figerMonture } from './toy'
 
@@ -122,9 +122,22 @@ export function preparerRevealToy(code: number): void {
     scale: Vector3.Zero()
   })
   MeshRenderer.setPlane(f)
+  /*
+    A DARKENING, not a slab.
+
+    Flat black covered the world and announced itself: a rectangle with four corners in the
+    middle of the screen (owner, 5 Sep, twice). What a reveal wants is what a photographer
+    calls a vignette, opaque where the object stands and fading to nothing before it reaches
+    an edge, so the eye reads "the room went dark" rather than "a card was laid on the lens".
+    The texture is one 256 pixel radial ramp, alpha only, and the plane carries it in blend
+    mode: no edge exists anywhere on it.
+  */
   Material.setPbrMaterial(f, {
+    texture: Material.Texture.Common({ src: 'assets/textures/reveal-fade.png' }),
+    alphaTexture: Material.Texture.Common({ src: 'assets/textures/reveal-fade.png' }),
     albedoColor: Color4.create(0, 0, 0, 1),
     emissiveColor: Color3.Black(),
+    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
     metallic: 0, roughness: 1, specularIntensity: 0
   })
   fond = f

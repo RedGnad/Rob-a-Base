@@ -185,7 +185,25 @@ def slot():
     return out
 
 
+def reel():
+    """The strip passing a card: a wooden blip, softer and rounder than the interface click.
+
+    The reel borrowed `tick.wav`, the UI click, and at the start of a spin the cards fly past
+    faster than a sound can finish, so the ear got a rattle and then nothing (owner, 5 Sep:
+    "on n'a pas de sfx pendant que la roulette choisit"). This one is 60 ms, two soft partials,
+    no noise: it survives being played twenty times and it is pleasant when the strip slows to
+    one card a second, which is the part that matters.
+    """
+    n = int(RATE * 0.06)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / RATE
+        e = math.exp(-t * 90) * min(1.0, t / 0.002)
+        out[i] = (0.7 * math.sin(2 * math.pi * 520 * t) + 0.3 * math.sin(2 * math.pi * 1040 * t)) * e
+    return out
+
+
 for _name, _fn, _v in (('knock.wav', knock, 0.85), ('put.wav', put, 0.8), ('take.wav', take, 0.55),
-                       ('slot.wav', slot, 0.85),
+                       ('slot.wav', slot, 0.85), ('reel.wav', reel, 0.6),
                        ('till.wav', till, 0.8), ('hum.wav', hum, 0.75), ('back.wav', back, 0.8)):
     write(_name, _fn(), _v)

@@ -10,7 +10,7 @@ import { verb } from './verb'
 import { carryView } from './carry'
 import { sendOrHold } from './intent'
 import { TOAST } from './theme'
-import { preparerRevealToy, ouvrirRevealToy, fermerRevealToy } from './reveal-toy'
+import { preparerRevealToy, ouvrirRevealToy, fermerRevealToy, revealToyView } from './reveal-toy'
 
 let monAdresse = ''
 
@@ -91,6 +91,25 @@ let sonRevealHuge: Entity
 const eclats: Entity[] = []
 const ECLATS = 14
 let sonTic: Entity
+let sonTic2: Entity
+let dernierTic = 0
+let bascule = false
+
+/*
+  Two emitters, and a floor on the rate.
+
+  One AudioSource restarted per card cannot be heard when the cards fly: each restart cuts the
+  one before it, so the start of a spin was silence and the end was a click (owner, 5 Sep).
+  Alternating two sources lets a blip finish while the next begins, and refusing to fire more
+  than once every 70 ms turns the opening rattle into a rhythm.
+*/
+function ticRoulette(): void {
+  const t = Date.now()
+  if (t - dernierTic < 70) return
+  dernierTic = t
+  bascule = !bascule
+  jouer(bascule ? sonTic : sonTic2)
+}
 let left = 0
 let reelS = 1
 
@@ -176,7 +195,8 @@ export function setupBox(): void {
   sonRevealRare = emetteur('assets/sounds/reveal-rare.wav', 0.85)
   sonRevealBig = emetteur('assets/sounds/reveal-big.wav', 0.85)
   sonRevealHuge = emetteur('assets/sounds/reveal-huge.wav', 0.9)
-  sonTic = emetteur('assets/sounds/tick.wav', 0.5)
+  sonTic = emetteur('assets/sounds/reel.wav', 0.6)
+  sonTic2 = emetteur('assets/sounds/reel.wav', 0.6)
   // Le refus se dit au son, pas au texte: un etage plein est une chose qu'on entend une fois
   // et qu'on comprend, la ou une plaque "FLOOR FULL" reste a lire a chaque tentative.
   refuseSound = emetteur('assets/sounds/tick.wav', 0.35)
@@ -226,7 +246,18 @@ export function setupBox(): void {
 
     const depart = lastPosition
     if (depart !== null) {
-      timers.setTimeout(() => sendToHand(depart, d.rarity, d.mutation), Math.round(reelS * 1000) + 120)
+      /*
+        The flight is the FALLBACK, not a second showing.
+
+        A toy leaving the crate and flying to the hand answered "where did it go" back when the
+        reveal was a picture. Now the real piece turns in front of the camera and then leaves,
+        which says the same thing better: playing both told the story twice and made the moment
+        harder to read (owner, 5 Sep). So the flight only happens when the piece did not show,
+        which is exactly when the question needs answering.
+      */
+      timers.setTimeout(() => {
+        if (!revealToyView.visible) sendToHand(depart, d.rarity, d.mutation)
+      }, Math.round(reelS * 1000) + 120)
     }
   })
 
@@ -243,7 +274,7 @@ export function setupBox(): void {
       boxView.progres = (1 - Math.pow(1 - t, 4)) * REEL_WIN
       // One tick per card crossing the line: the rhythm IS the deceleration.
       const pas = Math.floor(boxView.progres + 0.5)
-      if (pas !== boxView.dernierPas) { boxView.dernierPas = pas; jouer(sonTic) }
+      if (pas !== boxView.dernierPas) { boxView.dernierPas = pas; ticRoulette() }
       if (left <= 0) {
         boxView.roule = false
         boxView.phase = 'land'
