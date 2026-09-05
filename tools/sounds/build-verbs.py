@@ -168,20 +168,19 @@ def slot():
     """PLACE: your toy going onto YOUR shelf, which is the reward the whole loop pays out.
 
     It was borrowing `put`, a neutral set-down, and the moment a player earns everything for
-    is not neutral (owner, 5 Sep). Two parts, the way a reward is built in game audio: the
-    physical event first, a soft low seat, then a bright two-note confirmation a beat later
-    that says the slot took it. Rising, because rising reads as gain.
+    is not neutral. But it is not the climax either: the reveal is, and a payoff louder than
+    the climax flattens both (owner, 5 Sep). So: the physical seat, low and short, and ONE
+    soft note over it rather than a two note fanfare. Satisfying, then out of the way.
     """
-    n = int(RATE * 0.42)
+    n = int(RATE * 0.26)
     out = [0.0] * n
     for i in range(n):
         t = i / RATE
-        s = 0.7 * math.sin(2 * math.pi * (140 - 30 * t / 0.42) * t) * math.exp(-t * 20)
-        for start, f, amp in ((0.07, 784.0, 0.5), (0.15, 1175.0, 0.45)):
-            if t >= start:
-                u = t - start
-                s += amp * math.sin(2 * math.pi * f * u) * math.exp(-u * 9)
-                s += amp * 0.35 * math.sin(2 * math.pi * f * 2 * u) * math.exp(-u * 13)
+        s = 0.7 * math.sin(2 * math.pi * (140 - 30 * t / 0.26) * t) * math.exp(-t * 24)
+        if t >= 0.05:
+            u = t - 0.05
+            s += 0.32 * math.sin(2 * math.pi * 784.0 * u) * math.exp(-u * 14)
+            s += 0.10 * math.sin(2 * math.pi * 1568.0 * u) * math.exp(-u * 20)
         out[i] = s
     return out
 

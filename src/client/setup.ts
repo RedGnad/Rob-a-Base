@@ -100,7 +100,20 @@ function setupPointerLock(): void {
     dernier = voulu
     if (voulu && !front) return
     const pl = PointerLock.getMutableOrNull(engine.CameraEntity)
-    if (pl !== null && pl.isPointerLocked !== voulu) pl.isPointerLocked = voulu
+    if (pl === null) return
+    /*
+      While a panel is open we write it EVERY frame, and we do not check first.
+
+      The check `!== voulu` had a blind spot the size of the bug it was meant to fix: the
+      client can capture the cursor without publishing it back into this component, so we read
+      "already unlocked", write nothing, and the player faces a menu with a captured cursor
+      where the first press only hands the cursor back. That is exactly the menu that has been
+      capricious for days while the HUD chips, which are pressed with the cursor already
+      captured, behave (owner, 5 Sep). A component write per frame costs nothing next to a
+      panel that eats presses, and it is only while a panel is up.
+    */
+    if (!voulu) { pl.isPointerLocked = false; return }
+    if (pl.isPointerLocked !== voulu) pl.isPointerLocked = voulu
   })
 }
 
