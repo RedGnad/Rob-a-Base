@@ -17,6 +17,7 @@ import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { toyImage } from './client/toy'
+import { clicsView } from './client/clics'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
@@ -324,6 +325,12 @@ const MenuWindow = () => {
         <UiEntity uiTransform={{ width: bourse, height: TAP.height, justifyContent: 'center' }}>
           <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
             role="money" align="left" box={bourse} top={(TAP.height - TYPE.body) / 2} />
+          {/* TEMPORARY: presses the scene received, presses the buttons served, last entity hit
+              (see client/clics.ts). Removed once the missing press has a measured cause. */}
+          <Label value={`R${clicsView.recus} S${clicsView.servis} ${clicsView.dernier}`} fontSize={TYPE.caption}
+            color={Color4.create(1, 1, 1, 0.4)}
+            uiTransform={{ width: bourse, height: 22, positionType: 'absolute', position: { left: 0, top: TAP.height - 24 } }}
+            textAlign="middle-left" textWrap="nowrap" />
         </UiEntity>
         {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
           <Btn key={o} width={onglet} right={ecart} primary={activeTab() === o}

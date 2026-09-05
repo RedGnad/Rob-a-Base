@@ -36,6 +36,7 @@ import { setupToy } from './toy'
 import { setupLootUi } from './loot-ui'
 import { setupPreload } from './preload'
 import { setupIntent } from './intent'
+import { setupClics } from './clics'
 
 export const view = {
   items: 0,
@@ -120,6 +121,7 @@ export function startClient(): void {
   console.log('[CLIENT] start')
   room.onMessage('serverLog', (d) => console.log(`[SERVER] ${d.line}`))
   setupIntent()
+  setupClics()
   setupTouchHud()
   if (!isMobile()) setupPointerLock()
   reportPlatform()
