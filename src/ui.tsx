@@ -487,7 +487,7 @@ const SON_DU_VERBE: Record<string, [string, number]> = {
   place: ['put.wav', 0.8],
   give: ['put.wav', 0.8],
   drop: ['put.wav', 0.7],
-  pickup: ['zap.wav', 0.7],
+  pickup: ['take.wav', 0.6],
   steal: ['zap.wav', 0.9],
   collect: ['coin.wav', 0.8],
   buy: ['till.wav', 0.8],

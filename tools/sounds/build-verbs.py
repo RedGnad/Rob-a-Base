@@ -146,6 +146,23 @@ def back():
     return out
 
 
-for _name, _fn, _v in (('knock.wav', knock, 0.85), ('put.wav', put, 0.8),
+def take():
+    """PICKUP: lifting your OWN toy off its stand, which is a gentle act.
+
+    It was borrowing `zap`, the sentry's electric bolt, and stealing sounds like that on
+    purpose: taking your own piece back does not (owner, 5 Sep, "un peu aggressif, peu
+    agreable"). Two soft partials a fifth apart, quick in and quicker out, no noise burst at
+    all, at two thirds of the volume the other cues use.
+    """
+    n = int(RATE * 0.16)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / RATE
+        e = math.exp(-t * 22) * min(1.0, t / 0.006)
+        out[i] = (0.6 * math.sin(2 * math.pi * 660 * t) + 0.3 * math.sin(2 * math.pi * 990 * t)) * e
+    return out
+
+
+for _name, _fn, _v in (('knock.wav', knock, 0.85), ('put.wav', put, 0.8), ('take.wav', take, 0.55),
                        ('till.wav', till, 0.8), ('hum.wav', hum, 0.75), ('back.wav', back, 0.8)):
     write(_name, _fn(), _v)

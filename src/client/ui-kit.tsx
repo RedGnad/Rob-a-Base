@@ -42,7 +42,20 @@ let sonClic: Entity | null = null
   the steal keeps its zap, the lock its seal, the collect its coin.
 */
 const cues = new Map<string, Entity>()
+const derniereCue = new Map<string, number>()
+/**
+ * The same clip cannot play twice inside this window.
+ *
+ * A pick-up sounded twice in a row (owner, 5 Sep). On a desktop a shelf item can be taken two
+ * ways, the contextual button and a click on the object itself, and any frame where both are
+ * seen plays the cue twice. Rather than hunt every pair of paths, the cue itself refuses to
+ * repeat: 150 ms is longer than any double-fire and shorter than two deliberate presses.
+ */
+const CUE_MIN_MS = 150
 export function cue(fichier: string, volume = 0.8): void {
+  const maintenant = Date.now()
+  if (maintenant - (derniereCue.get(fichier) ?? 0) < CUE_MIN_MS) return
+  derniereCue.set(fichier, maintenant)
   let e = cues.get(fichier)
   if (e === undefined) {
     e = engine.addEntity()
