@@ -1,6 +1,6 @@
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
-import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, orientToBase } from '../shared/schemas'
+import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, SCENE_SIDE, orientToBase } from '../shared/schemas'
 import { moveTo } from './deplacer'
 import { poseView } from './pose'
 import { myClientAddress } from './theft'
@@ -29,6 +29,7 @@ export const travelView = {
 
 export function setupTravel(): void {
   engine.addSystem(() => { travelView.peutRentrer = maBase() !== null })
+  setupGardeFou()
   apparaitreChezSoi()
 }
 
@@ -69,6 +70,38 @@ function apparaitreChezSoi(): void {
     if (chez === null) return
     fait = true
     moveTo('apparition', chez, Vector3.create(CENTER.x, 1.6, CENTER.z))
+  })
+}
+
+/**
+ * Nobody is ever outside the map, whatever put them there.
+ *
+ * Moving a base once threw the owner off the terrain (5 Sep, once out of many): a building
+ * appears exactly where a player stands, and if a wall lands on them the client's character
+ * controller resolves the overlap by pushing, which at that size can be a long way. We cannot
+ * stop the push from a scene, and we do not need to: being outside the parcels is never a
+ * legitimate place to be, so a watchdog brings the player back to their own base, or to the
+ * plaza, and says so rather than teleporting silently.
+ *
+ * Half a second between checks, one comparison each: it cannot cost anything, and it closes
+ * every cause at once rather than the one we happened to reproduce.
+ */
+function setupGardeFou(): void {
+  let acc = 0
+  engine.addSystem((dt: number) => {
+    acc += dt
+    if (acc < 0.5) return
+    acc = 0
+    const t = Transform.getOrNull(engine.PlayerEntity)
+    if (t === null) return
+    const p = t.position
+    const dehors = p.x < 1 || p.x > SCENE_SIDE - 1 || p.z < 1 || p.z > SCENE_SIDE - 1 || p.y > 80 || p.y < -5
+    if (!dehors) return
+    const chez = maBase()
+    const cible = chez ?? Vector3.create(CENTER.x, 0, CENTER.z - 4.5)
+    alerter('BROUGHT YOU BACK IN', '#ffd166', TOAST.warning)
+    moveTo('garde-fou', chez === null ? cible : Vector3.create(cible.x, FLOOR_HEIGHT, cible.z - 4),
+      Vector3.create(cible.x, 2, cible.z))
   })
 }
 

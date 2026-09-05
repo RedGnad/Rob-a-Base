@@ -209,22 +209,31 @@ export const Pouce = (props: {
     100 to 200 ms for a press and 200 to 400 for a transition, nothing for a loop), so the
     period is the owner's call and comes in as a prop.
   */
-  let icone = props.icone
-  let balance = 1
+  /*
+    The swing, and why it kept blinking.
+
+    It swapped the `src` of ONE element between three files, twice a second. A renderer given a
+    new texture on a live element has to fetch and bind it, and the frame in between is empty:
+    that is the blink, and no amount of re-timing was ever going to fix it (owner, 5 Sep, third
+    report). The three poses are now drawn as three stacked pictures whose OPACITY is switched.
+    Nothing is ever loaded during the animation, because nothing ever changes what it points at.
+
+    And the timing is the one animation asks for, which the old one had backwards: it opened on
+    the raised pose, so the hammer was already up before anything happened. Now the period is
+    almost all REST, then a short anticipation up, a shorter strike down, and a settle. Rest,
+    lift, hit, settle: a strike, not a wobble.
+  */
   const periode = props.periodMs ?? 1800
+  const t = Date.now() % periode
+  const LEVE = periode - 300, FRAPPE = periode - 180, POSE = periode - 120
+  let pose = 2                                   // 0 raised, 1 halfway, 2 at rest
+  let balance = 1
   if (props.frames !== undefined) {
-    /*
-      A SWING, not a blink. Eighty milliseconds raised and sixty halfway, twice a second,
-      is two texture swaps too fast to read as a movement: the eye sees the button flicker
-      (owner, 5 Sep). Animation's own answer is anticipation, strike, settle, over the
-      two to four tenths of a second interface motion is given, then a long rest: the hammer
-      lifts (and swells a little), comes down (and shrinks), settles, then holds still.
-    */
-    const t = Date.now() % periode
-    if (t < 220) { icone = props.frames[0]; balance = 1 + 0.06 * Math.sin(Math.PI * t / 220) }
-    else if (t < 320) { icone = props.frames[1]; balance = 0.94 }
-    else if (t < 520) { icone = props.icone; balance = 1 + 0.04 * (1 - (t - 320) / 200) }
+    if (t >= LEVE && t < FRAPPE) { pose = 0; balance = 1 + 0.07 * Math.sin(Math.PI * (t - LEVE) / 120) }
+    else if (t >= FRAPPE && t < POSE) { pose = 1; balance = 0.93 }
+    else if (t >= POSE) { balance = 1 + 0.05 * (1 - (t - POSE) / 120) }
   }
+  const icone = props.icone
   // A 300 ms swell to 1.12 at the start of each period, on the icon alone; the plate holds.
   let gonfle = 1
   if (props.pulse === true && props.frames === undefined) {
@@ -272,9 +281,20 @@ export const Pouce = (props: {
         largest square inside that circle is 64.1% of the button: 0.62 is just under that
         ceiling and puts an open glyph at 59.5% of the disc, the native pad's proportion.
       */}
-      <UiEntity
-        uiTransform={{ width: Math.round(d * 0.62 * gonfle), height: Math.round(d * 0.62 * gonfle), positionType: 'absolute' }}
-        uiBackground={{ texture: { src: `assets/ui/${icone}.png` }, textureMode: 'stretch' }} />
+      {props.frames === undefined ? (
+        <UiEntity
+          uiTransform={{ width: Math.round(d * 0.62 * gonfle), height: Math.round(d * 0.62 * gonfle), positionType: 'absolute' }}
+          uiBackground={{ texture: { src: `assets/ui/${icone}.png` }, textureMode: 'stretch' }} />
+      ) : (
+        [props.frames[0], props.frames[1], icone].map((f, i) => (
+          <UiEntity key={f}
+            uiTransform={{
+              width: Math.round(d * 0.62 * gonfle), height: Math.round(d * 0.62 * gonfle),
+              positionType: 'absolute', opacity: pose === i ? 1 : 0
+            }}
+            uiBackground={{ texture: { src: `assets/ui/${f}.png` }, textureMode: 'stretch' }} />
+        ))
+      )}
       {props.touche !== undefined && (
         <UiEntity
           uiTransform={{
