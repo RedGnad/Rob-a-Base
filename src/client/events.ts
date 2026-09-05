@@ -142,7 +142,15 @@ export function nextBigText(): string | null {
   albedo is white; `lueur` is how much of the same image is fed back as emissive, so the
   cracks, the stars, the grid and the flecks light up and the plates do not.
 */
-const LOOK: Record<number, { lueur: number; sky: number }> = {
+/*
+  `maille` is metres per repeat of the mat, `vitesse` its drift in repeats per second; both
+  default to the venue's stride. The rainbow is the one mat whose motif is a full hue cycle,
+  and a full cycle every eight metres is bands of sixty centimetres: at any distance that is
+  moire, not a rainbow (owner, 6 Sep: "trop serre, du bruit"). Four times the repeat gives
+  bands of nearly three metres, and the drift slows in step so the floor moves at the same
+  metres per second as the others.
+*/
+const LOOK: Record<number, { lueur: number; sky: number; maille?: number; vitesse?: number }> = {
   1: { lueur: 0.0, sky: 64800 },     // golden hour
   5: { lueur: 0.55, sky: 72000 },    // dusk, red horizon: the cracks glow
   9: { lueur: 0.2, sky: 79200 },     // night: faint veins
@@ -150,7 +158,7 @@ const LOOK: Record<number, { lueur: number; sky: number }> = {
   7: { lueur: 0.0, sky: 21600 },     // dawn, half and half
   8: { lueur: 0.35, sky: 77400 },    // late evening: the flecks
   10: { lueur: 0.0, sky: 27000 },    // sunrise light
-  11: { lueur: 0.0, sky: 32400 },    // clear morning
+  11: { lueur: 0.0, sky: 32400, maille: 32, vitesse: 0.00375 },  // clear morning: a slow, wide sweep
   12: { lueur: 0.5, sky: 82800 },    // neon hour: the grid
   13: { lueur: 0.0, sky: 14400 }     // blue hour before dawn
 }
@@ -263,7 +271,7 @@ export function setupEvents(): void {
         const mat = Material.Texture.Common({
           src: `assets/textures/mat-rush-${LOOK[theme] === undefined ? 5 : theme}.png`,
           wrapMode: TextureWrapMode.TWM_REPEAT,
-          tiling: Vector2.create(SCENE_SIDE / MAILLE_SOL, SCENE_SIDE / MAILLE_SOL)
+          tiling: Vector2.create(SCENE_SIDE / (look.maille ?? MAILLE_SOL), SCENE_SIDE / (look.maille ?? MAILLE_SOL))
         })
         Material.setPbrMaterial(sol, {
           texture: mat,
@@ -277,7 +285,7 @@ export function setupEvents(): void {
         // Not on the handset: its texture tweens overwrite the material's tiling with (1, 1)
         // (godot-explorer tween.rs, 30 Aug), which would stretch one mat cell over the venue.
         // The phone keeps a still mat at the right scale; the flow is a desktop flourish.
-        if (!isMobile()) Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), 0.015, TextureMovementType.TMT_OFFSET)
+        if (!isMobile()) Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), look.vitesse ?? 0.015, TextureMovementType.TMT_OFFSET)
       }
     } else {
       SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: JOUR_DE_BASE, transitionMode: TransitionMode.TM_FORWARD })

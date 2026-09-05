@@ -113,7 +113,9 @@ export function setupUi() {
 
     // The fifth control on the client's cluster, and the 1 key on a keyboard: the menu.
     if (inputSystem.isTriggered(InputAction.IA_ACTION_3, PointerEventType.PET_DOWN)) basculerMenu()
-    if (modale()) return
+    // A panel up means no play underneath it: the sell key and the contextual key used to
+    // reach the world through the menu (owner, 6 Sep). Same rule for the trigger, in combat.ts.
+    if (modale() || menuView.open) return
     // While the weapon is out this button is the trigger, and combat.ts owns it. Without
     // this, one press would fire and open the nearest crate in the same frame.
     // Key 2 on a desktop, the chip's own binding on a phone: both arrive here, once.
@@ -279,6 +281,16 @@ const MenuWindow = () => {
   const deborde = besoin > corps + 4
 
   return (
+    /*
+      A modal is a wall across the WHOLE screen, not only under its window. The window
+      already swallowed presses on itself; a press beside it went to the world, bought a
+      crate or clicked a lift through the menu (owner, 6 Sep). This invisible sheet takes
+      every pointer press outside the window; the keys are refused in the system above.
+    */
+    <UiEntity
+      uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 }, pointerFilter: 'block' }}
+      onMouseDown={() => {}}
+    >
     <UiEntity
       uiTransform={{
         width: strip(MENU_W).width, height: h, positionType: 'absolute',
@@ -396,6 +408,7 @@ const MenuWindow = () => {
             }} />
         )}
       </UiEntity>
+    </UiEntity>
     </UiEntity>
   )
 }

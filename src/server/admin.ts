@@ -2,7 +2,7 @@ import { timers } from '@dcl/sdk/ecs'
 import { Storage } from '@dcl/sdk/server'
 import { room } from '../shared/messages'
 import { nomDuCode } from '../shared/loot-table'
-import { addItem, addCrate, displayName, plotsPrets, hasProfile } from './plots'
+import { addItem, addCrate, displayName, plotsPrets, hasProfile, marquerTousVus } from './plots'
 import { log } from './log'
 
 /**
@@ -28,7 +28,8 @@ import { log } from './log'
 const KEY = 'admin:give'
 const POLL_MS = 10_000
 
-type Ordre = { to?: string; items?: number[]; crates?: number[] }
+/** `index: "all"` marks every piece as seen in the player's Index, for a showcase profile. */
+type Ordre = { to?: string; items?: number[]; crates?: number[]; index?: string }
 
 export function startAdmin(): void {
   timers.setInterval(() => { void appliquer() }, POLL_MS)
@@ -66,13 +67,12 @@ async function appliquer(): Promise<void> {
     addCrate(a, tier)
     caisses.push(tier)
   }
+  const vus = ordre.index === 'all' ? marquerTousVus(a) : 0
   await Storage.delete(KEY)
-  log(`admin:give to ${displayName(a)}: placed [${poses.join(', ')}]${refuses.length ? `, no room for [${refuses.join(', ')}]` : ''}${caisses.length ? `, crates [${caisses.join(', ')}]` : ''}`)
-  if (poses.length > 0 || caisses.length > 0) {
-    void room.send('actionRejected', {
-      action: 'gift',
-      reason: `GIFT  ·  ${[...poses, ...caisses.map((t) => `crate ${t}`)].join(', ')}`,
-      antiCheat: false
-    }, { to: [a] })
+  log(`admin:give to ${displayName(a)}: placed [${poses.join(', ')}]${refuses.length ? `, no room for [${refuses.join(', ')}]` : ''}${caisses.length ? `, crates [${caisses.join(', ')}]` : ''}${vus > 0 ? `, index ${vus} seen` : ''}`)
+  if (poses.length > 0 || caisses.length > 0 || vus > 0) {
+    const parts = [...poses, ...caisses.map((t) => `crate ${t}`)]
+    if (vus > 0) parts.push(`index ${vus}/${vus}`)
+    void room.send('actionRejected', { action: 'gift', reason: `GIFT  ·  ${parts.join(', ')}`, antiCheat: false }, { to: [a] })
   }
 }

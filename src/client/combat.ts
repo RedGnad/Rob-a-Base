@@ -562,7 +562,7 @@ function gunSystem(dt: number): void {
   // is out the shot leaves on its own as soon as the reticle locks someone. That is the
   // fire mode Fortnite recommends to players new to mobile, and a judge here has five
   // minutes: a second button for the trigger would buy nothing and cost a thumb.
-  if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
+  if (theftView.hudVisible && inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
     // F draws and holsters, and does nothing else. It used to pull the cloak on when one sat
     // in the pocket and no weapon was out, so BUYING a cloak silently took the draw key away
     // (owner, 5 Sep). The cloak is used from its own row in the gear panel.

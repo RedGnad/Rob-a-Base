@@ -7,7 +7,7 @@ import {
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
-  itemIncome, itemOdds, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe, skinDebloque, SKIN_NEEDS, RARITIES, mutation
+  itemIncome, itemOdds, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe, skinDebloque, SKIN_NEEDS, RARITIES, MUTATIONS, mutation
 } from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { clearJournal } from './records'
@@ -1399,6 +1399,20 @@ export function retirerMine(address: string, at: { x: number; z: number }): void
 }
 
 /** The Index's button: a skin is a mutation whose column is filled to `SKIN_NEEDS`, or none. */
+/**
+ * Every rarity and mutation marked as seen in the Index, for the owner's showcase profile:
+ * ninety-eight codes, rarity times a hundred plus mutation. Through the admin channel only.
+ */
+export function marquerTousVus(address: string): number {
+  const p = profiles.get(address)
+  if (!p) return 0
+  const tous: number[] = []
+  for (let r = 0; r < RARITIES.length; r++) for (let m = 0; m < MUTATIONS.length; m++) tous.push(r * 100 + m)
+  p.vus = tous
+  dirtyProfiles.add(address)
+  return tous.length
+}
+
 /** Sound effects on or off, the player's own choice, kept with the profile. */
 export function setSfxOff(address: string, off: boolean): void {
   const p = profiles.get(address)
