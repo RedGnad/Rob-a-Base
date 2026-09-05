@@ -52,6 +52,8 @@ export const theftView = {
   floorNeedsPrestige: 0,
   /** Written by the interface every frame: whether an alert on screen can actually be seen. */
   hudVisible: true,
+  /** When the HUD last came back: the press that closed a panel must not also reach the world. */
+  hudDepuis: 0,
 }
 
 let sonneur = 0 as unknown as ReturnType<typeof engine.addEntity>

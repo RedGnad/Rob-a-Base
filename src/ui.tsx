@@ -1446,7 +1446,11 @@ function CrateReveal(): ReactEcs.JSX.Element {
 
 const uiComponent = () => {
   // The alert clock reads this: an alert behind a screen keeps for when the screen goes.
-  theftView.hudVisible = hud()
+  // And the world reads `hudDepuis`: the press that closed a panel is still in flight in the
+  // frame the HUD comes back, so a round went off on CLOSE (owner, 6 Sep). See monde.ts.
+  const visible = hud()
+  if (visible && !theftView.hudVisible) theftView.hudDepuis = Date.now()
+  theftView.hudVisible = visible
   /*
     The top band, resolved once per frame, in priority order.
 

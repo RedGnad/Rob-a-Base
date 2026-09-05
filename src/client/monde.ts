@@ -11,6 +11,20 @@ import { theftView } from './theft'
  * the whole screen, which would also take the camera drag on a phone; the five checks share
  * this one gate instead.
  */
+/** How long the HUD must have been back before the world answers a press, in milliseconds. */
+const GRACE_MS = 150
+
+/**
+ * Whether the world is what the player is acting on right now.
+ *
+ * True only once the HUD has been back for a moment: the press that closes a panel is read
+ * by the pointer system in the same frame the panel goes, so without the grace the CLOSE
+ * button fired the drawn weapon (owner, 6 Sep).
+ */
+export function mondeOuvert(): boolean {
+  return theftView.hudVisible && Date.now() - theftView.hudDepuis > GRACE_MS
+}
+
 export function clicMonde(entity: Entity): boolean {
-  return theftView.hudVisible && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, entity)
+  return mondeOuvert() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, entity)
 }

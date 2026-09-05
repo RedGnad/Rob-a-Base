@@ -12,6 +12,7 @@ import { formatIncome } from '../shared/loot-table'
 import { alerter, theftView } from './theft'
 import { cue } from './ui-kit'
 import { noterBascule } from './clics'
+import { mondeOuvert } from './monde'
 import { flashDamage, floatAmount, playHurt } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 import { TOAST } from './theme'
@@ -562,7 +563,7 @@ function gunSystem(dt: number): void {
   // is out the shot leaves on its own as soon as the reticle locks someone. That is the
   // fire mode Fortnite recommends to players new to mobile, and a judge here has five
   // minutes: a second button for the trigger would buy nothing and cost a thumb.
-  if (theftView.hudVisible && inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
+  if (mondeOuvert() && inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
     // F draws and holsters, and does nothing else. It used to pull the cloak on when one sat
     // in the pocket and no weapon was out, so BUYING a cloak silently took the draw key away
     // (owner, 5 Sep). The cloak is used from its own row in the gear panel.
@@ -598,7 +599,7 @@ function gunSystem(dt: number): void {
   */
   // No round while a panel is up: the click that presses a menu button is the same click
   // the trigger listens to, and a drawn weapon fired at every tab (owner, 6 Sep).
-  const gachette = theftView.hudVisible && (inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
+  const gachette = mondeOuvert() && (inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
     || (!isMobile() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)))
   if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
