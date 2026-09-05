@@ -1103,32 +1103,37 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
       uiBackground={{ ...SKIN.card, color: Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1) }}
     >
       {/*
-        The rung's name in the game's own face, and no longer at the floor of the type scale.
+        The rung is a BLOCK OF ITS OWN COLOUR, and the word only confirms it.
 
-        It was a platform Label at `caption`, 21 units, which theme.ts itself calls the floor
-        under which text stops being readable: the smallest size we own, on the card that IS
-        the moment (owner, 5 Sep). Measured against the atlas advances, the longest name,
-        UNCOMMON, is 153 units at size 32 inside 174 of usable width, so 32 is the largest
-        size that fits every rung without a special case. White, because the plate under it is
-        dark: measured on `card.png` tinted by each rung, white lands between 9.4 and 11.9 to
-        one, gold between 7.2 and 9.1, and the dark ink between 1.2 and 1.5, which is why the
-        ink families are not an option here.
+        Two things were wrong with the line it replaces. It was a platform Label at `caption`,
+        21 units, the size theme.ts itself calls the floor under which text stops being
+        readable. And it carried the identification on its own, in a colour, on a plate that
+        is nearly the same dark navy for every rung: measured on `card.png` tinted by each
+        rarity, the two closest plates are 9 units apart in RGB, so the strip read as seven
+        identical cards (owner, 5 Sep, comparing the two mock-ups). Multiplying harder does not
+        help, a tint can only darken: at any weight the plates stay within 18 units of each
+        other.
 
-        Only the name is drawn this way. The face costs one element per letter, the strip holds
-        seven cards, and the scene tick already sits at 31 to 34 ms against a 30 ms target: the
-        second line stays a Label, one element, raised to `label`.
+        So the colour moves to a chip of the FULL rarity, which is the only way to get a real
+        block of colour on a dark plate, and the word shrinks to 24: "personne ne lit ca, tout
+        le monde veut reconnaitre la couleur et la rarete en un clin d'oeil" (owner, 5 Sep).
+        Dark ink on the chip, measured on all seven rungs: 4.41 to 17.43 to one, above the 3:1
+        the guidelines set for text this size and weight, where white would fall to 1.2 on the
+        Legendary and the Secret.
+
+        Vertically: capitals occupy 0.211 to 0.742 of their cell, so their middle sits at
+        0.4766 of the glyph size below the text box, which is what centres them in the chip.
       */}
-      <UiEntity uiTransform={{ width: '100%', height: 34 * k }}>
-        <Glyphs value={rar.name} size={32 * k} role="name" align="center" box={(REEL_W - 16) * k} />
+      <UiEntity
+        uiTransform={{
+          width: '100%', height: 34 * k, borderRadius: 10 * k,
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: brut }}
+      >
+        <Glyphs value={rar.name} size={24 * k} role="ink" align="center" box={(REEL_W - 16) * k}
+          top={Math.round((34 * k) / 2 - 0.4766 * 24 * k)} />
       </UiEntity>
-      {/*
-        The Secret keeps its star while it is only a candidate.
-
-        Every other rung shows the piece itself, rendered from the model it will be on the
-        shelf. The Secret is the one the game never shows before you own it, so the strip
-        draws the old star for it and the winner's card, which only appears once it IS yours,
-        draws the planet (owner, 5 Sep).
-      */}
       <UiEntity uiTransform={{ width: 168 * k, height: 168 * k }}
         uiBackground={{
           texture: { src: `assets/ui/${props.rarete === 6 && props.devoile !== true ? 'toy-mystery' : `toy-${props.rarete}`}.png` },
@@ -1136,7 +1141,7 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         }} />
       <Label
         value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[props.rarete] ?? 1)}/s`}
-        fontSize={TYPE.label} textWrap="nowrap"
+        fontSize={24} textWrap="nowrap"
         color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
         uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
     </UiEntity>
