@@ -38,8 +38,6 @@ export const revealToyView = {
 
 /** How far in front of the camera. Closer than an avatar in third person, so it never clips. */
 const DIST = 1.15
-/** Where it starts, before it comes at you: the pop is a move as well as a scale. */
-const DIST_POP = 1.55
 /** The piece's height in metres. The fit table normalises every model to one metre tall. */
 const HAUTEUR = 0.72
 const POP_MS = 380
@@ -109,7 +107,7 @@ export function preparerRevealToy(code: number): void {
   const e = engine.addEntity()
   Transform.create(e, {
     parent: engine.CameraEntity,
-    position: Vector3.create(0, 0, DIST_POP),
+    position: Vector3.create(0, 0, DIST + 0.4),
     scale: Vector3.Zero()
   })
   montable(e, itemFile(code))
@@ -178,13 +176,27 @@ export function fermerRevealToy(): void {
   retirer()
 }
 
-/** Where the holder really is in the scene, since it hangs off the camera. */
-function dansLaScene(): boolean {
+/**
+ * How far in front the piece can stand and still be INSIDE the scene.
+ *
+ * An entity entirely outside the parcels is not rendered, so a player at the wall looking out
+ * used to get no piece at all, and the flight to the hand covered for it. That is the wrong
+ * trade: the piece should show every time (owner, 5 Sep). It does not have to stand at a fixed
+ * distance to do that, so the distance BENDS instead: the point is walked back towards the
+ * camera until it is inside, down to half a metre. The piece is then slightly nearer and
+ * slightly larger for a moment, which nobody will read as a defect, and it is always there.
+ *
+ * Returns 0 when even half a metre is outside, which can only happen if the camera itself has
+ * left the map: then, and only then, there is nothing to show.
+ */
+function distanceTenue(): number {
   const cam = Transform.getOrNull(engine.CameraEntity)
-  if (cam === null) return false
-  const devant = Vector3.rotate(Vector3.create(0, 0, DIST), cam.rotation)
-  const p = Vector3.add(cam.position, devant)
-  return p.x > BORD && p.x < 192 - BORD && p.z > BORD && p.z < 192 - BORD && p.y > 0.5 && p.y < 60
+  if (cam === null) return 0
+  for (let d = DIST; d >= 0.5; d -= 0.15) {
+    const p = Vector3.add(cam.position, Vector3.rotate(Vector3.create(0, 0, d), cam.rotation))
+    if (p.x > BORD && p.x < 192 - BORD && p.z > BORD && p.z < 192 - BORD && p.y > 0.4 && p.y < 60) return d
+  }
+  return 0
 }
 
 export function setupRevealToy(): void {
@@ -196,15 +208,17 @@ export function setupRevealToy(): void {
     angle = (angle + (360 / TOUR_S) * dt) % 360
     t.rotation = Quaternion.fromEulerDegrees(PIQUE, angle, ROULIS)
 
-    // The piece shows only when the model is in AND the holder is inside the parcels.
-    const pret = monte(support) && dansLaScene()
+    // The piece shows as soon as its model is in; the distance bends to keep it on the map.
+    const tenue = distanceTenue()
+    const pret = monte(support) && tenue > 0
     if (pret && !fige) { figerMonture(support); fige = true }
     const age = Date.now() - debut
     const tf = fond === null ? null : Transform.getMutableOrNull(fond)
 
     const poser = (k: number): void => {
+      const cible = tenue > 0 ? tenue : DIST
       t.scale = Vector3.create(HAUTEUR * k, HAUTEUR * k, HAUTEUR * k)
-      t.position = Vector3.create(0, 0, DIST_POP + (DIST - DIST_POP) * Math.min(1, k))
+      t.position = Vector3.create(0, 0, (cible + 0.4) + (cible - (cible + 0.4)) * Math.min(1, k))
       // The plate opens FIRST and closes last: the room goes dark, then the piece arrives.
       if (tf !== null) {
         const kf = Math.min(1, k * 2.2)
