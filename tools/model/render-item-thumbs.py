@@ -37,9 +37,13 @@ N = 256
 SS = 3
 # The piece fills this share of the frame, matching what the glyphs did.
 FILL = 0.92
-# Seen from slightly to the left and slightly above, the angle a display case uses.
-YAW = math.radians(24)
+# Seen from slightly to the left and slightly above, the angle a display case uses, then
+# tipped in the plane of the picture. A piece standing perfectly upright reads as an
+# inventory entry; the same piece leaning reads as an object being handed to you, and the
+# diagonal is what catches the eye first (owner, 5 Sep: "un peu en biais, ca accroche plus").
+YAW = math.radians(30)
 PITCH = math.radians(14)
+ROLL = math.radians(9)
 # The key comes from the upper left, the fill from behind the camera, the rim draws the edge.
 KEY = (-0.45, 0.78, 0.44)
 AMBIENT = 0.34
@@ -145,12 +149,14 @@ def triangles(path):
 
 
 def view(p):
-    """World to camera: yaw, then pitch, looking down the negative z of the result."""
+    """World to camera: yaw, then pitch, then the tip in the picture plane."""
     cy, sy = math.cos(YAW), math.sin(YAW)
     cp, sp = math.cos(PITCH), math.sin(PITCH)
+    cr, sr = math.cos(ROLL), math.sin(ROLL)
     x, y, z = p
     x, z = x * cy + z * sy, -x * sy + z * cy
     y, z = y * cp - z * sp, y * sp + z * cp
+    x, y = x * cr - y * sr, x * sr + y * cr
     return x, y, z
 
 

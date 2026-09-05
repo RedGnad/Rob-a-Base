@@ -48,9 +48,20 @@ const INCOME_UI = PRODUCTION_PER_RARITY
  * announcement. It now takes whatever `strip` leaves between the client's own furniture, and
  * the cards came down from 210 so more of the strip fits into it.
  */
-const REEL_W = 200
-const REEL_H = 200
-const REEL_GAP = 14
+/*
+  The card of the strip, in the proportion a collectible card has had since 1993: 63 by 88 mm,
+  which is 0.716. Both numbers were 200 and nothing chose them (owner, 5 Sep: "les dimensions
+  ont ete choisies au hasard"). A square card is the one shape that says nothing, and it wasted
+  the height a standing piece needs while spending width the strip has to pan across. Portrait
+  gives the toy its room, lets the eye track a row of tall objects rather than a row of tiles,
+  and still shows seven cards across the phone's canvas at this gap.
+
+  The picture inside stays SQUARE, because it is drawn with `textureMode: 'stretch'` from a
+  square file: a portrait art box would squash every piece sideways.
+*/
+const REEL_W = 190
+const REEL_H = 264
+const REEL_GAP = 16
 /** The result line lives inside the reel's panel, above the strip: one vertical budget for the whole reveal. */
 const REEL_TITRE = 48
 /** How much the winning card grows when the strip lands on it. */
@@ -470,7 +481,7 @@ function posesDe(icone: string | undefined): [string, string] | undefined {
 
 const PRECHAUFFE = [
   'panel', 'card', 'inset', 'primary', 'secondary', 'danger', 'fade-left', 'fade-right',
-  'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
+  'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6', 'toy-mystery',
   // Les trois boutons satellites, puis les quatorze verbes du bouton contextuel dans la
   // famille active, quelle qu'elle soit: voir `client/icones.ts`.
   ...ICONES_VERBES, ...POSES.flatMap((v) => [`${ico(v)}-raised`, `${ico(v)}-mid`]),
@@ -1075,7 +1086,7 @@ function revealHold(rarete: number): number { return rarete >= 5 ? 340 : rarete 
 function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v }
 
 /** One card of the strip, at a fixed size: the strip never reflows. */
-const CarteReel = (props: { key?: number; rarete: number; x: number; haut: number; opacite: number; mutId?: number; taille?: number }) => {
+const CarteReel = (props: { key?: number; rarete: number; x: number; haut: number; opacite: number; mutId?: number; taille?: number; devoile?: boolean }) => {
   const rar = RARITIES[props.rarete] ?? RARITIES[0]
   const mut = mutation(props.mutId ?? 0)
   const brut = Color4.fromHexString(rar.color + 'ff')
@@ -1093,14 +1104,25 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
       uiBackground={{ ...SKIN.card, color: Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1) }}
     >
       <Label value={rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap" color={texte}
-        uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
-      <UiEntity uiTransform={{ width: 118 * k, height: 118 * k }}
-        uiBackground={{ texture: { src: `assets/ui/toy-${props.rarete}.png` }, textureMode: 'stretch' }} />
+        uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+      {/*
+        The Secret keeps its star while it is only a candidate.
+
+        Every other rung shows the piece itself, rendered from the model it will be on the
+        shelf. The Secret is the one the game never shows before you own it, so the strip
+        draws the old star for it and the winner's card, which only appears once it IS yours,
+        draws the planet (owner, 5 Sep).
+      */}
+      <UiEntity uiTransform={{ width: 168 * k, height: 168 * k }}
+        uiBackground={{
+          texture: { src: `assets/ui/${props.rarete === 6 && props.devoile !== true ? 'toy-mystery' : `toy-${props.rarete}`}.png` },
+          textureMode: 'stretch'
+        }} />
       <Label
         value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[props.rarete] ?? 1)}/s`}
         fontSize={TYPE.caption} textWrap="nowrap"
         color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
-        uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
+        uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
     </UiEntity>
   )
 }
@@ -1176,7 +1198,7 @@ function CrateReveal(): ReactEcs.JSX.Element {
                 }}
                 uiBackground={{ ...SKIN.card, color: gagne }}
               >
-                <CarteReel rarete={rarete} x={8} haut={8} opacite={1} mutId={boxView.resultatMutation} taille={REEL_W * (1 + 0.22 * pop)} />
+                <CarteReel rarete={rarete} x={8} haut={8} opacite={1} devoile mutId={boxView.resultatMutation} taille={REEL_W * (1 + 0.22 * pop)} />
               </UiEntity>
             )}
           </UiEntity>
