@@ -164,6 +164,29 @@ def take():
     return out
 
 
+def slot():
+    """PLACE: your toy going onto YOUR shelf, which is the reward the whole loop pays out.
+
+    It was borrowing `put`, a neutral set-down, and the moment a player earns everything for
+    is not neutral (owner, 5 Sep). Two parts, the way a reward is built in game audio: the
+    physical event first, a soft low seat, then a bright two-note confirmation a beat later
+    that says the slot took it. Rising, because rising reads as gain.
+    """
+    n = int(RATE * 0.42)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / RATE
+        s = 0.7 * math.sin(2 * math.pi * (140 - 30 * t / 0.42) * t) * math.exp(-t * 20)
+        for start, f, amp in ((0.07, 784.0, 0.5), (0.15, 1175.0, 0.45)):
+            if t >= start:
+                u = t - start
+                s += amp * math.sin(2 * math.pi * f * u) * math.exp(-u * 9)
+                s += amp * 0.35 * math.sin(2 * math.pi * f * 2 * u) * math.exp(-u * 13)
+        out[i] = s
+    return out
+
+
 for _name, _fn, _v in (('knock.wav', knock, 0.85), ('put.wav', put, 0.8), ('take.wav', take, 0.55),
+                       ('slot.wav', slot, 0.85),
                        ('till.wav', till, 0.8), ('hum.wav', hum, 0.75), ('back.wav', back, 0.8)):
     write(_name, _fn(), _v)

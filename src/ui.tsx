@@ -484,7 +484,7 @@ function gainRecent(): string { return gainMontant > 0 && Date.now() - gainA < 9
 */
 const SON_DU_VERBE: Record<string, [string, number]> = {
   build: ['knock.wav', 0.85],
-  place: ['put.wav', 0.8],
+  place: ['slot.wav', 0.9],
   give: ['put.wav', 0.8],
   drop: ['put.wav', 0.7],
   pickup: ['take.wav', 0.6],

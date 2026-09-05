@@ -350,6 +350,11 @@ export function setupCombat(): void {
   hitmark = engine.addEntity()
   Transform.create(hitmark, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
   AudioSource.create(hitmark, { audioClipUrl: 'assets/sounds/hitmark.wav', playing: false, loop: false, volume: 0.85 })
+  // The holster. Its emitter was declared and never created, so `jouerDraw` returned on its
+  // first line and drawing stayed silent (owner, 5 Sep: "je n'entends aucun son quand je vise").
+  emetteurDraw = engine.addEntity()
+  Transform.create(emetteurDraw, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+  AudioSource.create(emetteurDraw, { audioClipUrl: 'assets/sounds/draw.wav', playing: false, loop: false, volume: 0.75 })
 
   CameraMode.onChange(engine.CameraEntity, (c) => {
     if (c === undefined) return
