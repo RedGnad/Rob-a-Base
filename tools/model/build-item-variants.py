@@ -350,16 +350,131 @@ def yinyang_albedo(pm):
         return (v, v, min(255, v + 4))
     return png(pm, f)
 
+def gold_albedo(pm):
+    """Hammered gold: a facet field with a warm sheen, so the metal has a surface to catch.
+
+    Gold was a flat factor with metallic 0.9, and a flat metal reads as plastic at any size:
+    beside a Divine, which is also warm and pale, the two were the same object (owner, 5 Sep).
+    The dents come from a coarse voronoi whose borders are darkened rather than lit, which is
+    what hammering does to a soft metal."""
+    e = voronoi_edge(pm, 41, pm.size / 5.5)
+    def f(i, p):
+        k = clamp(e[i] * 2.2)                       # 0 on a dent's border, 1 in its middle
+        m = 0.9 + 0.2 * mottle(p, pm.size, 42)
+        return (int(min(255, 235 * m * (0.72 + 0.28 * k))),
+                int(min(255, 186 * m * (0.66 + 0.34 * k))),
+                int(min(255, 40 * m * (0.5 + 0.5 * k))))
+    return png(pm, f)
+
+def diamond_albedo(pm):
+    """Facets, flat and hard edged, with the light caught along the cuts.
+
+    A gem is not a colour, it is an arrangement of planes. A voronoi at a coarse cell gives
+    flat faces on any shape; the border is drawn nearly white, the face is a pale ice blue
+    that varies from face to face so the stone has depth."""
+    e = voronoi_edge(pm, 51, pm.size / 4.5)
+    def f(i, p):
+        face = hash3(math.floor(p[0] / (pm.size / 4.5)), math.floor(p[1] / (pm.size / 4.5)), math.floor(p[2] / (pm.size / 4.5)), 52)
+        k = clamp(e[i] * 3.0)
+        base = (150 + 60 * face, 205 + 40 * face, 225 + 30 * face)
+        return tuple(int(min(255, c * (0.62 + 0.38 * k) + 90 * (1 - k))) for c in base)
+    return png(pm, f)
+
+def blood_albedo(pm):
+    """Dried burgundy with fresher runs in it, drawn downward.
+
+    Blood was the darkest flat of the set and read as brown plastic. The runs are a noise
+    stretched along the vertical axis, which is what makes a liquid look like it has fallen."""
+    size = pm.size
+    def f(i, p):
+        n = 0.6 * noise3((p[0], p[1] * 0.25, p[2]), size / 3, 61) + 0.4 * noise3((p[0], p[1] * 0.25, p[2]), size / 9, 62)
+        k = clamp((n - 0.48) / 0.14)
+        m = mottle(p, size, 63)
+        return (int((34 + 96 * k) * m), int((4 + 14 * k) * m), int((8 + 18 * k) * m))
+    return png(pm, f)
+
+def candy_albedo(pm):
+    """The stripe, because a candy is a stripe.
+
+    Pale pink was indistinguishable from Divine's cream at arm's length. A diagonal band in
+    object space wraps any shape without a seam, and the white between the pink is what the
+    eye reads as sugar."""
+    size = pm.size
+    def f(i, p):
+        u = (p[0] + p[1] + p[2]) / (size / 3.2)
+        w = u - math.floor(u)
+        band = clamp((0.5 - abs(w - 0.5)) * 6.0)
+        wob = 0.5 + 0.5 * noise3(p, size / 8, 64)
+        r = 255
+        g = int(120 + 118 * band)
+        b = int(160 + 90 * band)
+        return (int(r * (0.92 + 0.08 * wob)), g, b)
+    return png(pm, f)
+
+def radio_albedo(pm):
+    """Near black, pitted, with the corrosion showing through: the metal under the glow."""
+    e = voronoi_edge(pm, 81, pm.size / 7)
+    def f(i, p):
+        k = clamp(e[i] * 2.5)
+        m = mottle(p, pm.size, 82)
+        v = (14 + 26 * (1 - k)) * m
+        return (int(v * 0.8), int(v * 1.5), int(v * 0.6))
+    return png(pm, f)
+
+def radio_glow(pm):
+    """The green that leaks out of the pits, not off the whole surface."""
+    e = voronoi_edge(pm, 81, pm.size / 7)
+    def f(i, p):
+        k = 1 - clamp(e[i] * 2.5)
+        n = clamp((noise3(p, pm.size / 5, 83) - 0.45) / 0.3)
+        g = clamp(0.35 * k + 0.75 * n * k)
+        return (int(40 * g), int(255 * g), int(30 * g))
+    return png(pm, f)
+
+def divine_albedo(pm):
+    """Cream with rings of light around it, the halo of the thing rather than a cream tint."""
+    size = pm.size
+    def f(i, p):
+        r = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]) / (size / 5)
+        ring = 0.5 + 0.5 * math.sin(r * 6.3)
+        ring = clamp((ring - 0.35) / 0.4)
+        n = 0.5 + 0.5 * noise3(p, size / 4, 101)
+        v = 0.78 + 0.22 * ring * n
+        return (int(255 * v), int(238 * v), int(190 * v))
+    return png(pm, f)
+
+def divine_glow(pm):
+    """Only the rings glow, so the shape keeps its edges instead of blooming out."""
+    size = pm.size
+    def f(i, p):
+        r = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]) / (size / 5)
+        ring = clamp((0.5 + 0.5 * math.sin(r * 6.3) - 0.55) / 0.35)
+        return (int(255 * ring), int(230 * ring), int(150 * ring))
+    return png(pm, f)
+
+def phantom_glow(pm):
+    """Wisps, not a wash: an ectoplasm is thicker in places and that is what makes it read."""
+    size = pm.size
+    def f(i, p):
+        n = 0.55 * noise3((p[0], p[1] * 0.6, p[2]), size / 3, 111) + 0.45 * noise3(p, size / 8, 112)
+        k = clamp((n - 0.42) / 0.3)
+        return (int(60 * k), int(230 * k), int(140 * k))
+    return png(pm, f)
+
 FANCY = {
     5: {'albedo_tex': lava_albedo, 'emissive_tex': lava_glow, 'emissive': (0.8, 0.8, 0.8), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.75},  # crust with glowing cracks
     9: {'albedo_tex': cursed_albedo, 'emissive_tex': cursed_veins, 'emissive': (0.35, 0.35, 0.35), 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.5},  # deep violet with faint veins
     6: {'albedo_tex': galaxy_albedo, 'emissive_tex': galaxy_stars, 'emissive': (0.9, 0.8, 1.0), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.5},
     7: {'albedo_tex': yinyang_albedo, 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.35},
-    8: {'base': (0.04, 0.11, 0.03), 'emissive': (0.25, 1.0, 0.15), 'emissive_scale': 0.3, 'metallic': 0.0, 'roughness': 0.45},  # uranium: near-black under acid green
-    10: {'base': (1.0, 0.91, 0.66), 'emissive': (1.0, 0.91, 0.66), 'emissive_scale': 0.22, 'metallic': 0.35, 'roughness': 0.15},
+    1: {'albedo_tex': gold_albedo, 'base': (1, 1, 1), 'metallic': 0.9, 'roughness': 0.25},          # hammered
+    2: {'albedo_tex': diamond_albedo, 'base': (1, 1, 1), 'metallic': 0.35, 'roughness': 0.08},        # faceted
+    3: {'albedo_tex': blood_albedo, 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.35},           # dried, with runs
+    4: {'albedo_tex': candy_albedo, 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.4},            # striped
+    8: {'albedo_tex': radio_albedo, 'emissive_tex': radio_glow, 'emissive': (0.8, 0.8, 0.8), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.45},  # pitted, glowing in the pits
+    10: {'albedo_tex': divine_albedo, 'emissive_tex': divine_glow, 'emissive': (0.55, 0.55, 0.55), 'base': (1, 1, 1), 'metallic': 0.35, 'roughness': 0.15},  # haloed
     11: {'albedo_tex': rainbow_albedo, 'emissive_tex': rainbow_albedo, 'emissive': (0.12, 0.12, 0.12), 'base': (0.9, 0.9, 0.9), 'metallic': 0.0, 'roughness': 0.4},
     12: {'base': (0.03, 0.10, 0.13), 'emissive_tex': cyber_lines, 'emissive': (0.7, 0.7, 0.7), 'metallic': 0.3, 'roughness': 0.3},
-    13: {'base': (0.42, 1.0, 0.72), 'alpha': 0.4, 'emissive': (0.25, 0.9, 0.55), 'emissive_scale': 0.16, 'metallic': 0.0, 'roughness': 0.2}  # ectoplasm, not frost
+    13: {'base': (0.42, 1.0, 0.72), 'alpha': 0.4, 'emissive_tex': phantom_glow, 'emissive': (0.5, 0.5, 0.5), 'metallic': 0.0, 'roughness': 0.2}  # ectoplasm, wisped
 }
 _tex_cache = {}
 def texture_bytes(fn, pm):
