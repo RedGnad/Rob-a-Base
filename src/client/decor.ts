@@ -100,27 +100,28 @@ function pose(src: string, x: number, y: number, z: number, sc: number, ry: numb
 const LARGEUR_RUE = 6
 
 export function setupDecor(): void {
-  // The rim: four walls just inside the scene edge, cream with a yellow lip, like the side
-  // of the box. Physics AND pointer on the same boxes so the third-person camera cannot
-  // slide through into the void (camera rule: both layers or it clips).
-  const H = 3.2, EP = 0.8, LIP = 0.5
-  const murs: Array<[number, number, number, number]> = [
-    [SCENE_SIDE / 2, EP / 2, SCENE_SIDE, EP],
-    [SCENE_SIDE / 2, SCENE_SIDE - EP / 2, SCENE_SIDE, EP],
-    [EP / 2, SCENE_SIDE / 2, EP, SCENE_SIDE],
-    [SCENE_SIDE - EP / 2, SCENE_SIDE / 2, EP, SCENE_SIDE]
-  ]
-  for (const [x, z, lx, lz] of murs) {
-    const mur = engine.addEntity()
-    Transform.create(mur, { position: Vector3.create(x, H / 2, z), scale: Vector3.create(lx, H, lz) })
-    MeshRenderer.setBox(mur)
-    MeshCollider.setBox(mur, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
-    Material.setPbrMaterial(mur, plastic(TOY.wallCream))
-    const levre = engine.addEntity()
-    Transform.create(levre, { position: Vector3.create(x, H + LIP / 2, z), scale: Vector3.create(lx === EP ? EP + 0.3 : lx, LIP, lz === EP ? EP + 0.3 : lz) })
-    MeshRenderer.setBox(levre)
-    Material.setPbrMaterial(levre, plastic(TOY.ramp))
-  }
+  /*
+    Le pourtour en UN objet, avec un profil.
+
+    C'etaient quatre cubes etires en creme et quatre dalles jaunes posees dessus: huit objets
+    rendus et deux materiaux pour la plus longue ligne visible du jeu, celle qui est a
+    l'horizon de chaque capture, et elle lisait comme le flanc d'un carton. `build-wall.py`
+    cuit tout le pourtour en un seul maillage a un materiau: socle deborde, corps legerement
+    fuyant, couronnement a larmier avec sa levre jaune, un contrefort tous les douze metres du
+    cote interieur, et une tour a chaque angle avec sa lanterne. 1 824 triangles, la ou il
+    nous reste 73 pour cent de marge, contre sept objets rendus et un materiau economises sur
+    les deux compteurs qui sont tendus.
+
+    Le modele porte sa propre collision, physique ET pointeur, comme les boites: la camera de
+    troisieme personne doit s'arreter dessus, pas passer au travers.
+  */
+  const enceinte = engine.addEntity()
+  Transform.create(enceinte, { position: Vector3.create(0, 0, 0) })
+  GltfContainer.create(enceinte, {
+    src: 'assets/Models/wall.glb',
+    visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER,
+    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
+  })
 
   /*
     Toute la vegetation en DEUX objets, et son placement vit desormais dans l'outil.

@@ -69,11 +69,32 @@ def sur_spawn(x, z):
 
 
 def placer_arbres():
-    """Une ligne d'arbres le long des quatre bords, dans la bande interdite aux bases."""
+    """
+    Un rang d'arbres le long des quatre bords, dans la bande interdite aux bases.
+
+    C'etait un tous les dix-sept metres, quarante-quatre arbres pour sept cent soixante-huit
+    metres de pourtour: une haie clairsemee qui lisait comme un alignement plutot que comme une
+    lisiere. Le pas descend a treize.
+
+    Pourquoi pas plus, alors que la vegetation est fondue en UN objet et ne coute donc rien sur
+    les deux compteurs tendus: parce qu'elle coute du CONTENU. Un arbre pese 490 triangles, et
+    le second rang essaye a onze metres portait le fichier de 2,3 a 6,1 Mo, soit le plus gros
+    fichier du jeu, sur le chemin de chargement dont le proprietaire trouve deja qu'il arrive
+    trop tard (5 Sep). La profondeur vient donc des BUISSONS, qui coutent 53 triangles piece:
+    dix fois moins cher pour le meme service a l'arriere-plan.
+
+    La bande reste celle ou aucune base ne peut se poser, et le point d'apparition reste vide:
+    la lisibilite du terrain de jeu ne se negocie pas contre du decor.
+    """
     out = []
-    bande = EDGE_MARGIN * 0.55
+    return _rang_arbres(0.55, 0.0, 13.0)
+
+
+def _rang_arbres(facteur, phase, pas):
+    out = []
+    bande = EDGE_MARGIN * facteur
     for cote in (0, 1, 2, 3):
-        d = 10.0
+        d = 10.0 + phase
         while d < SCENE_SIDE - 10:
             j = (alea() - 0.5) * 6
             x = z = 0.0
@@ -89,7 +110,7 @@ def placer_arbres():
             ry = alea() * 360
             if not sur_spawn(x, z):
                 out.append((x, 0.0, z, sc, ry))
-            d += 17
+            d += pas
     return out
 
 
@@ -162,6 +183,19 @@ def placer_buissons():
             if not sur_spawn(x, z):
                 out.append((k, x, 0.0, z, sc, ry))
         d += 23
+    # Un second cordon, entre les arbres et le mur: c'est lui qui donne la profondeur que le
+    # deuxieme rang d'arbres aurait donnee, pour un dixieme du poids.
+    d = 14.0
+    while d < SCENE_SIDE - 14:
+        for bx, bz in ((d, 6.4), (SCENE_SIDE - d, SCENE_SIDE - 6.4), (6.4, SCENE_SIDE - d), (SCENE_SIDE - 6.4, d)):
+            k = 0 if alea() < 0.5 else 1
+            x = bx + (alea() - 0.5) * 3
+            z = bz + (alea() - 0.5) * 3
+            sc = 0.7 + alea() * 0.8
+            ry = alea() * 360
+            if not sur_spawn(x, z):
+                out.append((k, x, 0.0, z, sc, ry))
+        d += 12
     return out
 
 
