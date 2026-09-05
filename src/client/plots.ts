@@ -58,6 +58,7 @@ import { steal, myClientAddress, alerter, lockBase, theftView } from './theft'
 import { boltBetween } from './combat'
 import { room } from '../shared/messages'
 import { moveTo } from './deplacer'
+import { serverNow } from './clock'
 import { pickUp } from './carry'
 import { HUE, TOAST } from './theme'
 import { isMobile } from '@dcl/sdk/platform'
@@ -1225,7 +1226,10 @@ export function setupPlots(): void {
         views.set(id, v)
       }
 
-      const lockSeconds = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
+      // Every lock date is a reading of the SERVER's clock, so it is compared to the server's
+      // clock as measured here, never to this machine's: see clock.ts for the shield that
+      // showed on a base with nobody around.
+      const lockSeconds = Math.max(0, Math.ceil((p.lockedUntil - serverNow()) / 1000))
       /*
         The door sealing is HEARD, on every client near enough, whichever lock sealed it:
         the owner's press, the sentry, the shield a theft earns. A lock date that jumps
@@ -1234,7 +1238,7 @@ export function setupPlots(): void {
         seal rang on arrival with no lock).
       */
       if (v.lockSeen < 0) v.lockSeen = p.lockedUntil
-      else if (p.lockedUntil > v.lockSeen + 1000 && p.lockedUntil > Date.now() + 500) {
+      else if (p.lockedUntil > v.lockSeen + 1000 && p.lockedUntil > serverNow() + 500) {
         v.lockSeen = p.lockedUntil
         const porte = pointDeBase(v.racine, 0, 1.2, BASE_SIDE / 2)
         if (porte !== null) jouerA(sealEmitter, porte)
@@ -1452,7 +1456,7 @@ export function setupPlots(): void {
       }
 
       // Meme regle pour le bouclier: sa taille ne change qu'a la seconde ou il se leve.
-      const lockedNow = p.lockedUntil > Date.now()
+      const lockedNow = p.lockedUntil > serverNow()
       const shieldState = `${lockedNow}|${p.floors}|${monBase}`
       const ptr = shieldState === v.vuBouclier ? null : Transform.getMutableOrNull(v.door)
       if (ptr !== null) {
@@ -1482,12 +1486,12 @@ export function setupPlots(): void {
         /*
           The shield keeps thieves out. It must not keep the owner out.
 
-          Every player is shielded for thirty seconds the moment they arrive, which is a
-          kindness: nobody wants to be robbed while the scene is still loading around them.
-          But the shield is a solid box, and it was solid for everyone, so the first thing a
-          returning player met was a wall around their own base with no way through and no
-          explanation. The protection is against other people by definition, so the collider
-          only exists on somebody else's shield. Ours is drawn and walked through.
+          A shield is earned by being robbed while away, or bought with the lock, and it
+          can still be standing when its owner walks up to it. The shield is a solid box,
+          and it was solid for everyone, so a returning player met a wall around their own
+          base with no way through and no explanation. The protection is against other
+          people by definition, so the collider only exists on somebody else's shield. Ours
+          is drawn and walked through.
         */
         /*
           Whoever is inside when it seals is pushed out to the door.

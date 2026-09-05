@@ -106,6 +106,8 @@ type Profil = {
   alerts?: object[]
   /** The base skin chosen in the Index, a mutation id, 0 for none. */
   skin?: number
+  /** Sound effects switched off from the menu. Absent means on. */
+  sfxOff?: boolean
   /** The last offline sum cashed, carried in the wallet tick for a while so a late client still hears it. */
   annonceHL?: { gain: number; seconds: number; at: number }
   /** Bought luck: every mutation's odds doubled until this instant. */
@@ -1395,6 +1397,14 @@ export function retirerMine(address: string, at: { x: number; z: number }): void
 }
 
 /** The Index's button: a skin is a mutation whose column is filled to `SKIN_NEEDS`, or none. */
+/** Sound effects on or off, the player's own choice, kept with the profile. */
+export function setSfxOff(address: string, off: boolean): void {
+  const p = profiles.get(address)
+  if (!p || (p.sfxOff === true) === off) return
+  p.sfxOff = off
+  dirtyProfiles.add(address)
+}
+
 export function choisirSkin(address: string, mut: number): { ok: boolean; reason?: string } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
@@ -1954,7 +1964,7 @@ export function startPlots(): void {
       }, { to: [address] })
       void room.send('inventory', { crates: [...(p.crates ?? [])] }, { to: [address] })
       void room.send('gearHeld', { counts: gearsOf(address) }, { to: [address] })
-      void room.send('index', { vus: [...(p.vus ?? [])], skin: p.skin ?? 0 }, { to: [address] })
+      void room.send('index', { vus: [...(p.vus ?? [])], skin: p.skin ?? 0, sfxOff: p.sfxOff === true }, { to: [address] })
       void room.send('fusionState', { codes: [...(p.fusion ?? [])], made: -1 }, { to: [address] })
       pushQuests(address)
     }

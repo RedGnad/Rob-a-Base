@@ -10,7 +10,8 @@ import { raidView } from './raid'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
-import { flashDamage, floatAmount, playHurt, playCash } from './juice'
+import { cue } from './ui-kit'
+import { flashDamage, floatAmount, playHurt } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 import { TOAST } from './theme'
 import { puff } from './impact'
@@ -414,10 +415,12 @@ export function setupCombat(): void {
     const s = Math.round(LOOT_OWNER_LOCK_MS / 1000)
     alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  YOURS AGAIN IN ${s}s`, '#ff6b6b', TOAST.warning)
   })
-  // Same channel as collecting: the number says how much, the coin says it landed. The toast
-  // it replaces was the one the mobile tester named first as "taking the whole screen".
+  // Same channel as collecting: the number says how much, and a sound says it landed. The
+  // sound is the soft take rather than the coin, because a pile off the floor is the most
+  // repeated pick in the game and the owner found the coin harsh on it (5 Sep); it plays
+  // HERE, on the server's word, and not on the press, so it is heard once.
   room.onMessage('pickedUp', (d) => {
-    floatAmount(d.amount, false); playCash()
+    floatAmount(d.amount, false); cue('take.wav', 0.6)
     // And a burst at the feet: the pile is gone from the floor, something has to mark the spot.
     const moi = Transform.getOrNull(engine.PlayerEntity)
     if (moi !== null) puff(Vector3.create(moi.position.x, moi.position.y + 0.5, moi.position.z), '#8fe08f', 1.0)

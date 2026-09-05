@@ -9,6 +9,7 @@ import { room } from '../shared/messages'
 import { crate, formatIncome } from '../shared/loot-table'
 import { alerter, myClientAddress } from './theft'
 import { TOAST } from './theme'
+import { cue } from './ui-kit'
 
 type View = { body: Entity; label: Entity; texte: string }
 const views = new Map<number, View>()
@@ -36,6 +37,10 @@ export function setupConvoy(): void {
   })
   room.onMessage('convoyArrived', (d) => {
     alerter(`${crate(d.crateTier).name.toUpperCase()} DELIVERED`, '#4dd2ff', TOAST.result)
+    // Heard as well as read: a player at the far end of the field does not see the crate
+    // land. Low and short, the quiet end of the scale, because it is frequent and needs no
+    // answer (owner, 5 Sep: "il n'y a pas de feedback quand un crate est livre").
+    cue('deliver.wav', 0.7)
   })
 
   engine.addSystem(() => {

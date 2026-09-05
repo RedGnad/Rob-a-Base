@@ -12,7 +12,7 @@ import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
-import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
+import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
@@ -144,7 +144,9 @@ export function setupUi() {
     ReactEcsRenderer.setUiRenderer(uiComponent, {
       virtualWidth: phone ? 1600 : 1920, virtualHeight: phone ? 720 : 1080, screenInset: inset
     })
-    console.log(`[CLIENT] interface ${phone ? '1600x720 (phone)' : '1920x1080'}, screenInset '${inset}'`)
+    // The build stamp lives in the log now: it sat under the purse in the menu, and a code
+    // in a player's face is a developer's habit, not a control (owner, 5 Sep).
+    console.log(`[CLIENT] interface ${phone ? '1600x720 (phone)' : '1920x1080'}, screenInset '${inset}', build ${BUILD}`)
   }
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
   engine.addSystem(choose)
@@ -254,7 +256,10 @@ const MenuWindow = () => {
   // read as a fifth one. Half the width and a single letter give the four real tabs the
   // room, which is the hierarchy lesson applied to our own header.
   const fermer = Math.round(dedans * 0.075)
-  const onglet = Math.floor((dedans - bourse - fermer - ecart * 5) / 4)
+  // The sound switch, the same width as CLOSE: two utilities at the end of the bar, one gap
+  // more between them.
+  const son = fermer
+  const onglet = Math.floor((dedans - bourse - fermer - son - ecart * 6) / 4)
 
   const besoin = questsView.open ? HAUTEUR_GOALS
     : indexView.open ? HAUTEUR_INDEX
@@ -319,11 +324,6 @@ const MenuWindow = () => {
         <UiEntity uiTransform={{ width: bourse, height: TAP.height, justifyContent: 'center' }}>
           <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
             role="money" align="left" box={bourse} top={(TAP.height - TYPE.body) / 2} />
-          {/* The running build, four characters, dim: which version is on screen is a
-              question the client should answer, not a thing to argue about. */}
-          <Label value={BUILD} fontSize={TYPE.caption} color={Color4.create(1, 1, 1, 0.28)}
-            uiTransform={{ width: bourse, height: 22, positionType: 'absolute', position: { left: 0, top: TAP.height - 24 } }}
-            textAlign="middle-left" textWrap="nowrap" />
         </UiEntity>
         {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
           <Btn key={o} width={onglet} right={ecart} primary={activeTab() === o}
@@ -331,6 +331,7 @@ const MenuWindow = () => {
             badge={o === 'goals' && questsToClaim() > 0}
             label={o.toUpperCase()} />
         ))}
+        <SoundBtn size={son} right={ecart} />
         <CloseBtn size={fermer} onClick={closeMenu} />
       </UiEntity>
 
@@ -488,9 +489,11 @@ const SON_DU_VERBE: Record<string, [string, number]> = {
   place: ['slot.wav', 0.8],
   give: ['put.wav', 0.8],
   drop: ['put.wav', 0.7],
-  pickup: ['take.wav', 0.6],
+  // COLLECT and PICK UP are not here on purpose. Both are answered by the server with the
+  // amount, and the amount's own sound (the coin for collecting, the soft take for a pile),
+  // so a sound on the press was the same act heard twice a tenth of a second apart (owner,
+  // 5 Sep, both verbs). The press keeps the click every button has.
   steal: ['zap.wav', 0.9],
-  collect: ['coin.wav', 0.8],
   buy: ['till.wav', 0.8],
   outbid: ['till.wav', 0.8],
   fuse: ['hum.wav', 0.75],
@@ -521,7 +524,7 @@ const PRECHAUFFE = [
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
   // here the moment it is created, which is the whole job of this list.
-  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close', 'vignette',
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close', 'ui-sound', 'ui-mute', 'vignette',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
   'burst'
 ]

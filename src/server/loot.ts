@@ -40,10 +40,19 @@ const POIDS_APPARITION = [50, 24, 10, 3, 8, 4, 1, 0.5, 0.12, 0.8, 0.6, 0.45, 0.3
  * priced at nine tenths of a plain Good Crate. The loudest signal in the game was pointing at
  * the cheapest thing on the belt.
  *
- * So the question is asked of the data instead: rare means rare. Four percent or less leaves
- * Epic, Lava and Cursed, eight percent together, about one crate in twelve.
+ * So the question is asked of the data instead: rare means rare.
+ *
+ * Four or less was the first answer, and by these weights it still announced eleven of every
+ * hundred crates: Epic, Lava, Cursed and the seven themed ones together, one banner and one
+ * bell every forty-five seconds at thirteen spawns a minute, and the Epic alone every two and
+ * a half minutes (owner, 5 Sep: "c'est un evenement qui arrive trop souvent"). The sound
+ * literature's rule for a repeated cue is that the more often it fires the less intrusive it
+ * must be, and a bell across the screen cannot be made less intrusive: it can only be made
+ * rare. Half a point or less leaves Legendary, Mythic and the five rarest themes: 1.7 percent,
+ * one crate in sixty, a bell about every four and a half minutes. The Epic and the Lava still
+ * glow on the belt for as long as they roll; they simply no longer interrupt.
  */
-const ANNONCE_MAX_POIDS = 4
+const ANNONCE_MAX_POIDS = 0.5
 
 export function meriteAnnonce(crateId: number): boolean {
   const poids = POIDS_APPARITION[crateId]

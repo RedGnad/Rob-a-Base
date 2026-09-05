@@ -10,6 +10,7 @@ import { tutoView } from './tutorial'
 import { sendOrHold } from './intent'
 import { poseView } from './pose'
 import { TOAST } from './theme'
+import { setSfx } from './sfx'
 
 export const theftView = {
   alertes: [] as Array<{ t: string; c: string; ne: number; until: number }>,
@@ -284,7 +285,12 @@ export function setupTheft(): void {
     console.log(`[CLIENT] prestige ${d.prestige}, income x${d.multiplier}`)
   })
 
-  room.onMessage('index', (d) => { indexView.vus = [...d.vus]; indexView.skin = d.skin })
+  room.onMessage('index', (d) => {
+    indexView.vus = [...d.vus]
+    indexView.skin = d.skin
+    // The player's own switch, back from the profile: silence is kept across visits.
+    setSfx(d.sfxOff !== true)
+  })
 
   room.onMessage('collected', (d) => {
     /*

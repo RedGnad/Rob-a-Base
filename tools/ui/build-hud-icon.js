@@ -506,6 +506,48 @@ function closeIcon() {
   return png(S, S, px)
 }
 
+/**
+ * The sound switch: a speaker with two waves, and struck through when muted.
+ *
+ * Same ink and weights as CLOSE, so the two utilities at the end of the menu bar read as a
+ * pair. The speaker is a box and a cone; the waves are two arcs of the same stroke as the
+ * bars, opening to the right; the strike is the CLOSE bar at forty-five degrees, drawn OVER
+ * the waves with a gap of clear ink around it so the slash reads as a slash and not as a
+ * third wave.
+ */
+function soundIcon(muted) {
+  const px = Buffer.alloc(SIZE * SIZE * 4)
+  const S = SIZE
+  const cx = S * 0.36, cy = S * 0.5
+  const stroke = S * 0.055
+  const arc = (fx, fy, radius) => {
+    const dx = fx - cx, dy = fy - cy
+    const d = Math.sqrt(dx * dx + dy * dy)
+    const ang = Math.abs(Math.atan2(dy, dx))
+    if (ang > Math.PI * 0.27) return 0
+    return Math.max(0, Math.min(1, (stroke / 2 - Math.abs(d - radius)) / 1.5 + 0.5))
+  }
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const fx = x + 0.5, fy = y + 0.5
+      // The box of the speaker, then its cone as a trapezoid built from a triangle and a box.
+      let a = bar(fx, fy, S * 0.20, cy, S * 0.07, S * 0.10, S * 0.02)
+      a = Math.max(a, triangle(fx, fy, S * 0.20, cy - S * 0.10, S * 0.40, cy - S * 0.24, S * 0.40, cy + S * 0.24))
+      a = Math.max(a, triangle(fx, fy, S * 0.20, cy + S * 0.10, S * 0.20, cy - S * 0.10, S * 0.40, cy + S * 0.24))
+      a = Math.max(a, arc(fx, fy, S * 0.20), arc(fx, fy, S * 0.31))
+      if (muted) {
+        const clear = tilted(fx, fy, S * 0.55, cy, S * 0.34, S * 0.11, S * 0.08, 45)
+        a = a * (1 - clear)
+        a = Math.max(a, tilted(fx, fy, S * 0.55, cy, S * 0.30, S * 0.055, S * 0.05, 45))
+      }
+      const o = (y * S + x) * 4
+      px[o] = ENCRE[0]; px[o + 1] = ENCRE[1]; px[o + 2] = ENCRE[2]
+      px[o + 3] = Math.round(Math.min(1, a) * 255)
+    }
+  }
+  return png(S, S, px)
+}
+
 const fichiers = []
 // Les satellites restent blancs quoi qu'il arrive: ils sont sur la plaque BLEUE, ou le blanc
 // mesure 3,76 contre 1, au-dessus du plancher de 3 que ce depot s'impose dans theme.ts.
@@ -515,6 +557,8 @@ fichiers.push(['icon-menu-alert.png', menuIcon(true)])
 fichiers.push(['icon-gun.png', gunIcon(false)])
 fichiers.push(['icon-holster.png', gunIcon(true)])
 fichiers.push(['ui-close.png', closeIcon()])
+fichiers.push(['ui-sound.png', soundIcon(false)])
+fichiers.push(['ui-mute.png', soundIcon(true)])
 // Les verbes du bouton contextuel, dans les deux encres. Le marteau de BUILD n'est pas ici:
 // The BUILD glyph is not drawn here: see tools/ui/build-mallet-icon.py.
 for (const [nom, dessin] of VERBES) {

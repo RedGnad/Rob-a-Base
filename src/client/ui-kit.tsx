@@ -4,6 +4,8 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity, Label } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN, RAD } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
+import { sfxView, setSfx, volumeInitial } from './sfx'
+import { room } from '../shared/messages'
 
 /**
  * Two families, split by role.
@@ -60,9 +62,10 @@ export function cue(fichier: string, volume = 0.8): void {
   if (e === undefined) {
     e = engine.addEntity()
     Transform.create(e, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-    AudioSource.create(e, { audioClipUrl: `assets/sounds/${fichier}`, playing: false, loop: false, volume })
+    AudioSource.create(e, { audioClipUrl: `assets/sounds/${fichier}`, playing: false, loop: false, volume: volumeInitial(volume, e) })
     cues.set(fichier, e)
   }
+  if (!sfxView.on) return
   const a = AudioSource.getMutableOrNull(e)
   if (a !== null) { a.playing = false; a.playing = true }
 }
@@ -71,10 +74,46 @@ export function tic(): void {
   if (sonClic === null) {
     sonClic = engine.addEntity()
     Transform.create(sonClic, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-    AudioSource.create(sonClic, { audioClipUrl: 'assets/sounds/tick.wav', playing: false, loop: false, volume: 0.55 })
+    AudioSource.create(sonClic, { audioClipUrl: 'assets/sounds/tick.wav', playing: false, loop: false, volume: volumeInitial(0.55, sonClic) })
   }
+  if (!sfxView.on) return
   const a = AudioSource.getMutableOrNull(sonClic)
   if (a !== null) { a.playing = false; a.playing = true }
+}
+
+/**
+ * The sound switch in the menu's header: a speaker, struck through when off.
+ *
+ * It is a utility beside CLOSE, the same width, and it says its state by its glyph rather
+ * than by a word: a control that must be read is a control on the wrong side of the bar.
+ * Pressing it is heard once, on the way to silence, and once on the way back.
+ */
+export const SoundBtn = (props: { size: number; right: number }) => {
+  const cle = `sound|${props.size}`
+  const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
+  return (
+    <UiEntity
+      uiTransform={{
+        width: props.size, height: TAP.height, margin: { right: props.right },
+        justifyContent: 'center', alignItems: 'center', pointerFilter: 'block'
+      }}
+      uiBackground={sfxView.on ? SKIN.secondary : SKIN.inset}
+      onMouseDown={() => {
+        presse.set(cle, Date.now())
+        if (sfxView.on) tic()
+        setSfx(!sfxView.on)
+        if (sfxView.on) tic()
+        void room.send('setPrefs', { sfxOff: !sfxView.on })
+      }}
+    >
+      <UiEntity
+        uiTransform={{
+          width: Math.round(TAP.height * 0.46), height: Math.round(TAP.height * 0.46),
+          margin: { top: enfonce ? 3 : 0 }
+        }}
+        uiBackground={{ texture: { src: `assets/ui/${sfxView.on ? 'ui-sound' : 'ui-mute'}.png` }, textureMode: 'stretch' }} />
+    </UiEntity>
+  )
 }
 
 /**

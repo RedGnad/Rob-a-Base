@@ -9,7 +9,7 @@ const BUILD_RANGE = 7
 import { room } from '../shared/messages'
 import { noter } from './records'
 import {
-advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, reclamerQuotidienne, declareName
+advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, setSfxOff, reclamerQuotidienne, declareName
 } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
@@ -72,7 +72,11 @@ export function lockOnArrival(address: string): void {
   // for, and a label explaining it read as jargon (owner, 5 Sep). Arriving only ends the
   // earned shield; from the first frame the owner is here, and can give chase.
   // Only when a shield is actually up: writing a date nobody needs rang the seal on every client.
-  if (lockOf(address) > Date.now() && setLock(address, Date.now())) log(`${displayName(address)} arrived, shield down`)
+  // And the date written is ZERO, not "now": "now" is this machine's clock, and a client whose
+  // clock runs a few seconds behind read it as a lock still standing, drew a shield on a base
+  // with nobody around and rang the seal for it (owner, 5 Sep). Zero is in the past on every
+  // clock there is.
+  if (lockOf(address) > Date.now() && setLock(address, 0)) log(`${displayName(address)} arrived, shield down`)
 }
 
 export function delivrerAlertes(address: string): void {
@@ -442,6 +446,13 @@ export function startTheft(): void {
     if (!a) return
     const r = choisirSkin(a, Number.isInteger(d?.mutation) ? d.mutation : 0)
     if (!r.ok) refus(a, 'skin', r.reason ?? 'refused')
+  })
+
+  // A setting is the player's own fact about themselves: stored, never validated beyond its type.
+  room.onMessage('setPrefs', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    setSfxOff(a, d?.sfxOff === true)
   })
 
   room.onMessage('hello', (d, ctx) => {

@@ -136,10 +136,37 @@ def holster():
     return out
 
 
+def deliver():
+    """A crate landing at your base: a padded thud and one warm low note.
+
+    This is a sound the player hears often and never has to act on, which the literature
+    puts at the quiet end of the scale: "the more frequently a sound occurs in a product,
+    the more subtle, shorter, and warmer it needs to be" (Toptal, UX sounds guide), and
+    "harmonically complex sounds indicate priority", so a delivery gets one partial, low, and
+    no sparkle at all. Lower frequencies read as settled and trustworthy, which is what a
+    thing arriving where it belongs should feel like. Under a quarter of a second.
+    """
+    n = int(RATE * 0.24)
+    out = [0.0] * n
+    g = noise(41)
+    for i in range(n):
+        t = i / RATE
+        s = 0.0
+        if t < 0.04:                                                       # the thud
+            s += 0.6 * next(g) * math.exp(-t * 180)
+        else:
+            next(g)
+        s += 0.9 * math.sin(2 * math.pi * 196 * t) * math.exp(-t * 14) * min(1.0, t / 0.01)
+        s += 0.25 * math.sin(2 * math.pi * 392 * t) * math.exp(-t * 22)
+        out[i] = s
+    return out
+
+
 if __name__ == '__main__':
     write('lift.wav', lift(), 0.85)
     write('draw.wav', draw(), 0.8)
     write('holster.wav', holster(), 0.8)
+    write('deliver.wav', deliver(), 0.7)
 
 
 def knock():

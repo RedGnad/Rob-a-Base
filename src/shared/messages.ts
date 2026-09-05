@@ -26,8 +26,10 @@ export const MESSAGES = {
   rebirthDone: Schemas.Map({ prestige: Schemas.Int, multiplier: Schemas.Int }),
 
 
-  index: Schemas.Map({ vus: Schemas.Array(Schemas.Int), skin: Schemas.Int }),
+  index: Schemas.Map({ vus: Schemas.Array(Schemas.Int), skin: Schemas.Int, sfxOff: Schemas.Boolean }),
   setSkin: Schemas.Map({ mutation: Schemas.Int }),
+  /** The player's own settings, kept with the profile: for now, whether sound effects are off. */
+  setPrefs: Schemas.Map({ sfxOff: Schemas.Boolean }),
 
   collect: Schemas.Map({}),
   collected: Schemas.Map({ gain: Schemas.Int64 }),

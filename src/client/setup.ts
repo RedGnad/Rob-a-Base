@@ -11,7 +11,7 @@ import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
 import { setupRevealToy } from './reveal-toy'
 import { setupPlots } from './plots'
-import { setupTheft, setClientAddress, theftView, alerter } from './theft'
+import { setupTheft, setClientAddress, theftView } from './theft'
 import { sendOrHold } from './intent'
 import { setupBelt } from './belt'
 import { setupRecords } from './records'
@@ -24,7 +24,7 @@ import { setupTutorial } from './tutorial'
 import { setupGuidage } from './guidage'
 import { setupDecor } from './decor'
 import { setupTravel } from './travel'
-import { moveView } from './deplacer'
+import { noteServerClock, serverClockOffset } from './clock'
 import { setupVenue } from './venue'
 import { setupJuiceSound } from './juice'
 import { setupConvoy } from './convoy'
@@ -36,7 +36,6 @@ import { setupToy } from './toy'
 import { setupLootUi } from './loot-ui'
 import { setupPreload } from './preload'
 import { setupIntent } from './intent'
-import { TOAST } from './theme'
 
 export const view = {
   items: 0,
@@ -153,7 +152,6 @@ export function startClient(): void {
   setupGuidage()
   setupDecor()
   setupTravel()
-  announceMoves()
 
   let myAddress = ''
   let nameSaid = false
@@ -199,6 +197,9 @@ export function startClient(): void {
       view.lastBeatValue = value
       changements += 1
       if (changements >= 2) view.lastBeatSeenAt = now
+      // The beat is also the only reading of the server's clock this client gets: see clock.ts.
+      noteServerClock(value)
+      if (changements === 2) console.log(`[CLIENT] server clock offset ${serverClockOffset()} ms`)
     }
     view.serverBooting = view.lastBeatSeenAt === 0
     const alive = view.lastBeatSeenAt !== 0 && now - view.lastBeatSeenAt < BEAT_DEAD_AFTER_MS
@@ -211,18 +212,3 @@ export function startClient(): void {
   })
 }
 
-/**
- * Tout deplacement du joueur decide par le jeu se dit a l'ecran, avec le nom de son auteur.
- *
- * Monte ici et non dans `deplacer.ts`: ce module doit rester sans dependance pour que les
- * cinq appelants puissent l'importer, et `alerter` vit dans `theft.ts` qui remonte jusqu'a ce
- * fichier. Le cycle serait reel; l'observation se branche donc a la racine.
- */
-function announceMoves(): void {
-  let vu = 0
-  engine.addSystem(() => {
-    if (moveView.quand === vu || moveView.quand === 0) return
-    vu = moveView.quand
-    alerter(`MOVED BY: ${moveView.quoi.toUpperCase()}  ·  ${moveView.ou}`, '#7fd3ff', TOAST.result)
-  })
-}

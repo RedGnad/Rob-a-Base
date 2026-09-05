@@ -18,18 +18,13 @@ import { movePlayerTo } from '~system/RestrictedActions'
  */
 function fini(n: number): boolean { return typeof n === 'number' && isFinite(n) }
 
-/**
- * Le dernier deplacement, pour que l'ECRAN le dise.
- *
- * Le journal du client n'emporte pas la sortie des scenes: la categorie JAVASCRIPT y est
- * desactivee, et `console.log` d'une scene n'atteint jamais `Player.log` (verifie le 2 Sep,
- * zero ligne a nous dans un fichier de trente-six kilo-octets). Une trace qu'on ne peut pas
- * lire ne prouve rien. Alors le jeu le dit a l'ecran, avec le nom de l'appelant: si un
- * deplacement inattendu se produit, le joueur voit QUI l'a demande au moment ou ca arrive, et
- * s'il ne voit rien, c'est que le jeu n'a pas deplace le joueur du tout.
- */
-export const moveView = { quoi: '', ou: '', quand: 0 }
-
+/*
+  The move is logged with its caller's name and NOT announced on screen. For three days a
+  toast said "MOVED BY: <caller>" at every move, which found one wrong caller in that time and
+  then kept reading as an alarm for things that are not alarms: being set down outside a base
+  that just moved is the game keeping its own rule, and a rule kept should just be, not ring
+  (owner, 5 Sep: "c'est un evenement qui doit pas sonner d'alerte, juste etre la").
+*/
 export function moveTo(quoi: string, cible: Vector3, camera: Vector3): boolean {
   const ou = `${cible.x.toFixed(1)}, ${cible.y.toFixed(1)}, ${cible.z.toFixed(1)}`
   if (!fini(cible.x) || !fini(cible.y) || !fini(cible.z)) {
@@ -37,9 +32,6 @@ export function moveTo(quoi: string, cible: Vector3, camera: Vector3): boolean {
     return false
   }
   console.log(`[CLIENT] deplacement (${quoi}) vers ${ou}`)
-  moveView.quoi = quoi
-  moveView.ou = ou
-  moveView.quand = Date.now()
   void movePlayerTo({ newRelativePosition: cible, cameraTarget: camera })
   return true
 }
