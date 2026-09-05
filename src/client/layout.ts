@@ -77,9 +77,10 @@ export function clientEdges(): { left: number; right: number } {
   Apple's 44 pt (6.86 mm) and Material's 48 dp (7.62 mm), and the gap between a satellite and
   the central disc measured 4.92 mm against the 8 to 10 mm half a thumb asks for.
 
-  At 74 and 168 the satellite is 7.00 mm, over Apple's floor, and the gap is 7.10 mm, which is
-  44 percent more air than before. 80 and 178 would also clear Material's floor at 7.57 mm and
-  a 7.76 mm gap; it is one edit away, and it costs 18 more units of screen in the corner.
+  At 81 and 181 both floors are met and so is the spacing rule: the satellite measures 7.66 mm
+  against Material's 7.62, and the gap 7.99 mm against the 8 the half a thumb asks for. The pad's
+  box grows from 246 to 308 units, which the empty right side has to spare (owner, 5 Sep: close
+  the two partial rows).
 
   The central button is untouched at 112, which is 10.60 mm: the workshop allows up to three
   times the minimum in the thumb zone, so there is no ceiling problem, only a floor one.
@@ -88,9 +89,9 @@ export const THUMB = {
   /** Diameter of the central button, the one pressed every ten seconds. */
   big: 112,
   /** Diameter of a satellite. */
-  small: 74,
+  small: 81,
   /** Distance from the central button's centre to a satellite's centre. */
-  orbit: 168,
+  orbit: 181,
   /** The central button's outer edges, from the right and bottom edges of the canvas. */
   right: 113,
   bottom: 50
