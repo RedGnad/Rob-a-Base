@@ -9,8 +9,9 @@ import { gearView } from './gear'
 import { raidView } from './raid'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
-import { alerter } from './theft'
+import { alerter, theftView } from './theft'
 import { cue } from './ui-kit'
+import { noterBascule } from './clics'
 import { flashDamage, floatAmount, playHurt } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 import { TOAST } from './theme'
@@ -376,6 +377,8 @@ export function setupCombat(): void {
 
   CameraMode.onChange(engine.CameraEntity, (c) => {
     if (c === undefined) return
+    // TEMPORARY: counted on screen, to tell a camera mode flip from a render flicker.
+    noterBascule()
     applyView(c.mode === CameraType.CT_FIRST_PERSON)
   })
 
@@ -593,8 +596,10 @@ function gunSystem(dt: number): void {
     second at most, the tester's cap, and the per-hit yield stayed where it was, so theft
     per second is a quarter of what the machine gun took.
   */
-  const gachette = inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
-    || (!isMobile() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN))
+  // No round while a panel is up: the click that presses a menu button is the same click
+  // the trigger listens to, and a drawn weapon fired at every tab (owner, 6 Sep).
+  const gachette = theftView.hudVisible && (inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
+    || (!isMobile() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)))
   if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
     //

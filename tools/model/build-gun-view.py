@@ -10,24 +10,18 @@ fills a quarter of the screen, and two surfaces two millimetres apart fight for 
 pixels every time the camera moves: the rim sparkles, which the owner saw as the gun
 flickering while walking or running (5 Sep, a bug "never solved").
 
-So the view model is the body alone, written from the same file so the two can never drift:
-same texture, same material, the inner primitive only. The hand model keeps its outline.
+So the view model is the body alone, cut out of the SAME file byte for byte: the JSON loses
+the hull's primitive, the binary chunk is copied untouched. The first version rebuilt the mesh
+through the shared writer, which negates X for the engine's handedness, and shipped a mirrored
+gun; the owner saw the barrel drift off the bullet's line (6 Sep). Nothing here is rewritten.
 
     python3 tools/model/build-gun-view.py
 """
-import io
 import json
 import os
 import struct
-from importlib import util as _u
-
-from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-_spec = _u.spec_from_file_location('aplatir', os.path.join(HERE, 'aplatir-glb.py'))
-aplatir = _u.module_from_spec(_spec)
-_spec.loader.exec_module(aplatir)
-
 MODELS = os.path.abspath(os.path.join(HERE, '..', '..', 'assets', 'Models'))
 SRC = os.path.join(MODELS, 'gun.glb')
 DST = os.path.join(MODELS, 'gun-view.glb')
@@ -61,31 +55,40 @@ def acc(js, b, i):
     return [struct.unpack_from('<' + f * n, b, base + k * stride) for k in range(a['count'])]
 
 
+def outward_share(js, b, p):
+    P = acc(js, b, p['attributes']['POSITION'])
+    N = acc(js, b, p['attributes']['NORMAL'])
+    cx = sum(v[0] for v in P) / len(P)
+    cy = sum(v[1] for v in P) / len(P)
+    cz = sum(v[2] for v in P) / len(P)
+    return sum(1 for v, n in zip(P, N) if (v[0] - cx) * n[0] + (v[1] - cy) * n[1] + (v[2] - cz) * n[2] > 0) / len(P)
+
+
+def write_glb(path, js, b):
+    jb = json.dumps(js, separators=(',', ':')).encode()
+    jb += b' ' * ((4 - len(jb) % 4) % 4)
+    b = b + b'\x00' * ((4 - len(b) % 4) % 4)
+    total = 12 + 8 + len(jb) + 8 + len(b)
+    with open(path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, total))
+        f.write(struct.pack('<II', len(jb), 0x4E4F534A))
+        f.write(jb)
+        f.write(struct.pack('<II', len(b), 0x004E4942))
+        f.write(b)
+    return total
+
+
 def main():
     js, b = load(SRC)
     prims = js['meshes'][0]['primitives']
     # The body is the primitive whose normals point outward; the hull is the inverted one.
-    def outward_share(p):
-        P = acc(js, b, p['attributes']['POSITION'])
-        N = acc(js, b, p['attributes']['NORMAL'])
-        cx = sum(v[0] for v in P) / len(P)
-        cy = sum(v[1] for v in P) / len(P)
-        cz = sum(v[2] for v in P) / len(P)
-        return sum(1 for v, n in zip(P, N) if (v[0] - cx) * n[0] + (v[1] - cy) * n[1] + (v[2] - cz) * n[2] > 0) / len(P)
-    body = max(prims, key=outward_share)
-    prim = {
-        'pos': acc(js, b, body['attributes']['POSITION']),
-        'nor': acc(js, b, body['attributes']['NORMAL']),
-        'uv_atlas': acc(js, b, body['attributes']['TEXCOORD_0']),
-        'idx': [t[0] for t in acc(js, b, body['indices'])]
-    }
-    img = js['images'][0]
-    bv = js['bufferViews'][img['bufferView']]
-    raw = b[bv.get('byteOffset', 0):bv.get('byteOffset', 0) + bv['byteLength']]
-    atlas = Image.open(io.BytesIO(raw)).convert('RGBA')
-    double = js['materials'][body.get('material', 0)].get('doubleSided', False)
-    size = aplatir.ecrire_glb(DST, [(double, [prim])], atlas)
-    print(f'gun-view.glb  {size / 1024:.1f} Ko  {len(prim["idx"]) // 3} triangles, body only (outward normals {outward_share(body):.2f})')
+    body = max(prims, key=lambda p: outward_share(js, b, p))
+    js['meshes'][0]['primitives'] = [body]
+    size = write_glb(DST, js, b)
+    P0 = acc(*load(SRC), body['attributes']['POSITION'])
+    P1 = acc(*load(DST), body['attributes']['POSITION'])
+    assert P0[:16] == P1[:16], 'the body moved: the cut must not touch a single vertex'
+    print(f'gun-view.glb  {size / 1024:.1f} Ko  body only, {len(acc(js, b, body["indices"])) // 3} triangles, vertices identical to gun.glb')
 
 
 if __name__ == '__main__':

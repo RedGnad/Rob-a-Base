@@ -327,7 +327,7 @@ const MenuWindow = () => {
             role="money" align="left" box={bourse} top={(TAP.height - TYPE.body) / 2} />
           {/* TEMPORARY: presses the scene received, presses the buttons served, last entity hit
               (see client/clics.ts). Removed once the missing press has a measured cause. */}
-          <Label value={`R${clicsView.recus} S${clicsView.servis} ${clicsView.dernier}`} fontSize={TYPE.caption}
+          <Label value={`R${clicsView.recus} S${clicsView.servis} C${clicsView.bascules} ${clicsView.dernier}`} fontSize={TYPE.caption}
             color={Color4.create(1, 1, 1, 0.4)}
             uiTransform={{ width: bourse, height: 22, positionType: 'absolute', position: { left: 0, top: TAP.height - 24 } }}
             textAlign="middle-left" textWrap="nowrap" />

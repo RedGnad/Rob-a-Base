@@ -15,7 +15,12 @@ import { engine, inputSystem, InputAction, PointerEventType, UiTransform } from 
  * with no change in `recus` never reached the scene; a press that moves `recus` and not
  * `servis` was received and dropped, and `dernier` says where it landed.
  */
-export const clicsView = { recus: 0, servis: 0, dernier: '' }
+export const clicsView = { recus: 0, servis: 0, dernier: '', bascules: 0 }
+
+/** A camera mode change reported by the client: counted to tell a mode flip from a render flicker. */
+export function noterBascule(): void {
+  clicsView.bascules += 1
+}
 
 export function noterServi(): void {
   clicsView.servis += 1
