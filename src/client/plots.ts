@@ -15,6 +15,17 @@ const ASC_Z = -BASE_SIDE / 2 + 1.1
 
 
 function goUpOneFloor(v: View): void {
+  /*
+    The sound belongs HERE, not on the button.
+
+    Three ways lead to this floor change: the contextual button, its key, and a click on the
+    lift itself. Putting the cue on the verb map covered two of them and doubled up with the
+    one below, so it played twice on a press (owner, 5 Sep). One funnel, one sound, and it
+    RESTARTS on every call rather than being refused as a repeat: spamming the lift is a
+    legitimate way to climb, and every press has to answer.
+  */
+  const ici = Transform.getOrNull(engine.PlayerEntity)
+  if (ici !== null) jouerA(liftEmitter, ici.position)
   // The base's WORLD position is the racine's; the plinth is its child at local (0,0,0), so
   // reading the plinth teleported the player to the scene origin, the far corner of the map
   // (tester, 28 Aug: "go home sends me to a corner").
@@ -1698,9 +1709,5 @@ export function elevatorInReach(): boolean {
 }
 export function monterIci(): void {
   const v = myElevator()
-  if (v === null) return
-  // The one verb that moved the player and said nothing: a floor arrived in silence.
-  const ici = Transform.getOrNull(engine.PlayerEntity)
-  if (ici !== null) jouerA(liftEmitter, ici.position)
-  goUpOneFloor(v)
+  if (v !== null) goUpOneFloor(v)
 }

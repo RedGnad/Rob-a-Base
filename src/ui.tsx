@@ -495,7 +495,6 @@ const SON_DU_VERBE: Record<string, [string, number]> = {
   fuse: ['hum.wav', 0.75],
   recover: ['back.wav', 0.8],
   lock: ['seal.wav', 0.9],
-  up: ['lift.wav', 0.85],
   crate: ['hit.wav', 0.8]
 }
 function sonDuVerbe(icone: string | undefined): void {

@@ -42,22 +42,23 @@ def noise(seed=1):
 
 
 def lift():
-    """A filtered noise sweep that rises, then one low thud: air, then arrival."""
-    n = int(RATE * 0.55)
+    """A short breath upward, and nothing else.
+
+    The first one ran half a second with a rising whoosh and a low thud at the top, which is a
+    lift in a film. Ours is pressed three times in a row to climb a base, so it has to be a
+    tick rather than an event (owner, 5 Sep, "plus court et moins dramatique"). A sixth of a
+    second, an airy sweep with a small chirp riding it, no impact at the end.
+    """
+    n = int(RATE * 0.17)
     out = [0.0] * n
     g = noise(7)
     lp = 0.0
     for i in range(n):
         t = i / RATE
-        k = min(1.0, t / 0.34)
-        # the sweep: a one-pole low pass whose cutoff climbs, which is a whoosh
-        a = 0.04 + 0.5 * k
+        a = 0.10 + 0.55 * (t / 0.17)
         lp += a * (next(g) - lp)
-        env = math.sin(math.pi * min(1.0, t / 0.4)) ** 1.5
-        out[i] = lp * env * 0.7
-        if t > 0.30:                                    # the thud at the top
-            u = t - 0.30
-            out[i] += 0.85 * math.sin(2 * math.pi * (150 - 60 * u / 0.25) * u) * math.exp(-u * 14)
+        env = math.sin(math.pi * min(1.0, t / 0.17)) ** 1.2
+        out[i] = lp * env * 0.55 + 0.35 * math.sin(2 * math.pi * (420 + 520 * t / 0.17) * t) * env
     return out
 
 
