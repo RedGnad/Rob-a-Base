@@ -66,13 +66,31 @@ export function clientEdges(): { left: number; right: number } {
  * add-on's proportions at a size "chosen for a thumb", which came out one and a half times
  * the native pad and sat a full button further left (mobile tester, 3 Sep).
  */
+/*
+  The satellites and their orbit were the client's own, and the client's own are under the floor.
+
+  Workshop #3 (Friendzone, 19 Aug, `data/friendzone-workshop-3-mobile-ux-2026-08-19.md`) is
+  explicit twice: "avoid the small buttons, stick to minimum touch target, this is the
+  recommended size by Apple and Android", and "leave at least half the thumb width of a space
+  between controls". Converted to this canvas: a Galaxy A54 is 403 ppi and renders our 1600x720
+  at 1.5 px per unit, so one unit is 0.095 mm. The satellites at 58 measured 5.49 mm against
+  Apple's 44 pt (6.86 mm) and Material's 48 dp (7.62 mm), and the gap between a satellite and
+  the central disc measured 4.92 mm against the 8 to 10 mm half a thumb asks for.
+
+  At 74 and 168 the satellite is 7.00 mm, over Apple's floor, and the gap is 7.10 mm, which is
+  44 percent more air than before. 80 and 178 would also clear Material's floor at 7.57 mm and
+  a 7.76 mm gap; it is one edit away, and it costs 18 more units of screen in the corner.
+
+  The central button is untouched at 112, which is 10.60 mm: the workshop allows up to three
+  times the minimum in the thumb zone, so there is no ceiling problem, only a floor one.
+*/
 export const THUMB = {
   /** Diameter of the central button, the one pressed every ten seconds. */
   big: 112,
   /** Diameter of a satellite. */
-  small: 58,
+  small: 74,
   /** Distance from the central button's centre to a satellite's centre. */
-  orbit: 137,
+  orbit: 168,
   /** The central button's outer edges, from the right and bottom edges of the canvas. */
   right: 113,
   bottom: 50
