@@ -149,18 +149,30 @@ export function setupCarry(): void {
           anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND
         })
 
-        // Named above the head, so a witness knows what is being walked off with.
+        /*
+          Named above the head, so a witness knows what is being walked off with.
+
+          Two entities, because the label had two masters of its rotation. `AvatarAttach`
+          writes the entity's whole transform from the avatar's name tag anchor, which turns
+          with the character, and `Billboard` writes the rotation to face the camera; on one
+          entity they overwrite each other by turns, so the name read the right way, then
+          mirrored, then somewhere between the two, and flickered while the carrier turned
+          (owner, 6 Sep). The anchor now rides an invisible holder, and the text is its
+          child: the holder gives it the place, the billboard alone gives it the facing.
+        */
+        const porteEtiquette = engine.addEntity()
+        Transform.create(porteEtiquette, { position: Vector3.Zero() })
+        AvatarAttach.create(porteEtiquette, {
+          avatarId: c.holder,
+          anchorPointId: AvatarAnchorPointType.AAPT_NAME_TAG
+        })
         const etiquette = engine.addEntity()
-        Transform.create(etiquette, { position: Vector3.create(0, 0.4, 0), scale: Vector3.create(0.34, 0.34, 0.34) })
+        Transform.create(etiquette, { parent: porteEtiquette, position: Vector3.create(0, 0.4, 0), scale: Vector3.create(0.34, 0.34, 0.34) })
         Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(etiquette, {
           text: nomDuCode(c.code),
           fontSize: 3, textColor: teinte,
           outlineWidth: 0.22, outlineColor: Color3.create(0, 0, 0)
-        })
-        AvatarAttach.create(etiquette, {
-          avatarId: c.holder,
-          anchorPointId: AvatarAnchorPointType.AAPT_NAME_TAG
         })
 
         /*
@@ -186,7 +198,8 @@ export function setupCarry(): void {
           AvatarAttach.create(anneau, { avatarId: c.holder, anchorPointId: AvatarAnchorPointType.AAPT_POSITION })
         }
 
-        vues.set(id, { corps, etiquette, anneau })
+        // The holder is what is kept: removing it with its children takes the text along.
+        vues.set(id, { corps, etiquette: porteEtiquette, anneau })
       }
     }
 
@@ -195,7 +208,7 @@ export function setupCarry(): void {
       demonter(v.corps)
       clearShape(v.corps)
       engine.removeEntity(v.corps)
-      engine.removeEntity(v.etiquette)
+      engine.removeEntityWithChildren(v.etiquette)
       if (v.anneau !== null) engine.removeEntity(v.anneau)
       vues.delete(id)
     }
