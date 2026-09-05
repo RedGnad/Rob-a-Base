@@ -1098,14 +1098,18 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         width: REEL_W * k, height: REEL_H * k, positionType: 'absolute',
         position: { left: props.x, top: props.haut },
         /*
-          Nine, four times. The card holds three things and therefore four gaps, the one
-          above the piece, the two between the rows, and the one under the last line. The
-          padding was 8 while the pill also carried a 4 margin, so the piece sat 8 from the
-          top and 12 from the pill and read as pushed up (owner, 5 Sep). With 264 of height,
-          172 of picture, 26 of pill and 30 of line, what is left is 36, which is 9 four
-          times: the padding takes two of them and `space-between` lays the other two.
+          The piece is CENTRED IN ITS OWN AIR, and the two lines under it are one block.
+
+          The piece sat 8 from the top and 12 from the pill, so it read as pushed up (owner,
+          5 Sep). Equalising all four gaps at 9 fixed the arithmetic and not the complaint: it
+          brought the pill UP instead of bringing the piece DOWN. Here the piece gets 12 above
+          and 12 below, which is what the eye was asking for, and the pill and the yield close
+          up to 6 because they belong together: proximity is what says "these two describe the
+          picture" rather than "these are three separate rows". 12 + 172 + 12 + 26 + 6 + 30 + 6
+          is 264 exactly, so nothing is left to a stretch rule.
         */
-        flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: 9 * k,
+        flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center',
+        padding: { top: 12 * k, bottom: 6 * k, left: 8 * k, right: 8 * k },
         opacity: props.opacite
       }}
       uiBackground={{ ...SKIN.card, color: Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1) }}
@@ -1155,7 +1159,7 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
       <UiEntity
         uiTransform={{
           width: (glyphWidth(rar.name, 20) + 22) * k, height: 26 * k, borderRadius: 13 * k,
-          justifyContent: 'center', alignItems: 'center'
+          margin: { top: 12 * k }, justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: brut }}
       >
@@ -1166,7 +1170,7 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[props.rarete] ?? 1)}/s`}
         fontSize={24} textWrap="nowrap"
         color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
-        uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+        uiTransform={{ width: '100%', height: 30 * k, margin: { top: 6 * k } }} textAlign="middle-center" />
     </UiEntity>
   )
 }
