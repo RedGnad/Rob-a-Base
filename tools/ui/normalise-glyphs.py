@@ -56,11 +56,12 @@ VERBS = [
 
 # One entry is one group scaled together. Single files are their own group.
 GROUPS = []
+# A verb with poses: the rest pose first, because the group is centred on it.
+POSED = {'build': ['-raised', '-mid'], 'collect': ['-raised', '-mid']}
 for verb in VERBS:
-    if verb == 'build':
-        # The hammer's three poses are one swing: one bound, one scale, one offset.
-        GROUPS.append(['icon-build', 'icon-build-raised', 'icon-build-mid'])
-        GROUPS.append(['encre-build', 'encre-build-raised', 'encre-build-mid'])
+    if verb in POSED:
+        for family in ('icon', 'encre'):
+            GROUPS.append([f'{family}-{verb}'] + [f'{family}-{verb}{p}' for p in POSED[verb]])
     else:
         GROUPS.append([f'icon-{verb}'])
         GROUPS.append([f'encre-{verb}'])

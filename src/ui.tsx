@@ -452,13 +452,27 @@ function poussee(): number { return Math.max(0, 1 - (Date.now() - gainA) / 260) 
 function gainMonte(): number { return Math.min(1, (Date.now() - gainA) / 900) }
 function gainRecent(): string { return gainMontant > 0 && Date.now() - gainA < 900 ? `+${formatIncome(gainMontant)}` : '' }
 
+/*
+  The verbs that MOVE, and the two poses each of them plays.
+
+  A mallet strikes and a coin drops onto the pile: both are gestures, not objects. `Pouce`
+  shows the first pose for 220 ms, the second for 100, then holds the still picture, so each
+  reads as one movement per beat and costs two texture swaps. Motion belongs here, in time,
+  and not inside the still drawing: a trail drawn into the coin glyph itself disappeared at
+  thumb size when it was tried and rendered (5 Sep).
+*/
+const POSES = ['build', 'collect'] as const
+function posesDe(icone: string | undefined): [string, string] | undefined {
+  const nom = POSES.find((v) => icone === ico(v))
+  return nom === undefined ? undefined : [`${ico(nom)}-raised`, `${ico(nom)}-mid`]
+}
+
 const PRECHAUFFE = [
   'panel', 'card', 'inset', 'primary', 'secondary', 'danger', 'fade-left', 'fade-right',
   'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
   // Les trois boutons satellites, puis les quatorze verbes du bouton contextuel dans la
   // famille active, quelle qu'elle soit: voir `client/icones.ts`.
-  'icon-gun', 'icon-slap', 'icon-taser', 'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu',
-  ...ICONES_VERBES, `${ico('build')}-raised`, `${ico('build')}-mid`,
+  ...ICONES_VERBES, ...POSES.flatMap((v) => [`${ico(v)}-raised`, `${ico(v)}-mid`]),
   // The interface icon family and the reveal's ray fan. A texture named for the first time
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
@@ -563,9 +577,9 @@ const PadControls = () => {
       {a !== null ? (
         <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={pad.gros}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
-          frames={!combatView.aiming && a.icon === ico('build') ? BUILD_FRAMES : undefined}
+          frames={!combatView.aiming ? posesDe(a.icon) : undefined}
           pulse={!combatView.aiming && stepExpects(a.id)}
-          periodMs={BUILD_SWING_MS} touche={touche('E')} />
+          periodMs={SWING_MS} touche={touche('E')} />
       ) : (
         <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros}
           bas={0} droite={0} primaire disabled={!combatView.aiming}
@@ -579,10 +593,8 @@ const PadControls = () => {
   The pad's numbers live in layout.ts as THUMB, measured on the client's own pad. The arc
   below only decides where the three satellites go on that orbit.
 */
-/** The mallet's two swing poses, in the active icon family, and the beat they play on. */
-const BUILD_FRAMES: [string, string] = [`${ico('build')}-raised`, `${ico('build')}-mid`]
 // 800 was noise on the board (owner, 3 Sep); a beat and a fifth is the first value that was not.
-const BUILD_SWING_MS = 1200
+const SWING_MS = 1200
 
 /** The desktop canvas is 1080 high against the phone's 720: the same pad, drawn at that ratio. */
 const DESKTOP_PAD_SCALE = 1.5

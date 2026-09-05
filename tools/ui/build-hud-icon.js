@@ -203,31 +203,50 @@ function reticleIcon() {
 }
 
 /**
- * A stack of coins, for the button that banks what the base has earned.
+ * Coins, drawn as coins: the stack that the collect button banks.
  *
- * Collecting is the most repeated act in the game, and it was announced by a plate reading
- * "E COLLECT 4.2K" parked above the controls. The amount belongs in the counter, which
- * already states the pool; the button only has to say what it does, and three discs with a
- * rim say coins at any size.
+ * The first version stacked three flat ellipses and lightened the inside of each one so the
+ * pile would not read as a blob. Tone is the wrong tool for this. On the gold disc the
+ * lightened faces let the plate show through and the glyph came out muddy, and at the size a
+ * thumb sees it the interior is the first thing that disappears: "le seul qui est un peu
+ * confus" (owner, 5 Sep). This repo already knew the answer and wrote it under the crate,
+ * three functions below: it is the GAPS that draw, not the added lines.
+ *
+ * So each coin is a capsule with elliptical caps, a face and a short side, and each one knocks
+ * a clear gap out of the coin under it. Three solid pieces, two clean separations, nothing to
+ * read inside. The perspective is the genre's: seen from just above, which is what makes a
+ * disc read as money rather than as a button.
  */
-function collectIcon() {
+const PIECE = { rx: 0.28, ry: 0.105, cote: 0.075, jeu: 0.022 }
+
+/** Coverage of one coin: a vertical capsule whose caps are ellipses, antialiased over a pixel. */
+function piece(fx, fy, cx, cy, grossi) {
+  const rx = PIECE.rx + grossi, ry = PIECE.ry + grossi
+  const dy = fy < cy ? fy - cy : fy > cy + PIECE.cote ? fy - (cy + PIECE.cote) : 0
+  const e = Math.hypot((fx - cx) / rx, dy / ry)
+  return Math.min(1, Math.max(0, (1 - e) * SIZE * 0.09))
+}
+
+/**
+ * The stack, with its top coin lifted by `envol`.
+ *
+ * The still picture says money; the button says COLLECT by MOVING it. `Pouce` plays a pose
+ * for 220 ms, the next for 100, then holds the rest pose, so the three files read as one coin
+ * dropping onto the pile, which is the act the button performs. A trail or a second coin in
+ * the air was tried instead and failed its own silhouette test: at 87 px on a phone the
+ * strokes vanish and the flying coin reads as a second stack (rendered and measured, 5 Sep).
+ */
+function collectIcon(envol = 0) {
   const px = Buffer.alloc(SIZE * SIZE * 4)
   const S = SIZE
-  const disques = [
-    { cy: 0.70, rx: 0.30, ry: 0.115 },
-    { cy: 0.52, rx: 0.30, ry: 0.115 },
-    { cy: 0.34, rx: 0.30, ry: 0.115 }
-  ]
+  const hauteurs = [0.66, 0.45, 0.24 - envol]
   for (let y = 0; y < S; y++) {
     for (let x = 0; x < S; x++) {
-      const fx = (x + 0.5) / S - 0.5, fy = (y + 0.5) / S
+      const fx = (x + 0.5) / S, fy = (y + 0.5) / S
       let a = 0
-      for (const d of disques) {
-        // An ellipse, and a lighter one inside it so the stack does not read as one blob.
-        const e = Math.hypot(fx / d.rx, (fy - d.cy) / d.ry)
-        const plein = Math.min(1, Math.max(0, (1 - e) * S * 0.09))
-        const creux = Math.min(1, Math.max(0, (1 - Math.hypot(fx / (d.rx * 0.62), (fy - d.cy) / (d.ry * 0.55))) * S * 0.09))
-        a = Math.max(a, Math.max(0, plein - creux * 0.72))
+      for (const cy of hauteurs) {
+        a = Math.max(0, a - piece(fx, fy, 0.5, cy, PIECE.jeu))
+        a = Math.max(a, piece(fx, fy, 0.5, cy, 0))
       }
       const o = (y * S + x) * 4
       px[o] = ENCRE[0]; px[o + 1] = ENCRE[1]; px[o + 2] = ENCRE[2]
@@ -503,8 +522,25 @@ for (const [nom, dessin] of VERBES) {
   ENCRE = NAVY
   fichiers.push([`encre-${nom}.png`, dessin()])
 }
+// The coin drop, two poses beside the rest pose already written above.
+for (const [pose, envol] of [['raised', 0.17], ['mid', 0.07]]) {
+  ENCRE = BLANC
+  fichiers.push([`icon-collect-${pose}.png`, collectIcon(envol)])
+  ENCRE = NAVY
+  fichiers.push([`encre-collect-${pose}.png`, collectIcon(envol)])
+}
 
+/*
+  With no argument this writes the whole set, which is how it has always run. With one or more
+  arguments it writes only the files whose name contains one of them: `node build-hud-icon.js
+  collect` touches the four collect pictures and leaves everything else alone. That matters
+  because three of the names here are also written by newer tools (`build-mallet-icon.py` for
+  the hammer, `build-weapon-icons.py` for the gun and the holster), and a full run would put
+  the old drawings back over them.
+*/
+const filtres = process.argv.slice(2)
 for (const [nom, buf] of fichiers) {
+  if (filtres.length > 0 && !filtres.some((f) => nom.includes(f))) continue
   fs.writeFileSync(path.join(dossier, nom), buf)
   console.log('wrote assets/ui/' + nom, buf.length + ' B')
 }
