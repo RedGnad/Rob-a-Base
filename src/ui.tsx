@@ -506,10 +506,25 @@ const PRECHAUFFE_FICHIERS: string[] = [
   ...(['money', 'bonus', 'name', 'danger', 'ink'] as const).map((r) => FONT_FILES[r]),
   ...Object.values(SKIN).map((sk) => sk.texture.src.replace('assets/ui/', ''))
 ]
+/*
+  Every file STACKED at the same two pixels, and those two pixels ON the screen.
+
+  The preheat did not preheat. Its box was two pixels wide with `overflow: 'hidden'`, and its
+  children were laid out in a row: the first square sat inside, and the forty after it were
+  laid past the right edge and clipped away. Add that the box itself was at -8, -8, off the
+  canvas entirely, and there was nothing left for a renderer to decide to upload. Hence a HUD
+  whose buttons were empty discs until the first press pulled each glyph in one at a time
+  (owner, 5 Sep, at startup).
+
+  Now every child is absolute at the same corner, so all of them are inside the box, and the
+  box is at 0, 0 inside the canvas at three percent opacity: two pixels nobody will ever see,
+  which the renderer has no reason to skip.
+*/
 const Prechauffe = () => (
-  <UiEntity uiTransform={{ positionType: 'absolute', position: { left: -8, top: -8 }, width: 2, height: 2, overflow: 'hidden' }}>
+  <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: 2, height: 2, opacity: 0.03 }}>
     {PRECHAUFFE_FICHIERS.map((n) => (
-      <UiEntity key={n} uiTransform={{ width: 2, height: 2 }}
+      <UiEntity key={n}
+        uiTransform={{ width: 2, height: 2, positionType: 'absolute', position: { left: 0, top: 0 } }}
         uiBackground={{ texture: { src: `assets/ui/${n}` }, textureMode: 'stretch' }} />
     ))}
   </UiEntity>

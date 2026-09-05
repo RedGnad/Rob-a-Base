@@ -29,6 +29,8 @@ export const theftView = {
   multiplier: 1,
   income: 0,
   basePosee: false,
+  /** True once the server has answered at all: `basePosee` means nothing before it. */
+  walletRecu: false,
   lockSec: 0,
   canRecover: false,
   floorPrice: 0,
@@ -253,6 +255,7 @@ export function setupTheft(): void {
     theftView.multiplier = d.multiplier
     theftView.income = d.income
     theftView.basePosee = d.basePosee
+    theftView.walletRecu = true
     theftView.lockSec = d.lockSec
     theftView.canRecover = d.canRecover
     theftView.floorPrice = d.floorPrice

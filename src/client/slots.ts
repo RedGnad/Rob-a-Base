@@ -95,7 +95,14 @@ export function setupSlots(): void {
       La bascule manuelle, elle, garde le rouge et sa raison: la, le joueur cherche
       deliberement une place et a besoin de savoir pourquoi celle-ci est refusee.
     */
-    if (!welcomeView.open && !theftView.basePosee && !slotView.active && !poseView.pending) {
+    /*
+      And it waits for the server. `basePosee` is false until the wallet answers, so on a fresh
+      start the marker lit for a frame or two, with its BUILD HERE over it, in front of a player
+      who owns a three-storey base: the first thing the game showed was a lie about itself
+      (owner, 5 Sep). `walletRecu` is the difference between "you have no base" and "nobody has
+      said yet".
+    */
+    if (theftView.walletRecu && !welcomeView.open && !theftView.basePosee && !slotView.active && !poseView.pending) {
       slotView.active = true
       auto = true
       slotView.auto = true

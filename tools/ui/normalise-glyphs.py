@@ -46,6 +46,13 @@ EXTENT = 0.96
 DENSE_EXTENT = 0.88
 # Above this share of its bounding box covered, a glyph counts as solid rather than open.
 DENSE_COVER = 0.62
+# Optical exceptions, by group name. Three heavy horizontal bars fill their box more evenly
+# than any other glyph in the set, so at the family's extent the menu button reads bigger than
+# its neighbours (owner, 5 Sep: "un tout petit peu trop grosse"). It is the same correction
+# Material's grid makes between a circle keyline and a square one, applied by hand where the
+# coverage rule does not catch it: the bars cover 56 percent of their box, just under the
+# threshold that would have taken them down automatically.
+SUR_MESURE = {'icon-menu': 0.85}
 # Below this much correction, the file is already right and is not touched.
 TOLERANCE = 0.02
 # And below this much offset, in pixels, the glyph already sits in the middle.
@@ -163,7 +170,7 @@ def main():
                     abs(box[1] - anchor[1]), abs(box[3] - anchor[1]))
         span = 2 * reach
         cover = coverage(images, box)
-        target = (DENSE_EXTENT if cover > DENSE_COVER else EXTENT) * n
+        target = SUR_MESURE.get(group[0], DENSE_EXTENT if cover > DENSE_COVER else EXTENT) * n
         k = target / span
         # How far that centre sits from the middle of the canvas today, in pixels.
         drift = max(abs(anchor[0] - n / 2), abs(anchor[1] - n / 2))
