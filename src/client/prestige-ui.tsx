@@ -98,7 +98,8 @@ export const PrestigePanel = () => {
           and the star carries the level it is about to reach, so one star never reads as
           "prestige one" on the screen for prestige two.
         */}
-        <UiEntity uiTransform={{ width: '100%', height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 8 } }}>
+        {/* The row is the badge's height, or a 76 pixel star sits in a 64 pixel line. */}
+        <UiEntity uiTransform={{ width: '100%', height: BADGE, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 8 } }}>
           {/*
             The star carries the level, placed on the star's own ink rather than on its box.
 
@@ -120,7 +121,7 @@ export const PrestigePanel = () => {
             <Glyphs value={String(niveau)} size={chiffre} role="ink" align="center" box={BADGE}
               top={Math.round(0.469 * BADGE - 0.4765 * chiffre)} />
           </UiEntity>
-          <UiEntity uiTransform={{ width: glyphWidth(`PRESTIGE ${theftView.prestige + 1}`, TYPE.title), height: TYPE.title + 8 }}>
+          <UiEntity uiTransform={{ width: glyphWidth('PRESTIGE', TYPE.title), height: TYPE.title + 8 }}>
             <Glyphs value="PRESTIGE" size={TYPE.title} role="bonus" />
           </UiEntity>
         </UiEntity>
