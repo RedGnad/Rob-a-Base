@@ -5,7 +5,7 @@ import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn, lisible, largeurTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
-import { Glyphs } from './client/glyphs'
+import { Glyphs, glyphWidth } from './client/glyphs'
 import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
@@ -1115,26 +1115,32 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         other.
 
         So the colour moves to a chip of the FULL rarity, which is the only way to get a real
-        block of colour on a dark plate, and the word shrinks to 24: "personne ne lit ca, tout
-        le monde veut reconnaitre la couleur et la rarete en un clin d'oeil" (owner, 5 Sep).
+        block of colour on a dark plate, and the word shrinks: "personne ne lit ca, tout le
+        monde veut reconnaitre la couleur et la rarete en un clin d'oeil" (owner, 5 Sep).
         Dark ink on the chip, measured on all seven rungs: 4.41 to 17.43 to one, above the 3:1
         the guidelines set for text this size and weight, where white would fall to 1.2 on the
         Legendary and the Secret.
+
+        A PILL, not a header band. Full width, it sat against the top edge with corners that
+        did not follow the card's own, so it read as a strip laid over the card rather than a
+        part of it, and it took a fifth of the face from the piece, which is the thing being
+        won (owner, 5 Sep). Fitted to its own word and inset, it says the same colour and
+        gives the piece its room back: the picture grows from 168 to 180.
 
         Vertically: capitals occupy 0.211 to 0.742 of their cell, so their middle sits at
         0.4766 of the glyph size below the text box, which is what centres them in the chip.
       */}
       <UiEntity
         uiTransform={{
-          width: '100%', height: 34 * k, borderRadius: 10 * k,
-          justifyContent: 'center', alignItems: 'center'
+          width: (glyphWidth(rar.name, 20) + 22) * k, height: 26 * k, borderRadius: 13 * k,
+          margin: { top: 4 * k }, justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: brut }}
       >
-        <Glyphs value={rar.name} size={24 * k} role="ink" align="center" box={(REEL_W - 16) * k}
-          top={Math.round((34 * k) / 2 - 0.4766 * 24 * k)} />
+        <Glyphs value={rar.name} size={20 * k} role="ink" align="center" box={(glyphWidth(rar.name, 20) + 22) * k}
+          top={Math.round((26 * k) / 2 - 0.4766 * 20 * k)} />
       </UiEntity>
-      <UiEntity uiTransform={{ width: 168 * k, height: 168 * k }}
+      <UiEntity uiTransform={{ width: 180 * k, height: 180 * k }}
         uiBackground={{
           texture: { src: `assets/ui/${props.rarete === 6 && props.devoile !== true ? 'toy-mystery' : `toy-${props.rarete}`}.png` },
           textureMode: 'stretch'
