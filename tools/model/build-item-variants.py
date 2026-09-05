@@ -100,8 +100,18 @@ def repack_uvs(js, bin_chunk):
     so a piece had the resolution of an eighty-pixel texture whatever the file size (owner,
     5 Sep: "pixelisee sur les pieces"). The variants are derived files, so they can carry their
     own UVs: each island is scaled and shelf-packed to fill the atlas, uniformly (the artist's
-    relative densities stay), with a margin for filtering. Returns the modified file."""
+    relative densities stay), with a margin for filtering. Returns the modified file.
+
+    ONE pack for the whole file, not one per primitive. The Secret is two meshes, a planet and
+    a ring, and packing each into its own full atlas laid the ring's strip over the planet's
+    map: the position map then held the planet's points under the ring, so the ring wore the
+    sphere's pattern and it broke where the strip closed on itself (owner, 5 Sep: "la texture
+    gold de l'anneau du secret a une coupure"). The ring's four faces shared one strip too, for
+    the same reason. Every island of every primitive now gets its own rectangle.
+    """
     out = json.loads(json.dumps(js)); chunk = bin_chunk
+    prims = []
+    islands = []
     for mesh in out['meshes']:
         for prim in mesh['primitives']:
             at = prim['attributes']
@@ -114,34 +124,37 @@ def repack_uvs(js, bin_chunk):
                 parent[find(I[t])] = find(I[t + 1]); parent[find(I[t + 1])] = find(I[t + 2])
             groups = {}
             for v in set(I): groups.setdefault(find(v), []).append(v)
-            islands = []
+            k = len(prims)
+            prims.append((prim, U))
             for verts in groups.values():
                 us = [U[v][0] for v in verts]; vs = [U[v][1] for v in verts]
-                islands.append({'verts': verts, 'u0': min(us), 'v0': min(vs), 'w': max(us) - min(us), 'h': max(vs) - min(vs)})
-            islands.sort(key=lambda k: -k['h'])
-            def pack(s, m):
-                x = y = rowh = 0.0; places = []
-                for isl in islands:
-                    w, h = isl['w'] * s + 2 * m, isl['h'] * s + 2 * m
-                    if x + w > 1.0: y += rowh; x = rowh = 0.0
-                    if y + h > 1.0 or w > 1.0: return None
-                    places.append((isl, x + m, y + m)); x += w; rowh = max(rowh, h)
-                return places
-            m = 6.0 / TEX_OUT; lo, hi = 0.05, 40.0; best = None
-            for _ in range(48):
-                mid = (lo + hi) / 2; pl = pack(mid, m)
-                if pl: best = (mid, pl); lo = mid
-                else: hi = mid
-            s, places = best
-            newU = list(U)
-            for isl, x, y in places:
-                for v in isl['verts']: newU[v] = ((U[v][0] - isl['u0']) * s + x, (U[v][1] - isl['v0']) * s + y)
-            data = struct.pack('<' + 'ff' * len(newU), *[c for uv in newU for c in uv])
-            chunk += b'\x00' * ((4 - len(chunk) % 4) % 4)
-            out['bufferViews'].append({'buffer': 0, 'byteOffset': len(chunk), 'byteLength': len(data), 'target': 34962}); chunk += data
-            out['accessors'].append({'bufferView': len(out['bufferViews']) - 1, 'componentType': 5126, 'count': len(newU), 'type': 'VEC2'})
-            prim['attributes']['TEXCOORD_0'] = len(out['accessors']) - 1
-            out['buffers'][0]['byteLength'] = len(chunk)
+                islands.append({'prim': k, 'verts': verts, 'u0': min(us), 'v0': min(vs), 'w': max(us) - min(us), 'h': max(vs) - min(vs)})
+    islands.sort(key=lambda k: -k['h'])
+    def pack(s, m):
+        x = y = rowh = 0.0; places = []
+        for isl in islands:
+            w, h = isl['w'] * s + 2 * m, isl['h'] * s + 2 * m
+            if x + w > 1.0: y += rowh; x = rowh = 0.0
+            if y + h > 1.0 or w > 1.0: return None
+            places.append((isl, x + m, y + m)); x += w; rowh = max(rowh, h)
+        return places
+    m = 6.0 / TEX_OUT; lo, hi = 0.05, 40.0; best = None
+    for _ in range(48):
+        mid = (lo + hi) / 2; pl = pack(mid, m)
+        if pl: best = (mid, pl); lo = mid
+        else: hi = mid
+    s, places = best
+    newUs = [list(U) for _, U in prims]
+    for isl, x, y in places:
+        U = prims[isl['prim']][1]; newU = newUs[isl['prim']]
+        for v in isl['verts']: newU[v] = ((U[v][0] - isl['u0']) * s + x, (U[v][1] - isl['v0']) * s + y)
+    for (prim, _), newU in zip(prims, newUs):
+        data = struct.pack('<' + 'ff' * len(newU), *[c for uv in newU for c in uv])
+        chunk += b'\x00' * ((4 - len(chunk) % 4) % 4)
+        out['bufferViews'].append({'buffer': 0, 'byteOffset': len(chunk), 'byteLength': len(data), 'target': 34962}); chunk += data
+        out['accessors'].append({'bufferView': len(out['bufferViews']) - 1, 'componentType': 5126, 'count': len(newU), 'type': 'VEC2'})
+        prim['attributes']['TEXCOORD_0'] = len(out['accessors']) - 1
+        out['buffers'][0]['byteLength'] = len(chunk)
     return out, chunk
 
 class PositionMap:
@@ -351,6 +364,28 @@ def yinyang_albedo(pm):
         return (v, v, min(255, v + 4))
     return png(pm, f)
 
+def yinyang_light(pm):
+    """The light half, as a glow map: white where the marble is white, black elsewhere.
+
+    The white read as grey next to the black under the venue's light, and the owner asked for
+    the light part to be lighter, even luminous, as long as it stays subtle (5 Sep). So the
+    light half carries a faint emissive of its own and the dark half none: the piece then
+    reads as light AND dark rather than as two greys, and nothing about the shape changes.
+    Same field as the albedo, seeds included, so the two maps agree to the texel.
+    """
+    size = pm.size
+    def f(i, p):
+        n = 0.5 * noise3(p, size / 3, 71) + 0.32 * noise3(p, size / 6, 72) + 0.18 * noise3(p, size / 12, 73)
+        k = clamp((n - 0.5) / 0.05)
+        g = size / 7
+        c = (math.floor(p[0] / g), math.floor(p[1] / g), math.floor(p[2] / g))
+        if hash3(*c, 74) > 0.93:
+            d = math.dist((p[0] / g - c[0], p[1] / g - c[1], p[2] / g - c[2]), (0.5, 0.5, 0.5))
+            if d < 0.26: k = 1.0 - k
+        v = int(255 * k)
+        return (v, v, v)
+    return png(pm, f)
+
 def gold_martele(pm):
     """Hammered gold, kept for ONE piece.
 
@@ -490,7 +525,7 @@ FANCY = {
     5: {'albedo_tex': lava_albedo, 'emissive_tex': lava_glow, 'emissive': (0.8, 0.8, 0.8), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.75},  # crust with glowing cracks
     9: {'albedo_tex': cursed_albedo, 'emissive_tex': cursed_veins, 'emissive': (0.35, 0.35, 0.35), 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.5},  # deep violet with faint veins
     6: {'albedo_tex': galaxy_albedo, 'emissive_tex': galaxy_stars, 'emissive': (0.9, 0.8, 1.0), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.5},
-    7: {'albedo_tex': yinyang_albedo, 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.35},
+    7: {'albedo_tex': yinyang_albedo, 'emissive_tex': yinyang_light, 'emissive': (0.22, 0.22, 0.22), 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.35},  # the light half faintly lit
     1: {'albedo_tex': gold_albedo, 'albedo_tex_6': gold_martele, 'base': (1, 1, 1), 'metallic': 0.9, 'roughness': 0.25},  # poured, hammered on the Secret
     2: {'albedo_tex': diamond_albedo, 'base': (1, 1, 1), 'metallic': 0.35, 'roughness': 0.08},        # faceted
     3: {'albedo_tex': blood_albedo, 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.35},           # dried, with runs

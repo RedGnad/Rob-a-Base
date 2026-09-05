@@ -41,22 +41,34 @@ def sphere(m, r, lon=28, lat=16):
             if j < lat - 1: m.tri(b, d, c)
 
 def ring(m, r_in, r_out, h, segs=48):
+    """Four faces, each its own UV strip in PROPORTION: u once around, v across the face at
+    the face's true width over its circumference.
+
+    The first unwrap gave every face the unit square, and the two rims a LINE (v = 1 on both
+    edges of the outer face, 0 on the inner), so the rims had no texel of their own and the
+    top face was stretched fifty to one. Under an object-space bake that is invisible until
+    the islands are packed on top of one another, which they were: the ring wore the planet's
+    pattern and it broke where the strip closed (owner, 5 Sep: "la texture gold de l'anneau a
+    une coupure"). Proportional strips pack as thin rows, and the bake paints every face.
+    """
+    ann = (r_out - r_in) / (math.pi * (r_in + r_out))
     for side, n in ((h / 2, (0, 1, 0)), (-h / 2, (0, -1, 0))):
         inner, outer = [], []
         for i in range(segs + 1):
             th = 2 * math.pi * i / segs; c, s = math.cos(th), math.sin(th)
             inner.append(m.vertex((c * r_in, side, s * r_in), n, (i / segs, 0.0)))
-            outer.append(m.vertex((c * r_out, side, s * r_out), n, (i / segs, 1.0)))
+            outer.append(m.vertex((c * r_out, side, s * r_out), n, (i / segs, ann)))
         for i in range(segs):
             if side > 0: m.tri(inner[i], outer[i], outer[i + 1]); m.tri(inner[i], outer[i + 1], inner[i + 1])
             else: m.tri(inner[i], outer[i + 1], outer[i]); m.tri(inner[i], inner[i + 1], outer[i + 1])
     for rad, out in ((r_out, True), (r_in, False)):
         top, bot = [], []
+        rim = h / (2 * math.pi * rad)
         for i in range(segs + 1):
             th = 2 * math.pi * i / segs; c, s = math.cos(th), math.sin(th)
             n = (c, 0, s) if out else (-c, 0, -s)
-            top.append(m.vertex((c * rad, h / 2, s * rad), n, (i / segs, 1.0 if out else 0.0)))
-            bot.append(m.vertex((c * rad, -h / 2, s * rad), n, (i / segs, 1.0 if out else 0.0)))
+            top.append(m.vertex((c * rad, h / 2, s * rad), n, (i / segs, rim)))
+            bot.append(m.vertex((c * rad, -h / 2, s * rad), n, (i / segs, 0.0)))
         for i in range(segs):
             if out: m.tri(top[i], bot[i], bot[i + 1]); m.tri(top[i], bot[i + 1], top[i + 1])
             else: m.tri(top[i], bot[i + 1], bot[i]); m.tri(top[i], top[i + 1], bot[i + 1])

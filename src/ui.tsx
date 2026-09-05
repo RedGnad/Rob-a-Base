@@ -16,6 +16,7 @@ import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-ki
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
+import { toyImage } from './client/toy'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
@@ -1192,10 +1193,15 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
         The Secret is the one the game never shows before you own it, so the strip draws the
         old star for it and the winner's card, which only appears once it IS yours, draws the
         planet (owner, 5 Sep).
+
+        And the winner's card shows the piece it really won, mutation and all: `toy-<r>-<m>`
+        is rendered from `item-<r>-<m>.glb` itself, so a Gold Secret is hammered gold and a
+        Cursed Secret carries its runes. The spinning strip is rarity alone, because that is
+        all the strip is choosing.
       */}
       <UiEntity uiTransform={{ width: 172 * k, height: 172 * k }}
         uiBackground={{
-          texture: { src: `assets/ui/${props.rarete === 6 && props.devoile !== true ? 'toy-mystery' : `toy-${props.rarete}`}.png` },
+          texture: { src: `assets/ui/${toyImage(props.rarete, props.mutId, props.devoile === true)}.png` },
           textureMode: 'stretch'
         }} />
       <UiEntity
@@ -1294,7 +1300,23 @@ function CrateReveal(): ReactEcs.JSX.Element {
 
       {bandeVisible && (
         <Centre bottom={250}>
-          <UiEntity uiTransform={{ width: large, height: bande, overflow: 'hidden', opacity: bandeOpacite }}>
+          {/*
+            TWO boxes, and only the inner one clips.
+
+            The strip has to be cut at the sides: a card must appear from beyond the edge and
+            leave through the other. The winning card, on the other hand, GROWS by 22 percent
+            when it is chosen, and it grew inside that same cut box: at 264 tall in a band of
+            276, a card at 322 lost 23 pixels off the top and as many off the bottom for as
+            long as the pop lasted (owner, 5 Sep: "elle est coupee en haut et en bas"). So the
+            cut is now on an inner box holding the row alone, and the winner's copy is a
+            sibling OUTSIDE it: it can overrun the band in every direction, which is exactly
+            what a pop is for.
+          */}
+          <UiEntity uiTransform={{ width: large, height: bande, opacity: bandeOpacite }}>
+            <UiEntity uiTransform={{
+              width: large, height: bande, overflow: 'hidden',
+              positionType: 'absolute', position: { left: 0, top: 0 }
+            }}>
             {boxView.reel.map((r, i) => {
               const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
               /*
@@ -1318,6 +1340,7 @@ function CrateReveal(): ReactEcs.JSX.Element {
             <UiEntity
               uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { right: 0, top: 0 } }}
               uiBackground={{ texture: { src: 'assets/ui/fade-right.png' }, textureMode: 'stretch' }} />
+            </UiEntity>
 
             {tourne ? (
               <UiEntity
@@ -1376,7 +1399,10 @@ function CrateReveal(): ReactEcs.JSX.Element {
             {!objet3D && (
               <UiEntity
                 uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-                uiBackground={{ texture: { src: `assets/ui/toy-${rarete}.png` }, textureMode: 'stretch' }} />
+                uiBackground={{
+                  texture: { src: `assets/ui/${toyImage(rarete, boxView.resultatMutation, true)}.png` },
+                  textureMode: 'stretch'
+                }} />
             )}
           </UiEntity>
           <UiEntity uiTransform={{ height: 52, margin: { top: 6 }, opacity: clamp01(nomPop) }}>

@@ -1,5 +1,5 @@
 import { engine, Material, SkyboxTime, TransitionMode, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
-import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
+import { Vector2, Vector3, Color3, Color4 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
@@ -133,17 +133,26 @@ export function nextBigText(): string | null {
   the seven added on 5 Sep fell back to the Lava look, a Galaxy rush under a dusk sky on a lava
   mat (owner, 5 Sep: "on a un changement de ciel quand il y a certains events ?").
 */
-const LOOK: Record<number, { texture: string; teinte: string; sky: number }> = {
-  1: { texture: 'mat-gold', teinte: TOY.groundEvent.gold, sky: 64800 },         // golden hour
-  5: { texture: 'mat-lava', teinte: TOY.groundEvent.lava, sky: 72000 },         // dusk, red horizon
-  9: { texture: 'mat-cursed', teinte: TOY.groundEvent.cursed, sky: 79200 },     // night
-  6: { texture: 'mat-cursed', teinte: TOY.groundEvent.galaxy, sky: 1800 },      // deep night, stars
-  7: { texture: 'mat-gold', teinte: TOY.groundEvent.yinyang, sky: 21600 },      // dawn, half and half
-  8: { texture: 'mat-lava', teinte: TOY.groundEvent.radioactive, sky: 77400 },  // late evening
-  10: { texture: 'mat-gold', teinte: TOY.groundEvent.divine, sky: 27000 },      // sunrise light
-  11: { texture: 'mat-gold', teinte: TOY.groundEvent.rainbow, sky: 32400 },     // clear morning
-  12: { texture: 'mat-cursed', teinte: TOY.groundEvent.cyber, sky: 82800 },     // neon hour
-  13: { texture: 'mat-cursed', teinte: TOY.groundEvent.phantom, sky: 14400 }    // blue hour before dawn
+/*
+  One floor per rush, painted as a ground: `assets/textures/mat-rush-<theme>.png`, a colour
+  tile of its own drawn by `tools/world/build-rush-mats.py`, which says in its header what a
+  ground is allowed to do. Three shared weaves under a tint gave a Lava rush a brown mat with
+  faint smears (owner, 5 Sep: "il faut que chaque sol soit propre dans son design et discret
+  ou petant selon ce que dit la litterature"). The image carries the colour now, so the
+  albedo is white; `lueur` is how much of the same image is fed back as emissive, so the
+  cracks, the stars, the grid and the flecks light up and the plates do not.
+*/
+const LOOK: Record<number, { lueur: number; sky: number }> = {
+  1: { lueur: 0.0, sky: 64800 },     // golden hour
+  5: { lueur: 0.55, sky: 72000 },    // dusk, red horizon: the cracks glow
+  9: { lueur: 0.2, sky: 79200 },     // night: faint veins
+  6: { lueur: 0.45, sky: 1800 },     // deep night: the stars
+  7: { lueur: 0.0, sky: 21600 },     // dawn, half and half
+  8: { lueur: 0.35, sky: 77400 },    // late evening: the flecks
+  10: { lueur: 0.0, sky: 27000 },    // sunrise light
+  11: { lueur: 0.0, sky: 32400 },    // clear morning
+  12: { lueur: 0.5, sky: 82800 },    // neon hour: the grid
+  13: { lueur: 0.0, sky: 14400 }     // blue hour before dawn
 }
 let sol: Entity | null = null
 let solCouleur = ''
@@ -184,7 +193,12 @@ export function groundMaterial(hex: string): PBMaterial_PbrMaterial {
   faint veins. Eight-metre cells across the venue. Both states write both facts, material and
   tween, so an event that ended leaves neither behind.
 */
-const MAILLE_SOL = 16
+/**
+ * Metres per repeat of a rush mat. Eight: the motifs are drawn for that stride (two metre
+ * grid cells on the Cyber floor, plates of a metre or two on the Lava one), and at sixteen the
+ * same tile read as smears too large to be anything.
+ */
+const MAILLE_SOL = 8
 /*
   The venue lives in permanent late morning, like the genre it belongs to: the references
   play in fixed daylight because night desaturates a colourful game into grey (the tester
@@ -244,13 +258,17 @@ export function setupEvents(): void {
       const look = LOOK[theme] ?? LOOK[5]
       SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: look.sky, transitionMode: TransitionMode.TM_FORWARD })
       if (sol !== null) {
+        const mat = Material.Texture.Common({
+          src: `assets/textures/mat-rush-${LOOK[theme] === undefined ? 5 : theme}.png`,
+          wrapMode: TextureWrapMode.TWM_REPEAT,
+          tiling: Vector2.create(SCENE_SIDE / MAILLE_SOL, SCENE_SIDE / MAILLE_SOL)
+        })
         Material.setPbrMaterial(sol, {
-          texture: Material.Texture.Common({
-            src: `assets/textures/${look.texture}.png`,
-            wrapMode: TextureWrapMode.TWM_REPEAT,
-            tiling: Vector2.create(SCENE_SIDE / MAILLE_SOL, SCENE_SIDE / MAILLE_SOL)
-          }),
-          albedoColor: Color4.fromHexString(look.teinte + 'ff'),
+          texture: mat,
+          albedoColor: Color4.White(),
+          emissiveTexture: look.lueur > 0 ? mat : undefined,
+          emissiveColor: look.lueur > 0 ? Color3.create(look.lueur, look.lueur, look.lueur) : undefined,
+          emissiveIntensity: look.lueur > 0 ? 1 : undefined,
           metallic: 0,
           roughness: 0.95
         })

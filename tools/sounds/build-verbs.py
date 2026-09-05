@@ -8,8 +8,9 @@ higher in silence, and F drew the gun in silence. Game audio's first rule is tha
 without a reply reads as an input that did not register, which is exactly what the owner
 asked about (5 Sep: "est-ce que chaque input contextuel a un son en feedback ?").
 
-  lift.wav   a short rising whoosh with a soft thud at the top: the ride and the arrival
-  draw.wav   a click and a brief metallic slide, the sound of something leaving a holster
+  lift.wav     a short rising whoosh with a soft thud at the top: the ride and the arrival
+  draw.wav     a rub of cloth rising, then the latch: something leaving a holster
+  holster.wav  the push, the same rub falling, a padded stop: the same thing going back
 
 Both are short, mono, 22 kHz, and cost a few kilobytes: same recipe as the other generators
 in this folder, sine partials shaped by an envelope, no samples.
@@ -62,23 +63,75 @@ def lift():
     return out
 
 
+def resonant(samples, freq_of, r=0.965):
+    """Noise through a two pole resonator whose centre glides: the only way a synthesised
+    hiss reads as a MATERIAL (cloth, leather) rather than as a beep. `freq_of(t)` is the
+    centre in hertz at time t; `r` sets the ring, near one for a narrow band."""
+    out = [0.0] * len(samples)
+    y1 = y2 = 0.0
+    for i, x in enumerate(samples):
+        w = 2 * math.pi * freq_of(i / RATE) / RATE
+        y = x + 2 * r * math.cos(w) * y1 - r * r * y2
+        out[i] = y
+        y2, y1 = y1, y
+    peak = max(1e-6, max(abs(v) for v in out))
+    return [v / peak for v in out]
+
+
 def draw():
-    """A click, then a short bright slide: a thing coming out of a holster."""
-    n = int(RATE * 0.26)
-    out = [0.0] * n
+    """Drawing: a swept rub of cloth, rising, then the small latch at the end.
+
+    The first version was a click and a rising sine, and a sine is a whistle: it said "beep",
+    not "an object leaving a holster" (owner, 5 Sep). What the ear files under "drawn" is
+    friction first, the band of a hiss sliding UP as the thing comes free, and only then a
+    short hard contact, the catch letting go at the top of the travel. Under a fifth of a
+    second, because the owner was right that short was the part that worked.
+    """
+    n = int(RATE * 0.19)
     g = noise(23)
+    raw = [next(g) for _ in range(n)]
+    rub = resonant(raw, lambda t: 650 + 1900 * min(1.0, t / 0.12))
+    out = [0.0] * n
+    g2 = noise(29)
+    for i in range(n):
+        t = i / RATE
+        env = min(1.0, t / 0.012) * math.exp(-max(0.0, t - 0.05) * 22)     # swells, then fades
+        s = 0.55 * rub[i] * env
+        if t >= 0.125:                                                     # the latch
+            u = t - 0.125
+            s += 0.9 * next(g2) * math.exp(-u * 420) + 0.6 * math.sin(2 * math.pi * 1750 * u) * math.exp(-u * 160)
+        else:
+            next(g2)
+        out[i] = s
+    return out
+
+
+def holster():
+    """Putting away: the latch first, then the same rub falling, and a soft seat at the end.
+
+    The mirror of `draw`, and a different file, so the two acts are told apart by ear: the
+    contact comes first because the thing is pushed home, the hiss slides DOWN as it goes in,
+    and it ends on a low, padded stop rather than on a click.
+    """
+    n = int(RATE * 0.21)
+    g = noise(31)
+    raw = [next(g) for _ in range(n)]
+    rub = resonant(raw, lambda t: 2300 - 1600 * min(1.0, max(0.0, t - 0.02) / 0.13))
+    out = [0.0] * n
+    g2 = noise(37)
     for i in range(n):
         t = i / RATE
         s = 0.0
-        if t < 0.02:                                    # the click
-            s += next(g) * math.exp(-t * 260) * 0.9
+        if t < 0.03:                                                       # the push
+            s += 0.7 * next(g2) * math.exp(-t * 300)
         else:
-            next(g)
-        if 0.02 <= t < 0.20:                            # the slide, rising
+            next(g2)
+        if t >= 0.02:
             u = t - 0.02
-            f = 900 + 1500 * (u / 0.18)
-            s += 0.5 * math.sin(2 * math.pi * f * u) * math.exp(-u * 12)
-            s += 0.2 * math.sin(2 * math.pi * f * 1.5 * u) * math.exp(-u * 16)
+            s += 0.5 * rub[i] * min(1.0, u / 0.015) * math.exp(-max(0.0, u - 0.06) * 24)
+        if t >= 0.15:                                                      # the seat
+            u = t - 0.15
+            s += 0.8 * math.sin(2 * math.pi * 150 * u) * math.exp(-u * 70)
         out[i] = s
     return out
 
@@ -86,6 +139,7 @@ def draw():
 if __name__ == '__main__':
     write('lift.wav', lift(), 0.85)
     write('draw.wav', draw(), 0.8)
+    write('holster.wav', holster(), 0.8)
 
 
 def knock():

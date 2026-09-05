@@ -279,6 +279,21 @@ export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip
 */
 const CUIT = /^item-\d+-\d+\.glb$/
 const cuits = new Set<Entity>()
+/**
+ * The picture file for a piece: rarity alone, or rarity and mutation once it is yours.
+ *
+ * `assets/ui/toy-<r>-<m>.png` exists for all ninety eight variants, rendered from the very
+ * model that will stand on the shelf, so the interface never has to tint a silhouette to
+ * suggest a mutation. `toy-<r>.png` is the plain piece of that rung, which is what the
+ * spinning strip and the prestige ladder want: neither of them is naming a mutation yet. A
+ * Secret nobody owns stays behind `toy-mystery`.
+ */
+export function toyImage(rarity: number, mut: number | undefined, revealed: boolean): string {
+  if (rarity === 6 && !revealed) return 'toy-mystery'
+  if (revealed && mut !== undefined && mut > 0) return `toy-${rarity}-${mut}`
+  return `toy-${rarity}`
+}
+
 export function itemFile(code: number): string {
   const r = rarityOf(code)
   return `item-${Math.min(6, r)}-${mutationDe(code)}.glb`

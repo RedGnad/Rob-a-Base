@@ -1,6 +1,7 @@
 import { engine, Entity, Transform, MeshRenderer, Material, MaterialTransparencyMode } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { itemFile, montable, demonter, monte, figerMonture } from './toy'
+import { itemColor, rarityOf, mutationDe } from '../shared/loot-table'
 
 /**
  * The piece you just won, in three dimensions, in front of your own camera and nobody else's.
@@ -53,14 +54,6 @@ const TOUR_S = 4.5
 /** Tipped, like the pictures on the cards: a piece square to the camera is an inventory row. */
 const ROULIS = 8
 const PIQUE = -7
-/**
- * The dark plate the piece stands against.
- *
- * The interface can cut a window in its veil, and behind that window is the world, bright and
- * busy: the owner saw "des carres plus clairs" and a piece he could not read. A screen cannot
- * darken what is behind it, so the darkness has to be an object too: one plane, parented to
- * the same camera, just behind the piece, big enough to fill the window from that distance.
- */
 /*
   THE DARKNESS IS THE PLANE, and there is no hole anywhere.
 
@@ -77,20 +70,50 @@ const PIQUE = -7
   view by construction, at any aspect, forever. Sized once to cover the widest screen anyone
   will bring: at 1.7 m, a sixty degree vertical field shows 1.96 m of height, and 5.6 m of
   width covers an aspect of 2.85, well past the 2.30 of an ultra wide monitor and the 2.22 of a
-  phone. Two triangles and one material for a thing that cannot be misaligned.
+  phone. Four triangles and two materials for a thing that cannot be misaligned.
+
+  WHAT THE GENRE DOES, and what this got wrong twice.
+
+  A reveal darkens the room EVENLY and then puts LIGHT behind the object. The darkness is a
+  scrim with no shape and no edge; the shape belongs to the glow. The two failures here were
+  both attempts to give the darkness a shape: flat black on a plane too small showed its four
+  corners ("un carre noir"), and a radial ramp, opaque at the middle and clear at the rim, is a
+  vignette turned inside out, so it read as a black oval with the world around it (owner,
+  5 Sep: "on dirait une cataracte"). Darkness with a shape is a hole in the screen; light with
+  a shape is a stage.
+
+  So: the scrim carries no texture, never scales (a growing rectangle would drag its own edges
+  through the frame), and fades in on its ALPHA alone, to 0.78, which is dark enough to own the
+  screen while the base still reads faintly behind it. It is not pure black either but the
+  piece's own colour driven almost to black, so a Cursed reveal goes deep violet and a Lava one
+  deep ember: it reads as the lights going down on this piece, not as a lid.
+
+  The glow is the second plane, square so it stays a circle at any ratio, in the piece's colour,
+  emissive, growing with the pop. That is the whole staging: dim everything, light one thing.
 */
-const FOND_Z = 0.55
-const FOND_L = 5.6
-const FOND_H = 2.4
+const VOILE_Z = 0.55
+const VOILE_L = 5.6
+const VOILE_H = 2.4
+const VOILE_A = 0.78
+/** The glow behind the piece: a square metre and a half, so the piece sits inside its light. */
+const HALO_Z = 0.30
+const HALO_C = 2.05
+const HALO_A = 0.60
 /** The scene is 12 by 12 parcels; a metre of margin keeps the holder honestly inside. */
 const BORD = 2
 
 let support: Entity | null = null
-let fond: Entity | null = null
+let voile: Entity | null = null
+let halo: Entity | null = null
 let phase: 'vide' | 'entre' | 'tient' | 'sort' = 'vide'
 let debut = 0
 let angle = 0
 let fige = false
+/** The piece's own colour, read once when it is mounted: the scrim and the glow both use it. */
+let teinte = Color3.create(1, 1, 1)
+/** Last alpha written to each material, in sixty fourths: a material write is not a Transform. */
+let voileEcrit = -1
+let haloEcrit = -1
 
 function easeOutBack(t: number): number {
   const c1 = 1.70158
@@ -113,36 +136,68 @@ export function preparerRevealToy(code: number): void {
   montable(e, itemFile(code))
   support = e
 
-  const f = engine.addEntity()
-  Transform.create(f, {
+  teinte = Color3.fromHexString(itemColor(rarityOf(code), mutationDe(code)))
+
+  // The scrim: full size from the first frame, never scaled, only faded. Its edges live
+  // outside the field of view and must stay there, or the reveal shows its own frame.
+  const v = engine.addEntity()
+  Transform.create(v, {
     parent: engine.CameraEntity,
-    position: Vector3.create(0, 0, DIST + FOND_Z),
+    position: Vector3.create(0, 0, DIST + VOILE_Z),
+    scale: Vector3.create(VOILE_L, VOILE_H, 1)
+  })
+  MeshRenderer.setPlane(v)
+  voile = v
+  voileEcrit = -1
+  ecrireVoile(0)
+
+  // The glow: the only thing on screen with a shape, and it is made of light.
+  const g = engine.addEntity()
+  Transform.create(g, {
+    parent: engine.CameraEntity,
+    position: Vector3.create(0, 0, DIST + HALO_Z),
     scale: Vector3.Zero()
   })
-  MeshRenderer.setPlane(f)
-  /*
-    A DARKENING, not a slab.
-
-    Flat black covered the world and announced itself: a rectangle with four corners in the
-    middle of the screen (owner, 5 Sep, twice). What a reveal wants is what a photographer
-    calls a vignette, opaque where the object stands and fading to nothing before it reaches
-    an edge, so the eye reads "the room went dark" rather than "a card was laid on the lens".
-    The texture is one 256 pixel radial ramp, alpha only, and the plane carries it in blend
-    mode: no edge exists anywhere on it.
-  */
-  Material.setPbrMaterial(f, {
-    texture: Material.Texture.Common({ src: 'assets/textures/reveal-fade.png' }),
-    alphaTexture: Material.Texture.Common({ src: 'assets/textures/reveal-fade.png' }),
-    albedoColor: Color4.create(0, 0, 0, 1),
-    emissiveColor: Color3.Black(),
-    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
-    metallic: 0, roughness: 1, specularIntensity: 0
-  })
-  fond = f
+  MeshRenderer.setPlane(g)
+  halo = g
+  haloEcrit = -1
+  ecrireHalo(0)
 
   phase = 'vide'
   angle = 0
   fige = false
+}
+
+/** The room's own darkness, at `a` of full: the piece's colour driven nearly to black. */
+function ecrireVoile(a: number): void {
+  if (voile === null) return
+  const q = Math.round(a * 64)
+  if (q === voileEcrit) return
+  voileEcrit = q
+  Material.setPbrMaterial(voile, {
+    albedoColor: Color4.create(teinte.r * 0.09, teinte.g * 0.09, teinte.b * 0.09, (q / 64) * VOILE_A),
+    emissiveColor: Color3.Black(),
+    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+    metallic: 0, roughness: 1, specularIntensity: 0
+  })
+}
+
+/** The light behind the piece, at `a` of full. */
+function ecrireHalo(a: number): void {
+  if (halo === null) return
+  const q = Math.round(a * 64)
+  if (q === haloEcrit) return
+  haloEcrit = q
+  const k = q / 64
+  Material.setPbrMaterial(halo, {
+    texture: Material.Texture.Common({ src: 'assets/textures/reveal-glow.png' }),
+    alphaTexture: Material.Texture.Common({ src: 'assets/textures/reveal-glow.png' }),
+    albedoColor: Color4.create(teinte.r, teinte.g, teinte.b, k * HALO_A),
+    emissiveColor: Color3.create(teinte.r * k, teinte.g * k, teinte.b * k),
+    emissiveIntensity: 1.6,
+    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+    metallic: 0, roughness: 1, specularIntensity: 0
+  })
 }
 
 /** The strip has stopped and the hero is coming: grow the piece out of nothing. */
@@ -158,9 +213,11 @@ function retirer(): void {
     demonter(support)
     engine.removeEntity(support)
   }
-  if (fond !== null) engine.removeEntity(fond)
+  if (voile !== null) engine.removeEntity(voile)
+  if (halo !== null) engine.removeEntity(halo)
   support = null
-  fond = null
+  voile = null
+  halo = null
   phase = 'vide'
   fige = false
   revealToyView.visible = false
@@ -213,17 +270,18 @@ export function setupRevealToy(): void {
     const pret = monte(support) && tenue > 0
     if (pret && !fige) { figerMonture(support); fige = true }
     const age = Date.now() - debut
-    const tf = fond === null ? null : Transform.getMutableOrNull(fond)
+    const th = halo === null ? null : Transform.getMutableOrNull(halo)
 
     const poser = (k: number): void => {
       const cible = tenue > 0 ? tenue : DIST
       t.scale = Vector3.create(HAUTEUR * k, HAUTEUR * k, HAUTEUR * k)
       t.position = Vector3.create(0, 0, (cible + 0.4) + (cible - (cible + 0.4)) * Math.min(1, k))
-      // The plate opens FIRST and closes last: the room goes dark, then the piece arrives.
-      if (tf !== null) {
-        const kf = Math.min(1, k * 2.2)
-        tf.scale = Vector3.create(FOND_L * kf, FOND_H * kf, 1)
-      }
+      // The room goes dark FIRST and comes back last: the light, then the piece.
+      ecrireVoile(Math.min(1, k * 2.2))
+      // The glow opens a touch wider than the piece and settles: a lamp coming up, not a flash.
+      const kg = Math.min(1, k * 1.4)
+      if (th !== null) th.scale = Vector3.create(HALO_C * kg, HALO_C * kg, 1)
+      ecrireHalo(kg)
     }
 
     if (phase === 'entre') {

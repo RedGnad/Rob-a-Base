@@ -4,7 +4,8 @@ import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
 import { Btn, SURF } from './ui-kit'
 import { theftView, doPrestige } from './theft'
-import { formatIncome, RARITIES, nomDuCode, rarityOf, mutationDe, itemColor, itemOdds } from '../shared/loot-table'
+import { toyImage } from './toy'
+import { formatIncome, RARITIES, nomDuCode, rarityOf, mutationDe, itemOdds } from '../shared/loot-table'
 import { prestigeTier, incomeMultiplier, REBIRTH_MAX } from '../shared/schemas'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 
@@ -209,10 +210,20 @@ export const PrestigePanel = () => {
             }}
             uiBackground={SKIN.card}
           >
+            {/*
+              The piece itself, not a silhouette painted over.
+
+              This drew `toy-<rarity>.png` multiplied by the item's colour, and the two worst
+              cases were exactly the ones this line exists to show: a Secret is rendered white,
+              so multiplying it by the Cursed violet left a flat violet blob with no surface at
+              all (owner, 5 Sep: "on dirait une couleur unie"). There is now a picture per
+              rarity AND mutation, rendered from `item-<r>-<m>.glb` with its own baked surface,
+              so nothing has to be tinted afterwards.
+            */}
             <UiEntity uiTransform={{ width: 52, height: 52, margin: { right: 14 } }}
               uiBackground={{
-                texture: { src: `assets/ui/toy-${rarityOf(sauve)}.png` }, textureMode: 'stretch',
-                color: Color4.fromHexString(itemColor(rarityOf(sauve), mutationDe(sauve)) + 'ff')
+                texture: { src: `assets/ui/${toyImage(rarityOf(sauve), mutationDe(sauve), true)}.png` },
+                textureMode: 'stretch'
               }} />
             <Label value={nomDuCode(sauve).toUpperCase()} fontSize={TYPE.label} color={KEEP}
               uiTransform={{ height: 40, margin: { right: 16 } }} textAlign="middle-left" textWrap="nowrap" />

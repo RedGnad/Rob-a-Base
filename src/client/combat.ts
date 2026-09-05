@@ -184,11 +184,13 @@ let cbtTargetAddr = ''
 let recul = 0
 let hitmark = 0 as unknown as Entity
 let emetteurDraw: Entity | null = null
+let emetteurRange: Entity | null = null
 
-/** The holster, both ways: the same short slide answers drawing and putting away. */
-function jouerDraw(): void {
-  if (emetteurDraw === null) return
-  const a = AudioSource.getMutableOrNull(emetteurDraw)
+/** The holster: the rub rising when the weapon comes out, falling when it goes back. */
+function jouerDraw(sortie: boolean): void {
+  const e = sortie ? emetteurDraw : emetteurRange
+  if (e === null) return
+  const a = AudioSource.getMutableOrNull(e)
   if (a !== null) { a.playing = false; a.playing = true }
 }
 /** Addresses whose weapon is drawn right now, as relayed by the server. */
@@ -352,9 +354,14 @@ export function setupCombat(): void {
   AudioSource.create(hitmark, { audioClipUrl: 'assets/sounds/hitmark.wav', playing: false, loop: false, volume: 0.85 })
   // The holster. Its emitter was declared and never created, so `jouerDraw` returned on its
   // first line and drawing stayed silent (owner, 5 Sep: "je n'entends aucun son quand je vise").
+  // Two files, because the two acts are told apart by ear: the rub rises as the thing comes
+  // out and falls as it goes back in (owner, 5 Sep: "ne fait pas penser a sortir / ranger").
   emetteurDraw = engine.addEntity()
   Transform.create(emetteurDraw, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
   AudioSource.create(emetteurDraw, { audioClipUrl: 'assets/sounds/draw.wav', playing: false, loop: false, volume: 0.75 })
+  emetteurRange = engine.addEntity()
+  Transform.create(emetteurRange, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+  AudioSource.create(emetteurRange, { audioClipUrl: 'assets/sounds/holster.wav', playing: false, loop: false, volume: 0.7 })
 
   CameraMode.onChange(engine.CameraEntity, (c) => {
     if (c === undefined) return
@@ -655,7 +662,7 @@ function gunSystem(dt: number): void {
 function degainer(on: boolean): void {
   if (combatView.aiming === on) return
   // Drawing and putting away were both silent: the emote played and nothing was heard.
-  jouerDraw()
+  jouerDraw(on)
   combatView.aiming = on
   setAiming(on)
   setArmeIcone(on, armeEnMain())

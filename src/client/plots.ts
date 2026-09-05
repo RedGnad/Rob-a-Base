@@ -1343,8 +1343,18 @@ export function setupPlots(): void {
             the Baloo atlas, name in white, rank in the money gold.
           */
           if (v.plaqueGlyphes !== null) engine.removeEntityWithChildren(v.plaqueGlyphes)
+          /*
+            The rank is the interface's own prestige star and the level it carries, the same
+            pair the prestige panel's badge shows: "x5" on a facade meant nothing to a player
+            who had never read the HUD's multiplier (owner, 5 Sep). The star stands in the
+            line as a picture segment; the figure after it is the level, rebirths plus one.
+          */
           const segs: Segment3D[] = [{ texte: p.ownerName.slice(0, 14), role: 'name', taille: 0.78 }]
-          if (p.rebirths > 0) segs.push({ texte: `  x${p.rebirths + 1}`, role: 'money', taille: 0.78 })
+          if (p.rebirths > 0) {
+            segs.push({ texte: ' ', role: 'money', taille: 0.78 })
+            segs.push({ image: 'ui-prestige.png', taille: 0.66 })
+            segs.push({ texte: `${p.rebirths + 1}`, role: 'money', taille: 0.78 })
+          }
           v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : place3DText(v.plaque, segs, !p.ownerPresent)
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
