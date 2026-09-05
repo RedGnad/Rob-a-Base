@@ -38,7 +38,15 @@ function goUpOneFloor(v: View): void {
   const moi = Transform.getOrNull(engine.PlayerEntity)
   const actuel = moi === null ? 0 : Math.max(0, Math.round(moi.position.y / FLOOR_HEIGHT))
   const cible = actuel + 1 >= open ? 0 : actuel + 1
-  const y = cible * FLOOR_HEIGHT + 0.3
+  /*
+    ON the slab, not above it. The landing was six centimetres over the slab's top (0.3
+    against SLAB_THICKNESS 0.24), so every ride ended with a fall, and a fall ends in the
+    client's landing state, during which the character controller answers no input: the
+    "blocked for a fraction of a second" the owner felt after the lift (5 Sep). The platform
+    documents the move itself as instant, with no transition, so the drop was the only part
+    of the stall that was ours. Two centimetres keep the point outside the collider.
+  */
+  const y = cible * FLOOR_HEIGHT + SLAB_THICKNESS + 0.02
   // Land on the MAIN slab, camera on the elevator, so it stays on screen and the player can
   // spam the click to keep climbing (tester, 28 Aug). Not merely beside the elevator: the
   // stairwell hole spans x in [c/2-STAIRWELL, c/2] with its guard rail a step further in, so
