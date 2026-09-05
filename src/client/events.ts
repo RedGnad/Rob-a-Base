@@ -230,7 +230,9 @@ export function setupEvents(): void {
   // player looking at their base cannot see the belt line change colour.
   cloche = engine.addEntity()
   Transform.create(cloche, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-  AudioSource.create(cloche, { audioClipUrl: 'assets/sounds/reveal.wav', playing: false, loop: false, volume: 0.8 })
+  // A bell of its own: this played the common crate's two wooden notes, so a rush starting
+  // sounded like somebody opening a Basic Crate (ledger, 5 Sep).
+  AudioSource.create(cloche, { audioClipUrl: 'assets/sounds/bell.wav', playing: false, loop: false, volume: 0.8 })
 
   engine.addSystem(() => {
     const now = Date.now()

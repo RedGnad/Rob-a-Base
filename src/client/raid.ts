@@ -120,7 +120,8 @@ export function setupRaid(): void {
 
   const son = engine.addEntity()
   Transform.create(son, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-  AudioSource.create(son, { audioClipUrl: 'assets/sounds/reveal.wav', playing: false, loop: false, volume: 0.9 })
+  // The bell, shared with the rush: an event's voice, not the common crate's (ledger, 5 Sep).
+  AudioSource.create(son, { audioClipUrl: 'assets/sounds/bell.wav', playing: false, loop: false, volume: 0.85 })
 
   room.onMessage('raidSwipe', (d) => {
     flashDamage()

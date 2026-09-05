@@ -105,7 +105,7 @@ export function setupJuiceSound(): void {
     return e
   }
   hurtCue = emitter('assets/sounds/hit.wav', 0.9)
-  cashCue = emitter('assets/sounds/coin.wav', 0.7)
+  cashCue = emitter('assets/sounds/coin.wav', 0.6)
 }
 
 function play(e: Entity | null): void {

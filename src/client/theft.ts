@@ -285,11 +285,23 @@ export function setupTheft(): void {
     console.log(`[CLIENT] prestige ${d.prestige}, income x${d.multiplier}`)
   })
 
+  /*
+    The player's own switch, back from the profile ONCE, on the first index after joining.
+
+    The index rides every wallet tick, and applying it each time raced the press: the tick
+    already in flight still carried the old value and flipped the switch back, and the next
+    one flipped it again (owner, 5 Sep: "je coche il se decoche, ou avec un delai"). The
+    client owns the switch from the moment it is pressed; the server is only its memory
+    between visits.
+  */
+  let prefsAppliquees = false
   room.onMessage('index', (d) => {
     indexView.vus = [...d.vus]
     indexView.skin = d.skin
-    // The player's own switch, back from the profile: silence is kept across visits.
-    setSfx(d.sfxOff !== true)
+    if (!prefsAppliquees) {
+      prefsAppliquees = true
+      setSfx(d.sfxOff !== true)
+    }
   })
 
   room.onMessage('collected', (d) => {

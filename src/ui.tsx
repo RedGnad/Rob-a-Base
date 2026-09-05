@@ -493,13 +493,13 @@ const SON_DU_VERBE: Record<string, [string, number]> = {
   // amount, and the amount's own sound (the coin for collecting, the soft take for a pile),
   // so a sound on the press was the same act heard twice a tenth of a second apart (owner,
   // 5 Sep, both verbs). The press keeps the click every button has.
-  steal: ['zap.wav', 0.9],
-  buy: ['till.wav', 0.8],
-  outbid: ['till.wav', 0.8],
-  fuse: ['hum.wav', 0.75],
-  recover: ['back.wav', 0.8],
-  lock: ['seal.wav', 0.9],
-  crate: ['hit.wav', 0.8]
+  steal: ['zap.wav', 0.8],
+  buy: ['till.wav', 0.7],
+  outbid: ['till.wav', 0.7],
+  fuse: ['hum.wav', 0.6],
+  recover: ['back.wav', 0.75],
+  lock: ['seal.wav', 0.7],
+  crate: ['hit.wav', 0.7]
 }
 function sonDuVerbe(icone: string | undefined): void {
   if (icone === undefined) return

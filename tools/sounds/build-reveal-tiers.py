@@ -132,11 +132,21 @@ if __name__ == '__main__':
     # its own. Fourteen timbres would ask the ear to learn a vocabulary nothing teaches, and
     # the rarity ladder is what the ear is already reading; one extra layer says "and this one
     # is special" without touching that ladder (owner, 5 Sep).
+    # Measured on 5 Sep with forty-four percent of its energy above 2 kHz for a second: a
+    # shimmer is allowed to be bright, it is not allowed to be a full second of treble.
+    # Less of the detuned pair, a touch less gain; the three notes are unchanged.
     nm = sting(os.path.join(out, 'mutation.wav'),
-               [2637.0, 3136.0, 3520.0], step_s=0.075, decay_s=0.30, tail=0.75,
-               partials=(1.0, 0.22, 0.08), gain=0.22, shimmer=0.14)
+               [2637.0, 3136.0, 3520.0], step_s=0.075, decay_s=0.26, tail=0.60,
+               partials=(1.0, 0.22, 0.08), gain=0.20, shimmer=0.08)
     # The strip stopping: a click and a low thud, under whichever sting follows.
     n0 = sting(os.path.join(out, 'land.wav'), [220.0], step_s=0.02, decay_s=0.10, tail=0.12,
                partials=(1.0, 0.5, 0.2), gain=0.30, impact=(96.0, 0.13))
-    for nom, taille in (('belt', nb), ('mutation', nm), ('land', n0), ('reveal', n1), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-huge', n4)):
+    # The bell: a rush starting, a raid boss arriving. Both used to play `reveal.wav`, the
+    # same two wooden notes as opening a common crate, so the loudest event in the venue
+    # spoke in the voice of the most ordinary one. A family needs a member per meaning
+    # (the guides call them sound families): two bell notes, G5 up to C6, with a longer ring
+    # than any reveal, in the same key as everything else.
+    nc = sting(os.path.join(out, 'bell.wav'), [783.99, 1046.5], step_s=0.16, decay_s=0.32, tail=0.45,
+               partials=(1.0, 0.4, 0.18, 0.07), gain=0.32)
+    for nom, taille in (('belt', nb), ('mutation', nm), ('land', n0), ('bell', nc), ('reveal', n1), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-huge', n4)):
         print(f'{nom + ".wav":18s} {taille / 1024:6.1f} KB')

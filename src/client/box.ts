@@ -187,8 +187,10 @@ export function setupBox(): void {
     AudioSource.create(e, { audioClipUrl: clip, playing: false, loop: false, volume: steal })
     return e
   }
-  hitSound = emetteur('assets/sounds/hit.wav', 0.9)
-  sonBurst = emetteur('assets/sounds/burst.wav', 1)
+  // Ledger volumes (tools/sounds/README.md): the smash is heard several times a reveal, and
+  // the burst's file peaks at full scale, so full volume on top of it is clipping.
+  hitSound = emetteur('assets/sounds/hit.wav', 0.75)
+  sonBurst = emetteur('assets/sounds/burst.wav', 0.9)
   sonMutation = emetteur('assets/sounds/mutation.wav', 0.75)
   sonLand = emetteur('assets/sounds/land.wav', 0.8)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)

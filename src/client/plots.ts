@@ -1098,9 +1098,11 @@ function tirDeSentinelle(ownerId: string, floor: number, at: Vector3): void {
 }
 
 export function setupPlots(): void {
-  zapEmitter = emitter('assets/sounds/zap.wav', 0.9)
-  liftEmitter = emitter('assets/sounds/lift.wav', 0.85)
-  sealEmitter = emitter('assets/sounds/seal.wav', 1)
+  // Volumes from the ledger in tools/sounds/README.md: the seal measured among the three
+  // loudest files at full volume, the lift is pressed three times to climb a base.
+  zapEmitter = emitter('assets/sounds/zap.wav', 0.8)
+  liftEmitter = emitter('assets/sounds/lift.wav', 0.7)
+  sealEmitter = emitter('assets/sounds/seal.wav', 0.7)
   room.onMessage('sentryShot', (d) => tirDeSentinelle(d.ownerId, d.floor, Vector3.create(d.x, d.y, d.z)))
   engine.addSystem(() => {
     // Pedestals carry no collider on mobile, and a far base has none to tap: neither is polled.

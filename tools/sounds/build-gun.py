@@ -53,15 +53,18 @@ def shot():
 
 
 def hitmark():
+    """Two ticks, E6 then A6: a hit marker is heard on every landed shot, so it is the combat
+    cue the rule about frequency applies to hardest. It was 1.8 then 2.6 kHz, twenty-eight
+    percent of its energy above 2 kHz (measured 5 Sep); a fifth lower it still snaps, in key."""
     n = int(RATE * 0.06)
     out = []
     for i in range(n):
         t = i / RATE
         if t < 0.025:
-            s = math.sin(2 * math.pi * 1800 * t) * math.exp(-t / 0.010)
+            s = math.sin(2 * math.pi * 1318.5 * t) * math.exp(-t / 0.010)
         else:
             u = t - 0.025
-            s = math.sin(2 * math.pi * 2600 * u) * math.exp(-u / 0.010)
+            s = math.sin(2 * math.pi * 1760.0 * u) * math.exp(-u / 0.010)
         out.append(s * 0.7)
     return out
 
@@ -89,7 +92,10 @@ def taser():
         t = i / RATE
         gate = 1.0 if (t * 60) % 1 < 0.5 else 0.25     # 60 Hz buzz gating
         noise = (random.random() * 2 - 1) * gate
-        whine = math.sin(2 * math.pi * (4000 - 1800 * t / 0.15) * t) * 0.5
+        # The whine starts at 3 kHz, not 4: measured with a third of its energy above 2 kHz
+        # and a 3.6 kHz peak (5 Sep), the harshest file in the set for a cue heard in every
+        # fight. Still a zap; less of a drill.
+        whine = math.sin(2 * math.pi * (3000 - 1500 * t / 0.15) * t) * 0.45
         env = math.exp(-t / 0.09)
         out.append(math.tanh(1.6 * (noise * 0.8 + whine)) * env * 0.85)
     return out
@@ -108,7 +114,9 @@ def zap():
         t = i / RATE
         gate = 1.0 if (t * 90) % 1 < 0.4 else 0.2      # 90 Hz gating: crackle
         noise = (random.random() * 2 - 1) * gate
-        whine = math.sin(2 * math.pi * (5200 - 3600 * t / 0.11) * t) * 0.6
+        # From 3.8 kHz down, not 5.2: it peaked at 4 kHz with a third of its energy above 2 kHz
+        # (5 Sep), and the sentry fires at every theft attempt on a busy night.
+        whine = math.sin(2 * math.pi * (3800 - 2600 * t / 0.11) * t) * 0.55
         click = math.exp(-t / 0.0015) * 0.8
         env = math.exp(-t / 0.045)
         out.append(math.tanh(1.8 * (noise * 0.7 + whine + click)) * env * 0.9)

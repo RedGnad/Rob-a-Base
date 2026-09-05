@@ -349,10 +349,10 @@ export function setupCombat(): void {
     second, separate cue when the round LANDS, on the player, so fire and hit are told apart
     by ear: the hit marker's tick, the genre's convention.
   */
-  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 0.8 })
+  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 0.7 })
   hitmark = engine.addEntity()
   Transform.create(hitmark, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-  AudioSource.create(hitmark, { audioClipUrl: 'assets/sounds/hitmark.wav', playing: false, loop: false, volume: 0.85 })
+  AudioSource.create(hitmark, { audioClipUrl: 'assets/sounds/hitmark.wav', playing: false, loop: false, volume: 0.7 })
   // The holster. Its emitter was declared and never created, so `jouerDraw` returned on its
   // first line and drawing stayed silent (owner, 5 Sep: "je n'entends aucun son quand je vise").
   // Two files, because the two acts are told apart by ear: the rub rises as the thing comes

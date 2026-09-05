@@ -74,7 +74,7 @@ export function tic(): void {
   if (sonClic === null) {
     sonClic = engine.addEntity()
     Transform.create(sonClic, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-    AudioSource.create(sonClic, { audioClipUrl: 'assets/sounds/tick.wav', playing: false, loop: false, volume: volumeInitial(0.55, sonClic) })
+    AudioSource.create(sonClic, { audioClipUrl: 'assets/sounds/tick.wav', playing: false, loop: false, volume: volumeInitial(0.45, sonClic) })
   }
   if (!sfxView.on) return
   const a = AudioSource.getMutableOrNull(sonClic)

@@ -59,7 +59,10 @@ def lift():
         a = 0.10 + 0.55 * (t / 0.17)
         lp += a * (next(g) - lp)
         env = math.sin(math.pi * min(1.0, t / 0.17)) ** 1.2
-        out[i] = lp * env * 0.55 + 0.35 * math.sin(2 * math.pi * (420 + 520 * t / 0.17) * t) * env
+        # The chirp sweeps 330 to 660, an octave lower than it did: pressed three times to
+        # climb a base, it measured at a kilohertz with a tenth of its energy above 2 kHz
+        # (5 Sep), which is a bird, not a lift.
+        out[i] = lp * env * 0.55 + 0.30 * math.sin(2 * math.pi * (330 + 330 * t / 0.17) * t) * env
     return out
 
 
