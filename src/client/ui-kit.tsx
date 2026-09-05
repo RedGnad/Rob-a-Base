@@ -32,6 +32,28 @@ import { Glyphs, glyphWidth } from './glyphs'
 const PRESSE_MS = 130
 const presse = new Map<string, number>()
 let sonClic: Entity | null = null
+/*
+  One emitter per cue, made on first use and kept: an AudioSource needs an entity, and the
+  press of a contextual button must answer in the same frame it happens.
+
+  Every verb the pad can offer now has its own sound, because a contextual button that always
+  answers with the same click says only "registered", never "what" (owner, 5 Sep: "chaque
+  element contextuel doit avoir son feedback sonore"). Cues that already existed are reused:
+  the steal keeps its zap, the lock its seal, the collect its coin.
+*/
+const cues = new Map<string, Entity>()
+export function cue(fichier: string, volume = 0.8): void {
+  let e = cues.get(fichier)
+  if (e === undefined) {
+    e = engine.addEntity()
+    Transform.create(e, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+    AudioSource.create(e, { audioClipUrl: `assets/sounds/${fichier}`, playing: false, loop: false, volume })
+    cues.set(fichier, e)
+  }
+  const a = AudioSource.getMutableOrNull(e)
+  if (a !== null) { a.playing = false; a.playing = true }
+}
+
 export function tic(): void {
   if (sonClic === null) {
     sonClic = engine.addEntity()
@@ -215,7 +237,12 @@ export const Pouce = (props: {
       }}
       uiBackground={fond}
       uiInputBinding={props.actions !== undefined && props.disabled !== true ? { actions: props.actions } : undefined}
-      onMouseDown={props.disabled === true ? undefined : () => { presse.set(cle, Date.now()); props.onClick?.() }}
+      /*
+        The pad clicks too. `Btn` and `CloseBtn` have played `tic()` since the panels were
+        built; the thumb buttons, which are the ones a player presses every ten seconds, were
+        silent, so the loudest control in the game gave the least feedback (owner, 5 Sep).
+      */
+      onMouseDown={props.disabled === true ? undefined : () => { presse.set(cle, Date.now()); tic(); props.onClick?.() }}
     >
       {/*
         The glyph takes the disc, measured against the platform's own pad.

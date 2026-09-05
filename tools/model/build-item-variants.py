@@ -12,6 +12,7 @@ Usage: python3 tools/model/build-item-variants.py   (reads assets/toy/item-<r>.g
 """
 import math
 import json, struct, os, sys, io, random
+from concurrent.futures import ProcessPoolExecutor
 from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -350,20 +351,34 @@ def yinyang_albedo(pm):
         return (v, v, min(255, v + 4))
     return png(pm, f)
 
-def gold_albedo(pm):
-    """Hammered gold: a facet field with a warm sheen, so the metal has a surface to catch.
+def gold_martele(pm):
+    """Hammered gold, kept for ONE piece.
 
-    Gold was a flat factor with metallic 0.9, and a flat metal reads as plastic at any size:
-    beside a Divine, which is also warm and pale, the two were the same object (owner, 5 Sep).
-    The dents come from a coarse voronoi whose borders are darkened rather than lit, which is
-    what hammering does to a soft metal."""
+    Dented metal was wrong everywhere and right on the Secret: a planet is not a poured
+    object, and the facets give its ring something to sit against (owner, 5 Sep). So the
+    recipe carries two painters and the rarity picks.
+    """
     e = voronoi_edge(pm, 41, pm.size / 5.5)
     def f(i, p):
-        k = clamp(e[i] * 2.2)                       # 0 on a dent's border, 1 in its middle
+        k = clamp(e[i] * 2.2)
         m = 0.9 + 0.2 * mottle(p, pm.size, 42)
         return (int(min(255, 235 * m * (0.72 + 0.28 * k))),
                 int(min(255, 186 * m * (0.66 + 0.34 * k))),
                 int(min(255, 40 * m * (0.5 + 0.5 * k))))
+    return png(pm, f)
+
+def gold_albedo(pm):
+    """Poured gold: one broad sheen across the piece, no edges anywhere.
+
+    The first pass hammered it, a coarse voronoi with darkened borders, and on a phone that
+    reads as damage rather than as metal: "trop martelle, on veut une texture smooth comme sur
+    notre vignette" (owner, 5 Sep). Two very low frequencies, nothing sharper, so the surface
+    only ever brightens and dims across a whole limb; the metallic factor does the rest."""
+    size = pm.size
+    def f(i, p):
+        k = 0.62 * noise3(p, size / 1.5, 41) + 0.38 * noise3(p, size / 3.2, 42)
+        v = 0.84 + 0.28 * k                          # 0.84 to 1.12, a sheen and no line
+        return (int(min(255, 238 * v)), int(min(255, 190 * v)), int(min(255, 58 * v)))
     return png(pm, f)
 
 def diamond_albedo(pm):
@@ -412,44 +427,54 @@ def candy_albedo(pm):
     return png(pm, f)
 
 def radio_albedo(pm):
-    """Near black, pitted, with the corrosion showing through: the metal under the glow."""
+    """Near black, barely pitted: a hint of corrosion, not a relief map."""
     e = voronoi_edge(pm, 81, pm.size / 7)
     def f(i, p):
         k = clamp(e[i] * 2.5)
-        m = mottle(p, pm.size, 82)
-        v = (14 + 26 * (1 - k)) * m
+        m = 0.85 + 0.3 * mottle(p, pm.size, 82)
+        v = (12 + 9 * (1 - k)) * m
         return (int(v * 0.8), int(v * 1.5), int(v * 0.6))
     return png(pm, f)
 
 def radio_glow(pm):
-    """The green that leaks out of the pits, not off the whole surface."""
+    """The radiation itself: even over the whole piece, a little hotter in the pits.
+
+    It was the opposite, green only where the metal was eaten, and that read as a pattern
+    rather than as radiation. The uranium look is a monochrome that GLOWS, so the floor is
+    high and the pits only add to it.
+    """
     e = voronoi_edge(pm, 81, pm.size / 7)
     def f(i, p):
         k = 1 - clamp(e[i] * 2.5)
-        n = clamp((noise3(p, pm.size / 5, 83) - 0.45) / 0.3)
-        g = clamp(0.35 * k + 0.75 * n * k)
-        return (int(40 * g), int(255 * g), int(30 * g))
+        n = 0.5 + 0.5 * noise3(p, pm.size / 4, 83)
+        g = clamp(0.62 + 0.22 * k + 0.16 * n)
+        return (int(45 * g), int(255 * g), int(35 * g))
     return png(pm, f)
 
 def divine_albedo(pm):
-    """Cream with rings of light around it, the halo of the thing rather than a cream tint."""
+    """Cream, with rings so fine they are a grain rather than a pattern.
+
+    The first pass drew wide bands and they read as stripes on a candle: what makes a Divine
+    is the even radiance, and the rings are only there to keep the surface from being dead
+    flat (owner, 5 Sep: "beaucoup plus fines et subtiles"). Three times the frequency, a
+    sixth of the contrast."""
     size = pm.size
     def f(i, p):
-        r = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]) / (size / 5)
+        r = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]) / (size / 16)
         ring = 0.5 + 0.5 * math.sin(r * 6.3)
-        ring = clamp((ring - 0.35) / 0.4)
-        n = 0.5 + 0.5 * noise3(p, size / 4, 101)
-        v = 0.78 + 0.22 * ring * n
-        return (int(255 * v), int(238 * v), int(190 * v))
+        n = 0.5 + 0.5 * noise3(p, size / 3, 101)
+        v = 0.955 + 0.03 * ring + 0.02 * n
+        return (int(min(255, 255 * v)), int(min(255, 240 * v)), int(min(255, 196 * v)))
     return png(pm, f)
 
 def divine_glow(pm):
-    """Only the rings glow, so the shape keeps its edges instead of blooming out."""
+    """An even radiance, with the faintest breathing in it: the light IS the mutation."""
     size = pm.size
     def f(i, p):
-        r = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]) / (size / 5)
-        ring = clamp((0.5 + 0.5 * math.sin(r * 6.3) - 0.55) / 0.35)
-        return (int(255 * ring), int(230 * ring), int(150 * ring))
+        r = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]) / (size / 16)
+        ring = 0.5 + 0.5 * math.sin(r * 6.3)
+        v = 0.88 + 0.12 * ring
+        return (int(255 * v), int(232 * v), int(160 * v))
     return png(pm, f)
 
 def phantom_glow(pm):
@@ -466,11 +491,14 @@ FANCY = {
     9: {'albedo_tex': cursed_albedo, 'emissive_tex': cursed_veins, 'emissive': (0.35, 0.35, 0.35), 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.5},  # deep violet with faint veins
     6: {'albedo_tex': galaxy_albedo, 'emissive_tex': galaxy_stars, 'emissive': (0.9, 0.8, 1.0), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.5},
     7: {'albedo_tex': yinyang_albedo, 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.35},
-    1: {'albedo_tex': gold_albedo, 'base': (1, 1, 1), 'metallic': 0.9, 'roughness': 0.25},          # hammered
+    1: {'albedo_tex': gold_albedo, 'albedo_tex_6': gold_martele, 'base': (1, 1, 1), 'metallic': 0.9, 'roughness': 0.25},  # poured, hammered on the Secret
     2: {'albedo_tex': diamond_albedo, 'base': (1, 1, 1), 'metallic': 0.35, 'roughness': 0.08},        # faceted
     3: {'albedo_tex': blood_albedo, 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.35},           # dried, with runs
     4: {'albedo_tex': candy_albedo, 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.4},            # striped
-    8: {'albedo_tex': radio_albedo, 'emissive_tex': radio_glow, 'emissive': (0.8, 0.8, 0.8), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.45},  # pitted, glowing in the pits
+    # Radioactive: the surface is there but barely, because what says uranium is the
+    # monochrome radiation, not the pitting (owner, 5 Sep). The painters below run at a third
+    # of their first contrast.
+    8: {'albedo_tex': radio_albedo, 'emissive_tex': radio_glow, 'emissive': (0.85, 0.85, 0.85), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.45},
     10: {'albedo_tex': divine_albedo, 'emissive_tex': divine_glow, 'emissive': (0.55, 0.55, 0.55), 'base': (1, 1, 1), 'metallic': 0.35, 'roughness': 0.15},  # haloed
     11: {'albedo_tex': rainbow_albedo, 'emissive_tex': rainbow_albedo, 'emissive': (0.12, 0.12, 0.12), 'base': (0.9, 0.9, 0.9), 'metallic': 0.0, 'roughness': 0.4},
     12: {'base': (0.03, 0.10, 0.13), 'emissive_tex': cyber_lines, 'emissive': (0.7, 0.7, 0.7), 'metallic': 0.3, 'roughness': 0.3},
@@ -542,7 +570,9 @@ def bake_fancy(js, rarity, mutation, bin_chunk, pm):
         out.pop(k, None)
     pbr = {'baseColorFactor': [*f['base'], f.get('alpha', 1.0)], 'metallicFactor': f['metallic'], 'roughnessFactor': f['roughness']}
     if 'albedo_tex' in f:
-        idx, chunk = embed_texture(out, chunk, texture_bytes(f['albedo_tex'], pm)); pbr['baseColorTexture'] = {'index': idx}
+        # A recipe may carry a painter for one rung: `albedo_tex_<rarity>` wins where it exists.
+        peintre = f.get(f'albedo_tex_{rarity}', f['albedo_tex'])
+        idx, chunk = embed_texture(out, chunk, texture_bytes(peintre, pm)); pbr['baseColorTexture'] = {'index': idx}
     nm = {'name': f'piece-{rarity}-{mutation}', 'doubleSided': True, 'pbrMetallicRoughness': pbr}
     if 'alpha' in f: nm['alphaMode'] = 'BLEND'
     em = f.get('emissive')
@@ -555,22 +585,47 @@ def bake_fancy(js, rarity, mutation, bin_chunk, pm):
     out['materials'] = [nm for _ in js.get('materials', [{}])]
     return out, chunk
 
+def une_rarete(args):
+    """One rung, start to finish: its own UV repack, its own painters, its own files.
+
+    A rung shares nothing with the others, so this is what gets handed to a worker.
+    """
+    r, mutations_seules = args
+    src = os.path.join(TOY, f'item-{r}.glb')
+    js, bin_chunk = repack_uvs(*read_glb(src))
+    pm = PositionMap(js, bin_chunk)
+    print(f'item-{r}: {pm.painted / len(pm.pos):.0%} of the atlas painted', flush=True)
+    made = 0
+    for m in range(len(MUTATIONS)):
+        if mutations_seules and m not in mutations_seules: continue
+        out, chunk = bake(js, r, m, bin_chunk, pm)
+        write_glb(os.path.join(TOY, f'item-{r}-{m}.glb'), out, chunk)
+        made += 1
+    return made
+
+
 def main():
-    # An optional rarity on the command line bakes that rarity's fourteen files alone.
+    """
+    Bake, one process per rung.
+
+    The painters run in pure Python over a 512 by 512 object-space map, three to eight octaves
+    of noise a texel: about 33 million texels for the whole set, which is minutes rather than
+    seconds and had the owner asking whether something was wrong (5 Sep). Nothing is wrong, it
+    is simply a lot of arithmetic. The rungs are independent, so they go to a pool and the wall
+    clock divides by however many cores the machine has.
+
+    Two filters keep an iteration honest: a bare number bakes one rung, `m<N>` bakes one
+    mutation across all of them. Changing a single recipe is `m10`, not the whole set.
+    """
     seules = {int(a) for a in sys.argv[1:] if a.isdigit()}
     mutations_seules = {int(a[1:]) for a in sys.argv[1:] if a.startswith('m')}
-    made = 0
-    for r in range(len(RARITIES)):
-        if seules and r not in seules: continue
-        src = os.path.join(TOY, f'item-{r}.glb')
-        js, bin_chunk = repack_uvs(*read_glb(src))
-        pm = PositionMap(js, bin_chunk)
-        print(f'item-{r}: {pm.painted / len(pm.pos):.0%} of the atlas painted', flush=True)
-        for m in range(len(MUTATIONS)):
-            if mutations_seules and m not in mutations_seules: continue
-            out, chunk = bake(js, r, m, bin_chunk, pm)
-            write_glb(os.path.join(TOY, f'item-{r}-{m}.glb'), out, chunk)
-            made += 1
+    rangs = [r for r in range(len(RARITIES)) if not seules or r in seules]
+    taches = [(r, mutations_seules) for r in rangs]
+    if len(taches) == 1:
+        made = une_rarete(taches[0])
+    else:
+        with ProcessPoolExecutor(max_workers=min(len(taches), os.cpu_count() or 1)) as pool:
+            made = sum(pool.map(une_rarete, taches))
     print(f'{made} variants written to {os.path.relpath(TOY)}')
 
 if __name__ == '__main__':

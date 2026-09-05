@@ -12,7 +12,7 @@ import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
-import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
+import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
@@ -119,7 +119,7 @@ export function setupUi() {
     if (combatView.aiming) return
     if (!inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)) return
     const a = nextAction()
-    if (a !== null) a.action()
+    if (a !== null) { sonDuVerbe(a.icon); a.action() }
   })
 
   function choose(): void {
@@ -474,6 +474,37 @@ function gainRecent(): string { return gainMontant > 0 && Date.now() - gainA < 9
   spends itself. It also cost the still picture: grouping the three poses made the scale come
   from the union, which shrank the resting pile by a tenth.
 */
+/*
+  What each verb sounds like.
+
+  The pad clicks on every press, which says "registered"; this says WHAT. Six new cues from
+  `tools/sounds/build-verbs.py` and four the game already had, mapped by the verb the button
+  is carrying at that moment. A verb with no entry keeps the click alone, which is the honest
+  default rather than a wrong sound.
+*/
+const SON_DU_VERBE: Record<string, [string, number]> = {
+  build: ['knock.wav', 0.85],
+  place: ['put.wav', 0.8],
+  give: ['put.wav', 0.8],
+  drop: ['put.wav', 0.7],
+  pickup: ['zap.wav', 0.7],
+  steal: ['zap.wav', 0.9],
+  collect: ['coin.wav', 0.8],
+  buy: ['till.wav', 0.8],
+  outbid: ['till.wav', 0.8],
+  fuse: ['hum.wav', 0.75],
+  recover: ['back.wav', 0.8],
+  lock: ['seal.wav', 0.9],
+  up: ['lift.wav', 0.85],
+  crate: ['hit.wav', 0.8]
+}
+function sonDuVerbe(icone: string | undefined): void {
+  if (icone === undefined) return
+  for (const v of Object.keys(SON_DU_VERBE)) {
+    if (icone === ico(v as 'build')) { const [f, vol] = SON_DU_VERBE[v]; cue(f, vol); return }
+  }
+}
+
 const POSES = ['build'] as const
 function posesDe(icone: string | undefined): [string, string] | undefined {
   const nom = POSES.find((v) => icone === ico(v))
@@ -1223,7 +1254,14 @@ function CrateReveal(): ReactEcs.JSX.Element {
     the card and nobody sees a hole with nothing in it.
   */
   const objet3D = heroVisible && revealToyView.visible
-  const cote = Math.max(icone, 320)
+  /*
+    A darker room when the piece is real. The veil tops out at 0.62 for a drawn glyph, which
+    is enough behind a picture and not behind a window: with the world showing through, the
+    reveal read as bright and busy (owner, 5 Sep). At 0.86 the rest of the screen is nearly
+    gone, which is what a reveal is for, and the piece has its own dark plate behind it.
+  */
+  const voile = objet3D ? Math.min(0.86, fond + 0.24) : fond
+  const cote = Math.max(icone, 380)
   const hublot = { cote, gauche: (active.w - cote) / 2, haut: (active.h - cote) / 2 - 40 }
 
   return (
@@ -1247,7 +1285,7 @@ function CrateReveal(): ReactEcs.JSX.Element {
         ].map((b, i) => (
           <UiEntity key={i}
             uiTransform={{ width: b.width, height: b.height, positionType: 'absolute', position: { left: b.left, top: b.top } }}
-            uiBackground={{ color: Color4.create(0, 0, 0, fond * sortie) }} />
+            uiBackground={{ color: Color4.create(0, 0, 0, voile * sortie) }} />
         ))
       ) : (
         <UiEntity

@@ -391,6 +391,23 @@ export function sansOmbre(primitive: Entity): void {
 }
 
 /** Take the model off a mount and bring the stand-in back, for a pedestal that emptied. */
+/**
+ * Take the arrival pop off a mount's model, and leave it at its fitted size.
+ *
+ * The watcher gives every model that lands a scale overshoot, which is right on a shelf and
+ * wrong in the reveal: there the holder is already playing a pop of its own, and the two
+ * played one inside the other (owner, 5 Sep: the piece "sans pop satisfaisant").
+ */
+export function figerMonture(primitive: Entity): void {
+  const m = montages.get(primitive)
+  if (m === undefined) return
+  if (Tween.has(m.modele)) Tween.deleteFrom(m.modele)
+  if (TweenSequence.has(m.modele)) TweenSequence.deleteFrom(m.modele)
+  const f = FIT[fitKey(m.fichier)]
+  const t = Transform.getMutableOrNull(m.modele)
+  if (t !== null) t.scale = Vector3.create(f?.scale ?? 1, f?.scale ?? 1, f?.scale ?? 1)
+}
+
 /** Whether the GLB on this mount has really landed: the reveal asks before it shows one. */
 export function monte(primitive: Entity): boolean {
   return montages.get(primitive)?.charge === true

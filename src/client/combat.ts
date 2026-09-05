@@ -183,6 +183,14 @@ let targetName = ''
 let cbtTargetAddr = ''
 let recul = 0
 let hitmark = 0 as unknown as Entity
+let emetteurDraw: Entity | null = null
+
+/** The holster, both ways: the same short slide answers drawing and putting away. */
+function jouerDraw(): void {
+  if (emetteurDraw === null) return
+  const a = AudioSource.getMutableOrNull(emetteurDraw)
+  if (a !== null) { a.playing = false; a.playing = true }
+}
 /** Addresses whose weapon is drawn right now, as relayed by the server. */
 const enJoue = new Set<string>()
 const armeDe = new Map<string, ArmeType>()
@@ -641,6 +649,8 @@ function gunSystem(dt: number): void {
  */
 function degainer(on: boolean): void {
   if (combatView.aiming === on) return
+  // Drawing and putting away were both silent: the emote played and nothing was heard.
+  jouerDraw()
   combatView.aiming = on
   setAiming(on)
   setArmeIcone(on, armeEnMain())

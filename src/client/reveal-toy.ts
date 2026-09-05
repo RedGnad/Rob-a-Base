@@ -1,6 +1,6 @@
-import { engine, Entity, Transform } from '@dcl/sdk/ecs'
-import { Quaternion, Vector3 } from '@dcl/sdk/math'
-import { itemFile, montable, demonter, monte } from './toy'
+import { engine, Entity, Transform, MeshRenderer, Material } from '@dcl/sdk/ecs'
+import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
+import { itemFile, montable, demonter, monte, figerMonture } from './toy'
 
 /**
  * The piece you just won, in three dimensions, in front of your own camera and nobody else's.
@@ -38,19 +38,43 @@ export const revealToyView = {
 
 /** How far in front of the camera. Closer than an avatar in third person, so it never clips. */
 const DIST = 1.15
+/** Where it starts, before it comes at you: the pop is a move as well as a scale. */
+const DIST_POP = 1.55
 /** The piece's height in metres. The fit table normalises every model to one metre tall. */
 const HAUTEUR = 0.72
-const POP_MS = 320
-const SORTIE_MS = 220
-/** Seconds for a full turn: slow enough to read the shape, fast enough to say "it turns". */
-const TOUR_S = 14
+const POP_MS = 380
+const SORTIE_MS = 240
+/**
+ * Seconds for a full turn.
+ *
+ * It was fourteen, and a reveal lasts a little over two: the piece turned fifty degrees in
+ * all and read as a photograph (owner, 5 Sep, "pas en rotation"). At four and a half it turns
+ * most of the way round while you look at it, which is what says "this is an object".
+ */
+const TOUR_S = 4.5
+/** Tipped, like the pictures on the cards: a piece square to the camera is an inventory row. */
+const ROULIS = 8
+const PIQUE = -7
+/**
+ * The dark plate the piece stands against.
+ *
+ * The interface can cut a window in its veil, and behind that window is the world, bright and
+ * busy: the owner saw "des carres plus clairs" and a piece he could not read. A screen cannot
+ * darken what is behind it, so the darkness has to be an object too: one plane, parented to
+ * the same camera, just behind the piece, big enough to fill the window from that distance.
+ */
+const FOND_Z = 0.85
+const FOND_L = 3.2
+const FOND_H = 2.2
 /** The scene is 12 by 12 parcels; a metre of margin keeps the holder honestly inside. */
 const BORD = 2
 
 let support: Entity | null = null
+let fond: Entity | null = null
 let phase: 'vide' | 'entre' | 'tient' | 'sort' = 'vide'
 let debut = 0
 let angle = 0
+let fige = false
 
 function easeOutBack(t: number): number {
   const c1 = 1.70158
@@ -67,13 +91,29 @@ export function preparerRevealToy(code: number): void {
   const e = engine.addEntity()
   Transform.create(e, {
     parent: engine.CameraEntity,
-    position: Vector3.create(0, 0, DIST),
+    position: Vector3.create(0, 0, DIST_POP),
     scale: Vector3.Zero()
   })
   montable(e, itemFile(code))
   support = e
+
+  const f = engine.addEntity()
+  Transform.create(f, {
+    parent: engine.CameraEntity,
+    position: Vector3.create(0, 0, DIST + FOND_Z),
+    scale: Vector3.Zero()
+  })
+  MeshRenderer.setPlane(f)
+  Material.setPbrMaterial(f, {
+    albedoColor: Color4.create(0.02, 0.025, 0.04, 1),
+    emissiveColor: Color3.Black(),
+    metallic: 0, roughness: 1, specularIntensity: 0
+  })
+  fond = f
+
   phase = 'vide'
   angle = 0
+  fige = false
 }
 
 /** The strip has stopped and the hero is coming: grow the piece out of nothing. */
@@ -89,8 +129,11 @@ function retirer(): void {
     demonter(support)
     engine.removeEntity(support)
   }
+  if (fond !== null) engine.removeEntity(fond)
   support = null
+  fond = null
   phase = 'vide'
+  fige = false
   revealToyView.visible = false
 }
 
@@ -120,28 +163,35 @@ export function setupRevealToy(): void {
     if (t === null) return
 
     angle = (angle + (360 / TOUR_S) * dt) % 360
-    t.rotation = Quaternion.fromEulerDegrees(0, angle, 0)
+    t.rotation = Quaternion.fromEulerDegrees(PIQUE, angle, ROULIS)
 
     // The piece shows only when the model is in AND the holder is inside the parcels.
     const pret = monte(support) && dansLaScene()
+    if (pret && !fige) { figerMonture(support); fige = true }
     const age = Date.now() - debut
+    const tf = fond === null ? null : Transform.getMutableOrNull(fond)
+
+    const poser = (k: number): void => {
+      t.scale = Vector3.create(HAUTEUR * k, HAUTEUR * k, HAUTEUR * k)
+      t.position = Vector3.create(0, 0, DIST_POP + (DIST - DIST_POP) * Math.min(1, k))
+      if (tf !== null) tf.scale = Vector3.create(FOND_L * Math.min(1, k * 1.6), FOND_H * Math.min(1, k * 1.6), 1)
+    }
 
     if (phase === 'entre') {
       const k = pret ? easeOutBack(Math.min(1, age / POP_MS)) : 0
-      t.scale = Vector3.create(HAUTEUR * k, HAUTEUR * k, HAUTEUR * k)
+      poser(k)
       revealToyView.visible = pret && k > 0.05
       if (age >= POP_MS && pret) phase = 'tient'
       return
     }
     if (phase === 'tient') {
-      const s = pret ? HAUTEUR : 0
-      t.scale = Vector3.create(s, s, s)
+      poser(pret ? 1 : 0)
       revealToyView.visible = pret
       return
     }
-    // Leaving: shrink, then take the entity away for good.
+    // Leaving: back away and shrink, the entrance played backwards and faster.
     const k = Math.max(0, 1 - age / SORTIE_MS)
-    t.scale = Vector3.create(HAUTEUR * k, HAUTEUR * k, HAUTEUR * k)
+    poser(k * k)
     revealToyView.visible = false
     if (age >= SORTIE_MS) retirer()
   })

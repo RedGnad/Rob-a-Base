@@ -1024,6 +1024,7 @@ const SIGN_OFFSET = SHIELD_MARGIN + 0.14
   hears a base seal or a sentry fire without a line of text.
 */
 let zapEmitter: Entity | null = null
+let liftEmitter: Entity | null = null
 let sealEmitter: Entity | null = null
 function emitter(clip: string, volume: number): Entity {
   const e = engine.addEntity()
@@ -1077,6 +1078,7 @@ function tirDeSentinelle(ownerId: string, floor: number, at: Vector3): void {
 
 export function setupPlots(): void {
   zapEmitter = emitter('assets/sounds/zap.wav', 0.9)
+  liftEmitter = emitter('assets/sounds/lift.wav', 0.85)
   sealEmitter = emitter('assets/sounds/seal.wav', 1)
   room.onMessage('sentryShot', (d) => tirDeSentinelle(d.ownerId, d.floor, Vector3.create(d.x, d.y, d.z)))
   engine.addSystem(() => {
@@ -1696,5 +1698,9 @@ export function elevatorInReach(): boolean {
 }
 export function monterIci(): void {
   const v = myElevator()
-  if (v !== null) goUpOneFloor(v)
+  if (v === null) return
+  // The one verb that moved the player and said nothing: a floor arrived in silence.
+  const ici = Transform.getOrNull(engine.PlayerEntity)
+  if (ici !== null) jouerA(liftEmitter, ici.position)
+  goUpOneFloor(v)
 }
