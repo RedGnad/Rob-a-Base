@@ -63,9 +63,19 @@ const PIQUE = -7
  * darken what is behind it, so the darkness has to be an object too: one plane, parented to
  * the same camera, just behind the piece, big enough to fill the window from that distance.
  */
-const FOND_Z = 0.85
-const FOND_L = 3.2
-const FOND_H = 2.2
+const FOND_Z = 0.55
+/*
+  Sized to the window and no wider.
+
+  It was 3.2 by 2.2 m at two metres, which covers nearly the whole screen: on a monitor wider
+  than the interface canvas it showed as a black slab beside the veil (owner, 5 Sep). The
+  window the interface cuts is about 380 units of a 1080 tall canvas, a bit over a third of
+  the height, so at 1.7 m with a sixty degree field the plate needs about 0.8 m of height and
+  a little more width. Pure black, like the veil around it, so the two read as one field
+  rather than as two different darks.
+*/
+const FOND_L = 1.25
+const FOND_H = 0.95
 /** The scene is 12 by 12 parcels; a metre of margin keeps the holder honestly inside. */
 const BORD = 2
 
@@ -105,7 +115,7 @@ export function preparerRevealToy(code: number): void {
   })
   MeshRenderer.setPlane(f)
   Material.setPbrMaterial(f, {
-    albedoColor: Color4.create(0.02, 0.025, 0.04, 1),
+    albedoColor: Color4.create(0, 0, 0, 1),
     emissiveColor: Color3.Black(),
     metallic: 0, roughness: 1, specularIntensity: 0
   })
