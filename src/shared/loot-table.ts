@@ -188,6 +188,32 @@ export function expectedMutationMult(weights: readonly number[]): number {
   return total > 0 ? sum / total : 1
 }
 
+/**
+ * How rare a piece REALLY is: one in how many rolls, from the two tables that roll it.
+ *
+ * "Rarest" was read as "highest mutation multiplier", and that is not what rare means: the
+ * panel offered to spare a Divine Epic while a Cursed Secret stood on the same shelves, which
+ * is backwards by a factor of three (owner, 5 Sep). A piece is TWO independent draws, the
+ * rung and the mutation, so its rarity is the product of the two probabilities and nothing
+ * else. Both are read from the tables above rather than typed, so a rebalance moves this with
+ * it: the rung's marginal probability is the mean of the six crate rows, each normalised,
+ * which is what the rung is worth when every crate is bought by somebody; the mutation's is
+ * its weight over the sum. A Cursed Secret comes out at one in 3,395 against one in 1,317 for
+ * a Divine Epic, and a Phantom Common, which no multiplier would ever have protected, at one
+ * in 5,020.
+ */
+export function itemOdds(code: number): number {
+  let pr = 0
+  for (const row of CRATE_WEIGHTS) {
+    const total = row.reduce((a, b) => a + b, 0)
+    pr += (row[Math.min(rarityOf(code), row.length - 1)] ?? 0) / total / CRATE_WEIGHTS.length
+  }
+  const totalMut = MUTATIONS.reduce((a, m) => a + m.poids, 0)
+  const pm = (MUTATIONS[mutationDe(code)]?.poids ?? 0) / totalMut
+  const p = pr * pm
+  return p > 0 ? 1 / p : 0
+}
+
 export function itemIncome(code: number, incomeTable: readonly number[]): number {
   const base = incomeTable[rarityOf(code)] ?? 1
   return base * mutation(mutationDe(code)).mult + base * TRAIT_BONUS * traitsDe(code)

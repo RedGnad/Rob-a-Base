@@ -7,7 +7,7 @@ import {
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
-  itemIncome, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe, skinDebloque, SKIN_NEEDS, RARITIES, mutation
+  itemIncome, itemOdds, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe, skinDebloque, SKIN_NEEDS, RARITIES, mutation
 } from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { clearJournal } from './records'
@@ -1476,17 +1476,20 @@ export function compterVol(address: string): void {
   project follows says the same thing in one line, minimise options and show only what is
   needed now.
 
-  So the rule is automatic and stated in four words on the panel: the piece carrying the
-  highest mutation multiplier is spared, both from the jaws and from the cull. It yields only
-  when it is the ONLY piece that can pay the rung, because a prestige that cannot be paid is
-  worse than a piece lost.
+  So the rule is automatic and stated on the panel: the RAREST piece on the shelves is spared,
+  both from the jaws and from the cull. It yields only when it is the only piece that can pay
+  the rung, because a prestige that cannot be paid is worse than a piece lost.
+
+  Rarest means what it says, `itemOdds`: the odds of rolling that rung TIMES the odds of
+  rolling that mutation. It was the mutation's multiplier alone, and that ranked a Divine Epic
+  above a Cursed Secret, which is wrong by a factor of three (owner, 5 Sep). A plain piece is
+  never spared: everything else being equal it is the commonest thing a shelf can hold.
 */
-function rarestMutation(pleins: readonly number[]): number {
+function rarest(pleins: readonly number[]): number {
   let best = -1
   for (const c of pleins) {
-    const m = mutation(mutationDe(c)).mult
-    if (m <= 1) continue
-    if (best < 0 || m > mutation(mutationDe(best)).mult) best = c
+    if (mutationDe(c) === 0) continue
+    if (best < 0 || itemOdds(c) > itemOdds(best)) best = c
   }
   return best
 }
@@ -1499,7 +1502,7 @@ function candidatsAuPrestige(pleins: number[], minRarity: number, spared = -1): 
 /** The piece prestige spares, or -1: the rarest mutation on the shelves. */
 export function sparedPieceOf(address: string): number {
   const p = profiles.get(address)
-  return p ? rarestMutation(p.items.filter((x) => x !== VIDE)) : -1
+  return p ? rarest(p.items.filter((x) => x !== VIDE)) : -1
 }
 
 export function objetConsommePar(address: string): number {
@@ -1508,7 +1511,7 @@ export function objetConsommePar(address: string): number {
   const prestige = p.rebirths ?? 0
   if (prestige >= REBIRTH_MAX) return -1
   const pleins = p.items.filter((x) => x !== VIDE)
-  const spared = rarestMutation(pleins)
+  const spared = rarest(pleins)
   const c = candidatsAuPrestige(pleins, prestigeTier(prestige).minRarity, spared)
   const brut = c.length > 0 ? c : candidatsAuPrestige(pleins, prestigeTier(prestige).minRarity)
   return brut.length === 0 ? -1 : brut[0]
@@ -1529,7 +1532,7 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
     valuable item that meets it. Until 27 Aug the item was only checked, so prestige cost a
     player nothing they could see leave, and the rarity gate was a formality.
   */
-  const spared = rarestMutation(pleins)
+  const spared = rarest(pleins)
   const prefere = candidatsAuPrestige(pleins, exige.minRarity, spared)
   const candidats = prefere.length > 0 ? prefere : candidatsAuPrestige(pleins, exige.minRarity)
   if (candidats.length === 0) {

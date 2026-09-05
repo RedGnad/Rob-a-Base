@@ -4,7 +4,7 @@ import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
 import { Btn, SURF } from './ui-kit'
 import { theftView, doPrestige } from './theft'
-import { formatIncome, RARITIES, nomDuCode, rarityOf, mutationDe, itemColor } from '../shared/loot-table'
+import { formatIncome, RARITIES, nomDuCode, rarityOf, mutationDe, itemColor, itemOdds } from '../shared/loot-table'
 import { prestigeTier, incomeMultiplier, REBIRTH_MAX } from '../shared/schemas'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 
@@ -40,11 +40,16 @@ export function closePrestige(): void { prestigeView.open = false }
   moment to want (owner, 3 Sep). Every figure still comes from `prestigeTier`, the function
   the server decides with.
 */
-const Chip = (props: { width: number; height: number; children?: ReactEcs.JSX.Element | ReactEcs.JSX.Element[]; right?: number }) => (
+/** The grid: two cards a row, one measure of air everywhere. */
+const CARTE = 430
+const CARTE_H = 104
+const AIR = 18
+const Carte = (props: { children?: ReactEcs.JSX.Element | ReactEcs.JSX.Element[]; right?: number; row?: boolean }) => (
   <UiEntity
     uiTransform={{
-      width: props.width, height: props.height, margin: props.right !== undefined ? { right: props.right } : undefined,
-      flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
+      width: CARTE, height: CARTE_H, margin: props.right !== undefined ? { right: props.right } : undefined,
+      flexDirection: props.row === true ? 'row' : 'column', justifyContent: 'center', alignItems: 'center',
+      padding: props.row === true ? { left: 16, right: 16 } : undefined
     }}
     uiBackground={SKIN.card}
   >
@@ -53,6 +58,21 @@ const Chip = (props: { width: number; height: number; children?: ReactEcs.JSX.El
 )
 
 const KEEP = Color4.fromHexString('#8fe08fff')
+
+/*
+  Thousands, grouped by hand.
+
+  `toLocaleString` is the obvious call and it is not one to make here: the scene runs in a
+  QuickJS sandbox with no guarantee of an Intl table behind it, so the separator it returns is
+  whatever that build happens to carry, which on a phone could be nothing at all. Four lines
+  that cannot be wrong beat one line that might be.
+*/
+function milliers(n: number): string {
+  const s = String(Math.round(n))
+  let out = ''
+  for (let i = 0; i < s.length; i++) out += (i > 0 && (s.length - i) % 3 === 0 ? ',' : '') + s[i]
+  return out
+}
 /** Big enough that two digits sit inside the star's waist, which is 0.60 of its width. */
 const BADGE = 76
 
@@ -88,7 +108,7 @@ export const PrestigePanel = () => {
       uiBackground={{ color: SURF.voile }}
     >
       <UiEntity
-        uiTransform={{ width: 940, height: 600, flexDirection: 'column', alignItems: 'center', padding: 22 }}
+        uiTransform={{ width: CARTE * 2 + AIR + 44, height: 604, flexDirection: 'column', alignItems: 'center', padding: 22 }}
         uiBackground={SKIN.panel}
       >
         {/*
@@ -126,100 +146,99 @@ export const PrestigePanel = () => {
           </UiEntity>
         </UiEntity>
 
-        {/* The hero: the multiplier you have, and the one you would have. */}
-        <UiEntity uiTransform={{ width: '100%', height: 140, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 6 } }}>
-          <Chip width={220} height={124} right={TAP.gap}>
-            <Label value={`x${maintenant}`} fontSize={TYPE.title} color={C.dim}
-              uiTransform={{ width: '100%', height: 64 }} textAlign="middle-center" textWrap="nowrap" />
-            <Label value="NOW" fontSize={TYPE.caption} color={C.dim}
-              uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
-          </Chip>
-          <Chip width={300} height={140}>
-            <Label value={`x${palier.multiplier}`} fontSize={TYPE.hero} color={C.money}
-              uiTransform={{ width: '100%', height: 84 }} textAlign="middle-center" textWrap="nowrap" />
-            <Label value="AFTER" fontSize={TYPE.caption} color={C.bonus}
-              uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
-          </Chip>
-        </UiEntity>
-        <Label value="ON EVERYTHING YOU EARN, FOR GOOD" fontSize={TYPE.caption} color={C.dim}
-          uiTransform={{ width: '100%', height: 30, margin: { bottom: 12 } }} textAlign="middle-center" />
+        {/*
+          Four cards on one grid, and air between them.
 
-        {/* The price: coins, and one item eaten. Red where the player falls short. */}
-        <UiEntity uiTransform={{ width: '100%', height: 96, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 12 } }}>
-          <Chip width={300} height={96} right={TAP.gap}>
+          The panel had grown a card per idea, each sized to the idea rather than to the grid:
+          a 220 chip beside a 300 one, a 300 beside a 440, two rows that did not line up and no
+          gap worth the name, under two lines of prose. It read as a form (owner, 5 Sep). Now
+          every card is the same object, `CARTE` wide and `CARTE_H` tall, two to a row, with the
+          same air above, below and between; only the TYPE says which one matters, gold and
+          large for the multiplier you are buying. The last card runs the full width because
+          what it says is one sentence, not a figure.
+        */}
+        <UiEntity uiTransform={{ width: '100%', height: CARTE_H, flexDirection: 'row', justifyContent: 'center', margin: { bottom: AIR } }}>
+          <Carte right={AIR}>
+            <Label value={`x${maintenant}`} fontSize={TYPE.title} color={C.dim}
+              uiTransform={{ width: '100%', height: 58 }} textAlign="middle-center" textWrap="nowrap" />
+            <Label value="NOW" fontSize={TYPE.caption} color={C.dim}
+              uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
+          </Carte>
+          <Carte>
+            <Label value={`x${palier.multiplier}`} fontSize={TYPE.hero} color={C.money}
+              uiTransform={{ width: '100%', height: 62 }} textAlign="middle-center" textWrap="nowrap" />
+            <Label value="AFTER, ON EVERYTHING YOU EARN" fontSize={TYPE.caption} color={C.bonus}
+              uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" textWrap="nowrap" />
+          </Carte>
+        </UiEntity>
+
+        {/* What it costs: coins on the left, the toy it eats on the right. */}
+        <UiEntity uiTransform={{ width: '100%', height: CARTE_H, flexDirection: 'row', justifyContent: 'center', margin: { bottom: AIR } }}>
+          <Carte right={AIR}>
             <Label value={formatIncome(cout)} fontSize={TYPE.title} color={assezDeCoins ? C.money : C.danger}
-              uiTransform={{ width: '100%', height: 54 }} textAlign="middle-center" textWrap="nowrap" />
+              uiTransform={{ width: '100%', height: 58 }} textAlign="middle-center" textWrap="nowrap" />
             <Label value="COINS" fontSize={TYPE.caption} color={C.dim}
               uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
-          </Chip>
-          <UiEntity
-            uiTransform={{ width: 440, height: 96, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
-            uiBackground={SKIN.card}
-          >
-            <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 12 } }}
+          </Carte>
+          <Carte row>
+            <UiEntity uiTransform={{ width: 56, height: 56, margin: { right: 14 } }}
               uiBackground={{ texture: { src: `assets/ui/toy-${palier.minRarity}.png` }, textureMode: 'stretch' }} />
-            {/* 340 wide: the caption is 23 capitals, and 250 cut it at SHEL (owner, 4 Sep). */}
-            <UiEntity uiTransform={{ width: 340, height: 84, flexDirection: 'column', justifyContent: 'center' }}>
+            <UiEntity uiTransform={{ width: CARTE - 90, height: 72, flexDirection: 'column', justifyContent: 'center' }}>
               <Label value={mange} fontSize={TYPE.label} color={aLObjet ? C.money : C.danger}
-                uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
+                uiTransform={{ width: '100%', height: 38 }} textAlign="middle-left" textWrap="nowrap" />
               <Label value="IS EATEN" fontSize={TYPE.caption} color={C.dim}
-                uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
+                uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
             </UiEntity>
-          </UiEntity>
+          </Carte>
         </UiEntity>
 
         {/*
-          What prestige spares, stated, never chosen.
+          What prestige spares, and the odds that make it the rarest.
 
-          Two interfaces were built to let a player protect one piece, a KEEP button and a
-          strip of every piece owned. The owner rejected both, the second in the terms that
-          settle it: slow, confusing, and far too small to read on a phone, and better to have
-          no choice at all than a screenful of tiny targets (5 Sep). Mobile guidance says the
-          same, minimise options and show only what is needed now.
-
-          So the server keeps the rarest MUTATION on the shelves, from the jaws and from the
-          cull alike, and this line says which one. It appears only when there is one to
-          spare, and never when that piece is the toy being eaten, which happens when it is
-          the only piece that can pay the rung.
+          Rarest is not the biggest multiplier: it is the product of the two draws that made
+          the piece, the rung and the mutation, which `itemOdds` reads straight from the loot
+          tables. Saying the number out loud is also the only proof the player gets that the
+          panel picked the right one (owner, 5 Sep: a Divine Epic offered while a Cursed Secret
+          stood on the shelves, and the Cursed Secret is three times rarer).
         */}
         {sauve >= 0 && sauve !== theftView.prestigeEats && (
-          <UiEntity uiTransform={{ width: 752, height: 84, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', margin: { bottom: 12 } }}>
-            <UiEntity
-              uiTransform={{ width: 440, height: 84, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
-              uiBackground={SKIN.card}
-            >
-              <UiEntity uiTransform={{ width: 52, height: 52, margin: { right: 12 } }}
-                uiBackground={{
-                  texture: { src: `assets/ui/toy-${rarityOf(sauve)}.png` }, textureMode: 'stretch',
-                  color: Color4.fromHexString(itemColor(rarityOf(sauve), mutationDe(sauve)) + 'ff')
-                }} />
-              <UiEntity uiTransform={{ width: 340, height: 76, flexDirection: 'column', justifyContent: 'center' }}>
-                <Label value={nomDuCode(sauve).toUpperCase()} fontSize={TYPE.label} color={KEEP}
-                  uiTransform={{ width: '100%', height: 38 }} textAlign="middle-left" textWrap="nowrap" />
-                <Label value="IS SAFE, YOUR RAREST" fontSize={TYPE.caption} color={C.dim}
-                  uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
-              </UiEntity>
-            </UiEntity>
+          <UiEntity
+            uiTransform={{
+              width: CARTE * 2 + AIR, height: 82, flexDirection: 'row', alignItems: 'center',
+              padding: { left: 18, right: 18 }, margin: { bottom: AIR }
+            }}
+            uiBackground={SKIN.card}
+          >
+            <UiEntity uiTransform={{ width: 52, height: 52, margin: { right: 14 } }}
+              uiBackground={{
+                texture: { src: `assets/ui/toy-${rarityOf(sauve)}.png` }, textureMode: 'stretch',
+                color: Color4.fromHexString(itemColor(rarityOf(sauve), mutationDe(sauve)) + 'ff')
+              }} />
+            <Label value={nomDuCode(sauve).toUpperCase()} fontSize={TYPE.label} color={KEEP}
+              uiTransform={{ height: 40, margin: { right: 16 } }} textAlign="middle-left" textWrap="nowrap" />
+            <Label value={`IS SAFE  ·  YOUR RAREST, 1 IN ${milliers(itemOdds(sauve))}`}
+              fontSize={TYPE.caption} color={C.dim}
+              uiTransform={{ height: 30 }} textAlign="middle-left" textWrap="nowrap" />
           </UiEntity>
         )}
 
         {/* What stays and what goes, one line each, no sentence. */}
-        <UiEntity uiTransform={{ width: 660, height: 62, flexDirection: 'column', margin: { bottom: 14 } }}>
-          <UiEntity uiTransform={{ width: '100%', height: 30, flexDirection: 'row', alignItems: 'center' }}>
+        <UiEntity uiTransform={{ width: CARTE * 2 + AIR, height: 58, flexDirection: 'column', margin: { bottom: AIR } }}>
+          <UiEntity uiTransform={{ width: '100%', height: 28, flexDirection: 'row', alignItems: 'center' }}>
             <Label value="KEEP" fontSize={TYPE.caption} color={KEEP}
-              uiTransform={{ width: 70, height: 30 }} textAlign="middle-left" />
+              uiTransform={{ width: 70, height: 28 }} textAlign="middle-left" />
             <Label value={`best ${palier.guard === 1 ? 'item' : palier.guard + ' items'}  ·  floors  ·  sentries  ·  crates  ·  gear`} fontSize={TYPE.caption} color={C.name}
-              uiTransform={{ width: 590, height: 30 }} textAlign="middle-left" textWrap="nowrap" />
+              uiTransform={{ width: CARTE * 2 + AIR - 70, height: 28 }} textAlign="middle-left" textWrap="nowrap" />
           </UiEntity>
-          <UiEntity uiTransform={{ width: '100%', height: 30, flexDirection: 'row', alignItems: 'center' }}>
+          <UiEntity uiTransform={{ width: '100%', height: 28, flexDirection: 'row', alignItems: 'center' }}>
             <Label value="LOSE" fontSize={TYPE.caption} color={C.danger}
-              uiTransform={{ width: 70, height: 30 }} textAlign="middle-left" />
+              uiTransform={{ width: 70, height: 28 }} textAlign="middle-left" />
             <Label value={`every other item  ·  coins above ${formatIncome(cout * PRESTIGE_CASH_SHARE)}`} fontSize={TYPE.caption} color={C.name}
-              uiTransform={{ width: 590, height: 30 }} textAlign="middle-left" textWrap="nowrap" />
+              uiTransform={{ width: CARTE * 2 + AIR - 70, height: 28 }} textAlign="middle-left" textWrap="nowrap" />
           </UiEntity>
         </UiEntity>
 
-        <UiEntity uiTransform={{ width: 660, height: TAP.height, flexDirection: 'row', justifyContent: 'center' }}>
+        <UiEntity uiTransform={{ width: CARTE * 2 + AIR, height: TAP.height, flexDirection: 'row', justifyContent: 'center' }}>
           <Btn label={pret ? 'PRESTIGE' : manque} width={400} primary={pret}
             right={TAP.gap} onClick={() => { if (pret) { doPrestige(); closePrestige() } }} />
           <Btn label="BACK" width={200} onClick={closePrestige} />
