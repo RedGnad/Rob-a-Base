@@ -17,4 +17,16 @@ if grep -q 'sourceMappingURL=data' bin/index.js || [ "$SIZE" -gt 3000000 ]; then
   echo "REFUSED: bin/index.js is a development bundle ($SIZE B)"; exit 1
 fi
 echo "bundle: $SIZE B, production"
-exec npx sdk-commands deploy --target-content https://worlds-content-server.decentraland.org --no-browser --skip-version-checks --skip-build "$@"
+# The signing window is 300 s from the moment the linker opens (the content server refuses a
+# signature older than that). An unsigned linker used to stay up for ever, holding its port and
+# piling up: six of them on one night (5 to 6 Sep), each stealing the next deploy's port and
+# the wallet's reconnection with it. So the linker is given 330 s and then closed by this
+# script itself; the port comes back and the next attempt reuses it.
+npx sdk-commands deploy --target-content https://worlds-content-server.decentraland.org --no-browser --skip-version-checks --skip-build "$@" &
+LINKER=$!
+( sleep 330; if kill -0 "$LINKER" 2>/dev/null; then echo "signing window over (330 s): closing the linker"; kill "$LINKER" 2>/dev/null; fi ) &
+TIMER=$!
+wait "$LINKER"
+CODE=$?
+kill "$TIMER" 2>/dev/null
+exit $CODE
