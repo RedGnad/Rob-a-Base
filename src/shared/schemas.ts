@@ -966,7 +966,23 @@ export const OFFLINE_RATE = OFFLINE_RATE_V2        // 35 % du income normal
 export const OFFLINE_CAP_MS = 24 * 3600_000
 export { OFFLINE_CAP_PRODUCTION_S, SILO_STEP_S, SILO_MAX, SILO_BASE_PRICE, siloCost, offlineCapProductionS }
 
-export const PENDING_CAP_S = 600      // 10 minutes de production accumulables
+/*
+  La production s'arrete apres dix minutes sans le moindre signe de vie.
+
+  L'encaissement manuel a disparu, donc plus rien ne plafonne ce qu'un joueur immobile
+  accumule: present et AFK rapportait 100 % sans limite, quand l'absent est a 35 % plafonne a
+  vingt-quatre heures. Dix minutes n'est pas un nombre choisi pour sa tete: c'est EXACTEMENT
+  ce que l'ancien plafond du pool (`PENDING_CAP_S = 600`) laissait deja gagner a un joueur
+  qui ne faisait rien. L'equilibre ne bouge donc pas d'un coin, seule la facon de le dire
+  change. Se deplacer suffit a repartir, et depenser aussi.
+
+  Le kick n'etait pas une option: `~system/RestrictedActions` n'expose aucune expulsion, et
+  toutes ses fonctions s'executent sur le client du joueur local. Un serveur DCL ne peut pas
+  ejecter quelqu'un (verifie dans `apis.d.ts` du SDK installe, 7 Sep).
+*/
+export const AFK_PRODUCTION_MS = 600_000
+/** Deplacement au-dela duquel on considere que le joueur joue, entre deux secondes. */
+export const AFK_MOVE_M = 0.4
 
 /**
  * The seven days, and one of each crate the game has.

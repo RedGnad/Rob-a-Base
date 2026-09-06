@@ -19,7 +19,7 @@ import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending, declarerVolEnCours
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, declarerVolEnCours
 } from './plots'
 
 /*
@@ -261,6 +261,7 @@ export function startTheft(): void {
       compterVol(thief)
       // The last tutorial step is the game's core verb: a theft that reached the hands (27 Aug).
       tutoFait(thief, 4)
+      advanceQuest(thief, 'voler')
       noter('vol', displayName(thief), b.name, r)
 
       /*
@@ -418,17 +419,6 @@ export function startTheft(): void {
     pushQuests(a)
   })
 
-  room.onMessage('collect', (_d, ctx) => {
-    const a = ctx?.from?.toLowerCase()
-    if (!a) return
-    const gain = collectPending(a)
-    if (gain <= 0) { refus(a, 'collect', 'nothing to collect'); return }
-    void room.send('collected', { gain }, { to: [a] })
-    tutoFait(a, 2)
-    advanceQuest(a, 'collectPending')
-    advanceQuest(a, 'bank', gain)
-    pushQuests(a)
-  })
 
   room.onMessage('buyFloor', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

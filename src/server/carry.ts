@@ -329,7 +329,7 @@ export function startCarry(): void {
         is set only when the item was lifted off your OWN shelf. Everything else you put down
         at home, opened, stolen or picked up off the floor, is a placement.
       */
-      if (!repris) { advanceQuest(a, 'poser'); pushQuests(a) }
+      if (!repris) { advanceQuest(a, 'poser'); pushQuests(a); tutoFait(a, 2) }
       if (origine !== a) landedHook(a, code)
       log(`carry: ${displayName(a)} placed a ${rar} on floor ${realFloor + 1} of their own base`)
       return

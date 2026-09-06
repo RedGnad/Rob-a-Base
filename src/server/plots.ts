@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, offlineCapProductionS, siloCost, SILO_MAX, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, offlineCapProductionS, siloCost, SILO_MAX, AFK_PRODUCTION_MS, AFK_MOVE_M, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -66,6 +66,20 @@ type Profil = {
   /** When the last lock the owner PRESSED for ends: the button's recharge counts from here and from nothing else. */
   lockUsedUntil?: number
   vuA?: number
+  /*
+    Ce que la seconde ecoulee a produit et qui n'atteint pas encore une piece entiere.
+
+    Le revenu tombe directement dans le solde, et un solde est un entier. Une base a
+    0.4/s creditee au sol chaque seconde ne rapporterait jamais rien du tout. La fraction
+    est donc reportee d'une seconde a l'autre et versee des qu'elle fait une unite: rien
+    n'est perdu a l'arrondi, quel que soit le revenu.
+  */
+  reste?: number
+  /** Total verse par le revenu depuis toujours. Le client soustrait: ce qui reste est ponctuel. */
+  gagne?: number
+  /** Dernier signe de vie: un deplacement ou une depense. Voir `AFK_PRODUCTION_MS`. */
+  agiA?: number
+  /** Ancien pool d'encaissement manuel. Ne sert plus qu'a etre reverse au chargement. */
   pending?: number
   lastDay?: number
   streak?: number
@@ -687,7 +701,10 @@ export async function welcome(address: string): Promise<void> {
     rebirths: stocke?.rebirths ?? 0,
     alerts: stocke?.alerts ?? []
   }
+  // Arriver, c'est agir: la production part tout de suite, la regle anti-AFK compte depuis ici.
+  profile.agiA = Date.now()
   profiles.set(address, profile)
+  reverserAncienPool(address, profile)
   dirtyProfiles.add(address)
 
   const name = nameOf(address)
@@ -1748,6 +1765,9 @@ export function spend(address: string, montant: number): boolean {
   if (!Number.isFinite(montant) || montant < 0) return false
   if (montant > 0 && p.coins < montant) return false
   p.coins -= montant
+  // Depenser, c'est jouer: le joueur plante devant le tapis qui n'achete que des boites
+  // ne doit pas etre pris pour un absent (voir `AFK_PRODUCTION_MS`).
+  p.agiA = Date.now()
   dirtyProfiles.add(address)
   return true
 }
@@ -1877,16 +1897,37 @@ export function nextSiloPrice(address: string): number {
   return siloCost((p.silos ?? 0) + 1)
 }
 
-export function collectPending(address: string): number {
-  const p = profiles.get(address)
-  if (!p) return 0
+/**
+ * Reverse au solde ce qu'un profil stocke portait encore dans l'ancien pool manuel.
+ *
+ * L'encaissement a disparu (7 Sep): personne ne doit perdre ce qu'il avait accumule sous
+ * l'ancienne regle sans jamais avoir trouve le bouton, ce qui etait precisement le probleme.
+ * Appele une fois, au chargement du profil.
+ */
+function reverserAncienPool(address: string, p: Profil): void {
   const r = Math.floor(p.pending ?? 0)
-  if (r <= 0) return 0
+  p.pending = undefined
+  if (r <= 0) return
   p.coins += r
-  p.pending = 0
   dirtyProfiles.add(address)
-  return r
+  log(`${nameOf(address)} recupere ${r} de l'ancien pool d'encaissement`)
 }
+
+/**
+ * Le joueur vient de faire quelque chose. Voir `AFK_PRODUCTION_MS`.
+ *
+ * Appele depuis `spend` (tout achat passe par la) et depuis le tick de revenu quand la
+ * position a bouge. Deux points d'appel, aucun handler de message a modifier: la regle est
+ * une propriete du profil, pas une preoccupation de chaque action.
+ */
+export function signalerActivite(address: string): void {
+  const p = profiles.get(address)
+  if (p !== undefined) p.agiA = Date.now()
+}
+
+/** Positions du tick courant, et celles du tick precedent: voir la regle anti-AFK. */
+const positions = new Map<string, { x: number; z: number }>()
+const derniereXZ = new Map<string, { x: number; z: number }>()
 
 /** Server-verified player position. Never trust a client-reported one. */
 export function positionOf(address: string): Vector3 | null {
@@ -1934,8 +1975,10 @@ export function avancerTuto(address: string): void {
   dirtyProfiles.add(address)
 }
 
-export function pendingOf(address: string): number {
-  return Math.floor(profiles.get(address)?.pending ?? 0)
+/** Ce que le revenu a verse en tout a ce joueur: le client s'en sert pour ne PAS faire
+ *  flotter le filet, et ne faire flotter que les gains ponctuels. */
+export function earnedOf(address: string): number {
+  return Math.floor(profiles.get(address)?.gagne ?? 0)
 }
 
 export function reclamerQuotidienne(address: string): { log: number; crate: number } | null {
@@ -1967,6 +2010,14 @@ export function startPlots(): void {
     const seconds = acc
     acc = 0
     const ici = presents()
+    // Une seule passe sur les avatars, partagee par tous les profils: la chercher par joueur
+    // rendait la boucle quadratique pour une donnee que le moteur donne d'un coup.
+    positions.clear()
+    for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
+      const a = id.address?.toLowerCase()
+      const t = Transform.getOrNull(e)
+      if (a !== undefined && t !== null) positions.set(a, { x: t.position.x, z: t.position.z })
+    }
     for (const [address, profile] of profiles) {
       if (!ici.has(address)) continue
 
@@ -1976,9 +2027,42 @@ export function startPlots(): void {
       let gain = 0
       for (const code of base.items) if (code !== VIDE) gain += itemIncome(code, INCOME_PER_RARITY)
       if (gain === 0) continue
+      /*
+        Bouger, c'est jouer. Le serveur lit deja la position de tout le monde pour d'autres
+        systemes; la comparer a celle d'il y a une seconde suffit a distinguer un joueur d'un
+        avatar plante. Un achat compte aussi (`spend` appelle `signalerActivite`), pour le
+        cas du joueur immobile devant le tapis.
+      */
+      const p3 = positions.get(address)
+      const avant = derniereXZ.get(address)
+      if (p3 !== undefined) {
+        if (avant === undefined || Math.abs(p3.x - avant.x) + Math.abs(p3.z - avant.z) > AFK_MOVE_M) {
+          profile.agiA = Date.now()
+        }
+        derniereXZ.set(address, { x: p3.x, z: p3.z })
+      }
+      if (Date.now() - (profile.agiA ?? 0) > AFK_PRODUCTION_MS) continue
+
       const perSecond = gain * incomeMultiplier(profile.rebirths ?? 0) * (1 + crowdBonus(ici.size))
-      const cap = perSecond * PENDING_CAP_S
-      profile.pending = Math.min((profile.pending ?? 0) + perSecond * seconds, cap)
+      /*
+        Verse directement, avec report de la fraction.
+
+        Il n'y a plus de pool a encaisser: personne ne trouvait le bouton, et son plafond de
+        dix minutes arretait la production en silence (proprietaire et testeurs, 7 Sep). Le
+        rituel de reclamation reste la ou il a du sens, au retour hors ligne.
+      */
+      profile.reste = (profile.reste ?? 0) + perSecond * seconds
+      const entier = Math.floor(profile.reste)
+      if (entier > 0) {
+        profile.reste -= entier
+        profile.coins += entier
+        profile.gagne = (profile.gagne ?? 0) + entier
+        // La quete du jour dit noir sur blanc d'ou vient l'argent, ce qu'aucun testeur
+        // n'avait compris. Pas de `pushQuests` ici: une poussee par seconde et par joueur
+        // pour un compteur qui monte tout seul serait du trafic pour rien.
+        advanceQuest(address, 'gagner', entier)
+        dirtyProfiles.add(address)
+      }
       profile.vuA = Date.now()
       // Not dirtied here: this ran every second for every present player, so every profile was
       // written every five seconds for nothing. Collect, departure and the checkpoint below persist it.
@@ -2005,7 +2089,7 @@ export function startPlots(): void {
         silos: p.silos ?? 0,
         siloPrice: nextSiloPrice(address),
         offlineCapS: offlineCapProductionS(p.silos ?? 0),
-        pending: pendingOf(address),
+        earned: earnedOf(address),
         rechargeSec: Math.ceil(lockCooldown(address) / 1000),
         canRecover: hasSomethingToRecover(address),
         coins: Math.floor(Number.isFinite(p.coins) ? p.coins : 0),

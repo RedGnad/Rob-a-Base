@@ -40,7 +40,8 @@ export const theftView = {
   canRecover: false,
   floorPrice: 0,
   rechargeSec: 0,
-  pending: 0,
+  /** Total verse par le revenu, cumule: sert a distinguer le filet d'un gain ponctuel. */
+  earned: 0,
   alert: '',
   alertColor: '#ffffff',
   alerteJusqua: 0,
@@ -270,7 +271,16 @@ export function setupTheft(): void {
     theftView.canRecover = d.canRecover
     theftView.floorPrice = d.floorPrice
     theftView.rechargeSec = d.rechargeSec
-    theftView.pending = d.pending
+    /*
+      Ce que le revenu a verse en tout, pour pouvoir NE PAS le faire flotter.
+
+      Le compteur fait monter un "+X" des qu'il augmente. Avec le revenu verse en continu,
+      ce "+X" partirait chaque seconde et deviendrait du bruit permanent, la ou il doit
+      signaler un evenement: une vente, un vol, un ramassage. Le serveur envoie donc son
+      total; le client soustrait, et ce qui reste est ponctuel par construction. Exact, pas
+      d'heuristique de tolerance.
+    */
+    theftView.earned = d.earned
     theftView.luckSec = d.luckSec
     theftView.luckPrice = d.luckPrice
     theftView.prestigeEats = d.prestigeEats
@@ -314,18 +324,6 @@ export function setupTheft(): void {
       prefsAppliquees = true
       setSfx(d.sfxOff !== true)
     }
-  })
-
-  room.onMessage('collected', (d) => {
-    /*
-      The number and the coin say it; the sentence said it a third time.
-
-      "+1.2K coins collected" carried exactly what the floating number now carries, on the
-      most repeated gesture in the game, so it was pure duplication once the quantity channel
-      existed (owner, 3 Sep). The grid puts quantity on the number, so the toast goes.
-    */
-    floatAmount(d.gain, false)
-    playCash()
   })
 
   // The join-time message can arrive before this handler exists; the wallet tick carries the
@@ -403,7 +401,6 @@ export function doPrestige(): void { sendOrHold(() => { void room.send('rebirth'
 export function buyFloorFor(): void { sendOrHold(() => { void room.send('buyFloor', {}) }) }
 export function buySilo(): void { sendOrHold(() => { void room.send('buySilo', {}) }) }
 export function armSentry(tier = 0): void { sendOrHold(() => { void room.send('buySentry', { tier }) }) }
-export function collectPending(): void { sendOrHold(() => { void room.send('collect', {}) }) }
 
 let _adresse = ''
 export function myClientAddress(): string { return _adresse }

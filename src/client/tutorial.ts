@@ -19,7 +19,14 @@ export const STEP_TEXTS: ReadonlyArray<{ titre: string; aide: string; verb: stri
   // and the hammer. An empty `aide` simply draws no second line (owner, 6 Sep).
   { titre: 'Place your base', aide: '', verb: 'build', actions: ['construire-base', 'poser-base'] },
   { titre: 'Open your box', aide: 'walk to your box and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
-  { titre: 'Collect your coins', aide: 'tap COLLECT at your base', verb: 'collect', actions: ['encaisser'] },
+  /*
+    L'etape qui disait "tap COLLECT at your base" nommait un bouton introuvable, et en plus
+    une contrainte inexistante: l'encaissement n'avait aucune condition de distance. Le
+    revenu tombe seul depuis le 7 Sep, et l'etape sert enfin l'acte qui RAPPORTE, poser sa
+    piece sur une etagere, qui n'etait enseigne nulle part alors que c'est la source de tout
+    l'argent du jeu.
+  */
+  { titre: 'Shelve your piece', aide: 'walk into your base and put it on a stand', verb: 'place', actions: ['poser-objet'] },
   { titre: 'Buy a box', aide: 'tap a box on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
   { titre: 'Steal from a neighbour', aide: 'tap an item, hold on, run it home', verb: 'steal', actions: ['voler'] }
 ]
@@ -41,9 +48,11 @@ export function stepExpects(id: string | undefined): boolean {
 }
 
 /** The verb icon of the current step, or the collect icon once the tutorial is done. */
-export function stepVerb(): 'build' | 'crate' | 'collect' | 'steal' {
-  if (tutoView.etape >= tutoView.total) return 'collect'
-  return STEP_TEXTS[tutoView.etape].verb as 'build' | 'crate' | 'collect' | 'steal'
+export function stepVerb(): 'build' | 'crate' | 'place' | 'steal' {
+  // Une fois le tutoriel fini, le disque inerte montre le verbe du jeu, qui est le vol.
+  // Il montrait la collecte, qui n'existe plus.
+  if (tutoView.etape >= tutoView.total) return 'steal'
+  return STEP_TEXTS[tutoView.etape].verb as 'build' | 'crate' | 'place' | 'steal'
 }
 
 export function stepHintDue(): boolean {

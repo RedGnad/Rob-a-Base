@@ -3,10 +3,10 @@ export type QuestType =
   | 'ouvrir'      // open any crate
   | 'ouvrirRare'  // ouvrir une crate de type 1 ou mieux
   | 'acheter'     // buy a crate from the belt
-  | 'collectPending'   // encaisser sa pending
+  | 'voler'       // rapporter chez soi un objet vole a un voisin
   | 'vendre'      // sell un item
   | 'poser'       // place an item on your base
-  | 'bank'     // total de pieces encaissees dans la journee
+  | 'gagner'    // pieces produites par ses propres etageres dans la journee
   | 'gift'      // items left on another player's base
   | 'outbid'    // convoys rachetes a un autre joueur en cours de route
 
@@ -15,10 +15,10 @@ export type Quest = { type: QuestType; cible: number; texte: string }
 export const QUESTS: readonly Quest[] = [
   { type: 'ouvrir',     cible: 4,    texte: 'Open 4 boxes' },
   { type: 'acheter',    cible: 3,    texte: 'Buy 3 boxes from the belt' },
-  { type: 'collectPending',  cible: 5,    texte: 'Collect your income 5 times' },
+  { type: 'voler',      cible: 2,    texte: 'Steal 2 items from neighbours' },
   { type: 'vendre',     cible: 3,    texte: 'Sell 3 items' },
   { type: 'poser',      cible: 6,    texte: 'Shelve 6 items at home' },
-  { type: 'bank',    cible: 2000, texte: 'Bank 2,000 coins' },
+  { type: 'gagner',  cible: 2000, texte: 'Earn 2,000 from your shelves' },
   { type: 'ouvrirRare', cible: 2,    texte: 'Open 2 uncommon boxes' },
   { type: 'gift',     cible: 1,    texte: 'Gift an item to a neighbour' },
   { type: 'outbid',   cible: 1,    texte: 'Outbid a box in transit' }

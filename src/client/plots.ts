@@ -7,6 +7,7 @@ import {
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { place3DText, Segment3D } from './texte3d'
+import { emettreGain } from './gains'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 /** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
@@ -727,6 +728,80 @@ function createPedestal(racine: Entity, k: number): Entity {
   return o
 }
 
+/** Quand chaque base fera flotter son prochain gain, et sur quel socle. Voir `emettreGain`. */
+const rythmeGain = new Map<number, { t: number; k: number }>()
+
+/*
+  Le seul objet de son espece dans le monde: la colonne qui dit "ici, c'est chez toi".
+
+  Le probleme mesure: vu de la place, RIEN ne distingue sa base d'une autre a part du texte,
+  et beaucoup de joueurs Decentraland arrivent avec un avatar par defaut dont ils ne
+  reconnaissent pas le nom (proprietaire, 7 Sep). Or lire un nom est un traitement SERIEL: le
+  cout monte avec le nombre de bases, donc un nom ne pourra jamais marcher "du premier coup
+  d'oeil", quel que soit le joueur. Seuls la couleur, le mouvement, la taille et l'orientation
+  sont preattentifs (Treisman et Gelade, 1980; Ware pour la mise en pratique).
+
+  La couleur est indisponible: les huit accents sont TIRES D'UN HACHAGE DE L'ADRESSE
+  (`indexAccent` dans toy.ts), donc un voisin peut porter exactement la sienne, et les treize
+  skins prennent le reste de la roue. Le repere ne peut donc pas etre une teinte reservee: il
+  est unique par sa FORME. Aucune autre base n'a de colonne, et comme elle est dessinee par le
+  client du proprietaire seul, il en existe exactement une dans le monde de chaque joueur.
+  C'est la singularite au sens de Lynch (`The Image of the City`, 1960): un repere fonctionne
+  parce qu'il tranche sur son contexte, pas parce qu'il varie dedans.
+
+  Elle part du SOL, pas du toit. Une balise posee sur le toit s'eloigne du regard a mesure que
+  le joueur progresse (douze etages, 48 m), donc elle s'affaiblit exactement quand elle devrait
+  se renforcer. Une colonne qui monte depuis le seuil est lisible a hauteur d'oeil quand on est
+  devant, et depasse la ligne des toits quand on est loin: les deux cas avec un seul objet.
+  Elle se retire quand on est chez soi, ou elle n'apprend plus rien et gene la vue.
+*/
+const BALISE_H = 60
+const BALISE_PRES = 18
+let balise: Entity | null = null
+let baliseVisible = true
+let baliseXZ: { x: number; z: number } | null = null
+
+/*
+  En coordonnees MONDE, sans parent, et c'est deliberé.
+
+  Accrochee a la racine de la base, elle disparaissait avec elle le jour ou le client recycle
+  cette vue, et la variable `balise` restant non nulle, plus rien ne l'aurait recreee: le
+  repere se serait eteint sans un mot. Sans parent, sa duree de vie ne depend de personne, et
+  une colonne verticale n'a de toute facon aucun besoin de l'orientation de la base.
+*/
+function tenirLaBalise(moi: Vector3 | null, centre: Vector3): void {
+  if (balise !== null && Transform.getOrNull(balise) === null) balise = null
+  if (balise === null) {
+    balise = engine.addEntity()
+    Transform.create(balise, {
+      position: Vector3.create(centre.x, BALISE_H / 2, centre.z),
+      scale: Vector3.create(0.55, BALISE_H, 0.55)
+    })
+    MeshRenderer.setCylinder(balise, 1, 1)
+    Material.setPbrMaterial(balise, {
+      albedoColor: Color4.create(1, 0.82, 0.4, 0.26),
+      emissiveColor: Color3.fromHexString('#ffd166'),
+      emissiveIntensity: 1.6,
+      metallic: 0, roughness: 1, castShadows: false
+    })
+    baliseXZ = { x: centre.x, z: centre.z }
+  }
+  const t0 = Transform.getMutableOrNull(balise)
+  if (t0 === null) return
+  // Une base peut demenager: on suit, mais on n'ecrit que si elle a bouge.
+  if (baliseXZ === null || baliseXZ.x !== centre.x || baliseXZ.z !== centre.z) {
+    baliseXZ = { x: centre.x, z: centre.z }
+    t0.position = Vector3.create(centre.x, BALISE_H / 2, centre.z)
+  }
+  const loinDeChezSoi = moi === null
+    || Math.abs(moi.x - centre.x) + Math.abs(moi.z - centre.z) > BALISE_PRES
+  // Ecrire seulement au changement d'etat: une comparaison par image, pas une ecriture.
+  if (loinDeChezSoi !== baliseVisible) {
+    baliseVisible = loinDeChezSoi
+    t0.scale = loinDeChezSoi ? Vector3.create(0.55, BALISE_H, 0.55) : Vector3.Zero()
+  }
+}
+
 function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }, teinte: string, loin = false): View {
   // One root at the centre, turned so the door faces the belt; everything below is local to it.
   const racine = engine.addEntity()
@@ -1255,6 +1330,45 @@ export function setupPlots(): void {
       const monBase = p.ownerId.toLowerCase() === myClientAddress()
 
       /*
+        Chaque piece posee montre ce qu'elle rapporte, sur elle.
+
+        Une seule piece a la fois par base, en tournant le long des etageres: six socles qui
+        crachent ensemble font une bouffee illisible, alors qu'une onde qui court le long du
+        rayon se lit d'un coup. Le rythme suit le nombre de pieces, plancher a sept dixiemes
+        de seconde, donc une base pleine pulse trois fois plus vite qu'une base a une piece:
+        c'est la DENSITE qui dit la richesse, pas un chiffre a lire.
+
+        Bases proches seulement (`v.loin` est deja le niveau de detail du jeu): une place de
+        soixante bases n'a pas a faire flotter soixante nombres, et une base a l'autre bout
+        du terrain n'apprend rien a personne.
+      */
+      if (!v.loin) {
+        const etat = rythmeGain.get(id) ?? { t: 0, k: 0 }
+        if (Date.now() >= etat.t) {
+          let combien = 0
+          for (const code of p.items) if (code !== VIDE) combien += 1
+          if (combien > 0) {
+            const intervalle = Math.max(700, 2500 / combien)
+            etat.t = Date.now() + intervalle
+            // Le curseur avance jusqu'au prochain socle OCCUPE, en boucle sur l'etagere.
+            for (let n = 0; n < p.items.length; n++) {
+              etat.k = (etat.k + 1) % p.items.length
+              if (p.items[etat.k] !== VIDE) break
+            }
+            const code = p.items[etat.k]
+            const socle = v.items[etat.k] !== undefined ? Transform.getOrNull(v.items[etat.k]) : null
+            if (code !== undefined && code !== VIDE && socle !== null) {
+              // Meme base de calcul que le panneau au-dessus du toit, pour que les deux
+              // nombres racontent la meme chose: la production nue, sans les bonus.
+              const par = itemIncome(code, PRODUCTION_PER_RARITY) * (intervalle / 1000)
+              emettreGain(v.racine, Vector3.create(socle.position.x, socle.position.y + socle.scale.y * 0.8, socle.position.z), par)
+            }
+          }
+          rythmeGain.set(id, etat)
+        }
+      }
+
+      /*
         The signature is computed here rather than further down, because it guards twice.
 
         It already gated the item shelves. Everything between here and the door was running
@@ -1526,7 +1640,12 @@ export function setupPlots(): void {
       }
 
       // The lock pad: the one control of the base that is a thing on its floor.
-      if (monBase) tenirLePave(v.racine, p.lockedUntil, accentPour(p), p.skin)
+      if (monBase) {
+        tenirLePave(v.racine, p.lockedUntil, accentPour(p), p.skin)
+        const me = Transform.getOrNull(engine.PlayerEntity)
+        const rb = Transform.getOrNull(v.racine)
+        if (rb !== null) tenirLaBalise(me === null ? null : me.position, rb.position)
+      }
 
       // The signature only carries STRUCTURAL state. A value that ticks every second
       // (a countdown, a gauge) belongs on its own element: inside a cache key it forces

@@ -20,7 +20,7 @@ import { toyImage } from './client/toy'
 import { noterEvenement, signalerMenu } from './client/clics'
 import { loadingView } from './client/loading'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
 import { bannerLine, nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
@@ -511,10 +511,24 @@ const SellChip = (props: { right?: number }) => {
 let compteurVu = -1
 let gainA = 0
 let gainMontant = 0
+/*
+  Le total deja verse par le revenu, la derniere fois qu'on a regarde.
+
+  Depuis que le revenu tombe seul dans le solde (7 Sep), le compteur monte en permanence. Un
+  "+X" qui part a chaque seconde n'est plus un signal, c'est du decor: on cesse de le voir, et
+  il ne reste que son cout. Le flottant est reserve aux gains PONCTUELS, qui sont ceux qu'on
+  doit remarquer: une vente, un vol, un ramassage, une reclamation hors ligne. La part du
+  filet est retranchee exactement, avec le cumul que le serveur envoie, sans tolerance ni
+  devinette. Le compteur, lui, continue de monter tout seul: le revenu s'y voit, sans crier.
+*/
+let gagneVu = -1
 function compteurAffiche(): number {
   const vrai = theftView.coins
+  const filet = gagneVu < 0 ? 0 : Math.max(0, theftView.earned - gagneVu)
+  gagneVu = theftView.earned
   if (compteurVu < 0 || Math.abs(vrai - compteurVu) > Math.max(1000, vrai * 0.5)) { compteurVu = vrai; return vrai }
-  if (vrai > compteurVu) { gainMontant = gainMontant > 0 && Date.now() - gainA < 700 ? gainMontant + (vrai - compteurVu) : vrai - compteurVu; gainA = Date.now() }
+  const evenement = (vrai - compteurVu) - filet
+  if (vrai > compteurVu && evenement > 0) { gainMontant = gainMontant > 0 && Date.now() - gainA < 700 ? gainMontant + evenement : evenement; gainA = Date.now() }
   compteurVu = compteurVu + (vrai - compteurVu) * 0.16
   if (Math.abs(vrai - compteurVu) < Math.max(2, vrai * 0.0002)) compteurVu = vrai
   return Math.round(compteurVu)
@@ -731,7 +745,7 @@ const PadControls = () => {
         what the thumb will press once the beacon is reached.
       */}
       {a !== null ? (
-        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={pad.gros}
+        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('place'))} taille={pad.gros}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
           presseePar={tirDesktop}
           frames={!combatView.aiming && peutConstruireIci(a) ? posesDe(a.icon) : undefined}
@@ -952,23 +966,20 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     purchases live in the shop tab, which is a room you go to.
   */
   /*
-    Collecting, which had no button at all.
+    Il n'y a plus rien a encaisser, et c'est le correctif.
 
-    Items earn into a pool that only a `collect` message empties, and the client has always
-    had the call. Nothing ever invoked it. The pool filled and could not be banked, while the
-    tutorial's third step told the player in as many words to tap COLLECT, naming a control
-    that did not exist. A comment a few lines further down still explained that the pending
-    amount was not shown in the counter "because it already rides the COLLECT button".
+    Le revenu s'accumulait dans un pool que seul un bouton COLLECT vidait, place en DERNIER
+    dans cette liste, donc offert seulement quand rien d'autre ne l'etait: un residu, pas un
+    signal. Aucun testeur ne l'a trouve, plusieurs n'ont donc jamais compris que leurs pieces
+    rapportaient, et le plafond de dix minutes arretait leur production en silence (test
+    mobile, 6 Sep). Le revenu tombe maintenant seul dans le solde.
 
-    It goes last on purpose. Something is nearly always pending, so anywhere higher and it
-    would hide every purchase behind itself; last, it is what the button offers whenever
-    there is nothing more urgent, which is most of the time.
+    Le pave physique du tycoon Roblox et la bulle de Clash of Clans etaient les deux autres
+    reponses. Elles supposent un joueur qui VIT dans sa parcelle; ici la boucle l'en arrache
+    (le tapis, la base du voisin), et rentrer toutes les dix minutes se serait battu contre
+    elle. Le vol finit deja obligatoirement sur ses propres etageres: la raison de rentrer
+    existe, et elle est meilleure.
   */
-  if (theftView.pending >= 1) {
-    // A picture, so the button says it and the bar above the controls can stay away. The
-    // amount is not lost: the counter states the pool, which is where a total belongs.
-    return { id: 'encaisser', label: 'COLLECT', icon: ico('collect'), action: collectPending }
-  }
   return null
 }
 
@@ -1865,7 +1876,6 @@ const uiComponent = () => {
               : `+${formatIncome(theftView.income)}/S`
               + (theftView.multiplier > 1 ? `   x${theftView.multiplier} PRESTIGE` : '')
               + (theftView.prime > 0 ? `   +${Math.round(theftView.prime * 100)}% CROWD` : '')
-              + (theftView.pending >= 1 ? `   ${formatIncome(theftView.pending)} BANKED` : '')
           } />
       </UiEntity>
       {!view.serverAlive && <WaitBar />}
@@ -2290,32 +2300,63 @@ const LOADING_CEILING_MS = 30_000
 const LoadingScreen = () => {
   const pret = loadingView.assetsReady && theftView.walletRecu && view.serverAlive
   if (pret || Date.now() - loadingView.since > LOADING_CEILING_MS) return null
-  const h = Math.round(active.h * 0.52)
-  const w = Math.round(h * 1.5)
+  /*
+    The picture COVERS the screen, it is not a card floating on a navy field.
+
+    It was drawn at 52 % of the height, which on a phone is 561 by 374 inside 1600 by 720:
+    a fifth of the surface, the rest empty (owner, 7 Sep, "l'image est trop petite"). A
+    loading screen is the game's first frame and the only one that has the screen to itself.
+    So it is sized like every full-bleed splash: keep the picture's own ratio, take the
+    dimension that leaves no gap, and crop the other.
+
+    The file is 1440 by 960, so 3:2. Both canvases we can be handed are WIDER than that
+    (1600x720 is 2.22:1, 1920x1080 is 1.78:1), so the width always leads and the crop is
+    always vertical, centred: 16 % off the top and bottom on a phone, 8 % on a desktop.
+    Computed rather than guessed, so it holds on any canvas the client reports.
+  */
+  const RATIO = 1440 / 960
+  const iw = active.w
+  const ih = Math.round(active.w / RATIO)
+  const haut = Math.round((active.h - ih) / 2)
   const t = Date.now() / 1000
   const attend = !loadingView.assetsReady ? 'LOADING THE FIELD'
     : !theftView.walletRecu ? 'OPENING YOUR BASE'
     : 'WAKING THE SERVER'
+  const bande = Math.round(active.h * 0.26)
   return (
     <UiEntity
       uiTransform={{
         width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 },
-        justifyContent: 'center', alignItems: 'center', flexDirection: 'column', pointerFilter: 'block'
+        overflow: 'hidden', pointerFilter: 'block'
       }}
       uiBackground={{ color: Color4.fromHexString('#0f1524ff') }}
     >
-      <UiEntity uiTransform={{ width: w, height: h, borderRadius: RAD.card, margin: { bottom: 28 } }}
+      <UiEntity uiTransform={{ width: iw, height: ih, positionType: 'absolute', position: { top: haut, left: 0 } }}
         uiBackground={{ texture: { src: 'images/base-war-thumbnail.png' }, textureMode: 'stretch' }} />
-      <Label value={attend} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
-        uiTransform={{ width: 600, height: 40 }} textAlign="middle-center" textWrap="nowrap" />
-      {/* Three dots breathing in turn: the interface has no rotation, so a wheel is out. */}
-      <UiEntity uiTransform={{ height: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-        {[0, 1, 2].map((i) => (
-          <UiEntity key={`dot${i}`}
-            uiTransform={{ width: 14, height: 14, borderRadius: 7, margin: { left: 7, right: 7 },
-              opacity: 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 4 - i * 1.1)) }}
-            uiBackground={{ color: Color4.fromHexString('#ffd166ff') }} />
-        ))}
+      {/*
+        A band under the words rather than a veil over the whole picture. Text laid straight
+        on an image is the oldest legibility fault there is, and dimming the entire frame to
+        cure it throws away the picture we just made full screen. The scrim covers only what
+        it has to.
+      */}
+      <UiEntity
+        uiTransform={{
+          width: '100%', height: bande, positionType: 'absolute', position: { bottom: 0, left: 0 },
+          flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0.06, 0.08, 0.14, 0.82) }}
+      >
+        <Label value={attend} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
+          uiTransform={{ width: 600, height: 40 }} textAlign="middle-center" textWrap="nowrap" />
+        {/* Three dots breathing in turn: the interface has no rotation, so a wheel is out. */}
+        <UiEntity uiTransform={{ height: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+          {[0, 1, 2].map((i) => (
+            <UiEntity key={`dot${i}`}
+              uiTransform={{ width: 14, height: 14, borderRadius: 7, margin: { left: 7, right: 7 },
+                opacity: 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 4 - i * 1.1)) }}
+              uiBackground={{ color: Color4.fromHexString('#ffd166ff') }} />
+          ))}
+        </UiEntity>
       </UiEntity>
     </UiEntity>
   )
