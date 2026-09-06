@@ -5,7 +5,8 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP, RAD, lisible } from './theme'
 import { RARITIES, MUTATIONS, encoder, itemColor, progresDuSkin, skinDebloque, SKIN_NEEDS } from '../shared/loot-table'
 import { room } from '../shared/messages'
-import { Btn } from './ui-kit'
+import { tic } from './ui-kit'
+import { noterServi } from './clics'
 
 export const indexView = { open: false, vus: [] as number[], skin: 0 }
 
@@ -101,33 +102,47 @@ export const IndexContent = () => {
         The worn skin flips LOCALLY before the server answers: the old round trip was the
         "several taps to change state" the owner reported.
       */}
+      {/*
+        Colour chips, not word plates. Fourteen plates of 220 in a row of a thousand were
+        crushed to fifty each and their words ran behind their neighbours the moment the
+        collection was full (owner, 6 Sep). The grid above already names each mutation by a
+        colour chip at the head of its column; the skin row speaks the same language: one chip
+        per mutation in its own colour, the worn one ringed in white, a locked one in grey
+        with its count, and the worn skin's name written once, in the row's label. Fourteen
+        chips of 48 fit any width the window can have.
+      */}
       <UiEntity uiTransform={{ width: '100%', height: SKINS_H, flexDirection: 'row', alignItems: 'center' }}>
-        <Label value="BASE SKIN" fontSize={TYPE.caption} color={Color4.fromHexString('#7d8798ff')}
-          uiTransform={{ width: 150, height: TAP.menu }} textAlign="middle-left" textWrap="nowrap" />
-        {(() => {
-          const ouverts = MUTATIONS.filter((m) => m.id > 0 && skinDebloque(indexView.vus, m.id))
-          const fermes = [...MUTATIONS]
-            .filter((m) => m.id > 0 && !skinDebloque(indexView.vus, m.id))
-            .sort((a, b) => progresDuSkin(indexView.vus, b.id) - progresDuSkin(indexView.vus, a.id))
-            .slice(0, Math.max(0, 4 - ouverts.length))
-          return [
-            ...ouverts.map((m) => (
-              <Btn key={`s${m.id}`}
-                label={indexView.skin === m.id ? `${m.name.toUpperCase()}  ·  ON` : m.name.toUpperCase()}
-                width={220} height={TAP.menu} size={TYPE.caption} primary={indexView.skin === m.id} right={TAP.gap}
-                onClick={() => {
-                  const cible = indexView.skin === m.id ? 0 : m.id
-                  indexView.skin = cible
-                  sendOrHold(() => { void room.send('setSkin', { mutation: cible }) })
-                }} />
-            )),
-            ...fermes.map((m) => (
-              <Btn key={`p${m.id}`}
-                label={`${m.name.toUpperCase()}  ${progresDuSkin(indexView.vus, m.id)}/${RARITIES.length}`}
-                width={220} height={TAP.menu} size={TYPE.caption} skin="disabled" right={TAP.gap} />
-            ))
-          ]
-        })()}
+        <Label
+          value={`BASE SKIN  ·  ${indexView.skin > 0 ? MUTATIONS[indexView.skin].name.toUpperCase() : 'NONE'}`}
+          fontSize={TYPE.caption} color={Color4.fromHexString('#7d8798ff')}
+          uiTransform={{ width: 210, height: TAP.menu }} textAlign="middle-left" textWrap="nowrap" />
+        {MUTATIONS.filter((m) => m.id > 0).map((m) => {
+          const ouvert = skinDebloque(indexView.vus, m.id)
+          const porte = indexView.skin === m.id
+          return (
+            <UiEntity key={`s${m.id}`}
+              uiTransform={{
+                width: 48, height: TAP.menu, margin: { right: 8 }, borderRadius: 10,
+                borderWidth: porte ? 4 : 0, borderColor: Color4.White(),
+                justifyContent: 'center', alignItems: 'center', pointerFilter: 'block'
+              }}
+              uiBackground={{ color: ouvert ? Color4.fromHexString(m.color + 'ff') : Color4.create(0.22, 0.25, 0.32, 1) }}
+              onMouseDown={ouvert ? () => {
+                noterServi()
+                tic()
+                const cible = porte ? 0 : m.id
+                indexView.skin = cible
+                sendOrHold(() => { void room.send('setSkin', { mutation: cible }) })
+              } : undefined}
+            >
+              {!ouvert && (
+                <Label value={`${progresDuSkin(indexView.vus, m.id)}/${RARITIES.length}`} fontSize={TYPE.caption}
+                  color={Color4.fromHexString('#7d8798ff')} uiTransform={{ width: 48, height: TAP.menu }}
+                  textAlign="middle-center" textWrap="nowrap" />
+              )}
+            </UiEntity>
+          )
+        })}
       </UiEntity>
     </UiEntity>
   )
