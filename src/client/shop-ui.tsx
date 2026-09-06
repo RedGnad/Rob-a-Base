@@ -4,12 +4,12 @@ import { TYPE, C, TAP, SKIN, RAD, TOAST } from './theme'
 import { Btn, SURF } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
-import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
+import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, SILO_MAX, SILO_STEP_S, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
 import { gearView, acheterGear, buyLuckCharm, wield, togglePlacing as basculerPosePiege, canPlace, estPosable, tirerLaCape } from './gear'
 import { carryView } from './carry'
 import { view } from './setup'
 import { maDefense } from './plots'
-import { theftView, buyFloorFor, armSentry, alerter } from './theft'
+import { theftView, buyFloorFor, buySilo, armSentry, alerter } from './theft'
 import { openPrestige } from './prestige-ui'
 import { closeMenu } from './menu'
 
@@ -155,12 +155,13 @@ const ECHELLE = [...GEARS].sort((a, b) => a.prestige - b.prestige || a.id - b.id
 function mmss(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
 /** Four family headers, the fixed rows, the gear ladder and the charm. The window scrolls past the dialog cap. */
-export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (6 + GEARS.length) * (RANG + 14 + ENTRE - 6)
+export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (7 + GEARS.length) * (RANG + 14 + ENTRE - 6)
 
 export const ShopContent = () => {
   if (!shopView.open) return null
   const argent = theftView.coins
   const etage = theftView.floorPrice
+  const silo = theftView.siloPrice
   const palierPrestige = theftView.nextPrestige
   const prestige = prestigeTier(theftView.prestige)
   const ici = maDefense()
@@ -197,6 +198,23 @@ export const ShopContent = () => {
         possible={etage > 0 && argent >= etage && theftView.prestige >= theftView.floorNeedsPrestige}
         refus={`need ${formatIncome(etage)} coins`}
         onClick={() => { buyFloorFor(); closeMenu() }} />
+
+      {/*
+        The offline cap, sold one silo at a time.
+
+        A cap nobody can lift is only a smaller number; the genre sells the lift, and that is
+        what makes "you were away" a goal instead of a disappointment (see `SILO_BASE_PRICE`).
+        The row says the cap in minutes of production, the unit the player already reads on
+        the income line, so the purchase can be compared to a floor without arithmetic.
+      */}
+      <Rang
+        titre={silo > 0 ? `+1 SILO  (${theftView.silos}/${SILO_MAX})` : `SILOS MAXED  (${SILO_MAX}/${SILO_MAX})`}
+        icone="ui-silo.png"
+        detail={`banks ${Math.round(theftView.offlineCapS / 60)} min of production while away${silo > 0 ? `, ${Math.round((theftView.offlineCapS + SILO_STEP_S) / 60)} after` : ''}`}
+        bouton="BUY" prix={silo}
+        possible={silo > 0 && argent >= silo}
+        refus={`need ${formatIncome(silo)} coins`}
+        onClick={() => { buySilo(); closeMenu() }} />
 
       {/*
         The floor being armed is named ONCE, in the family line, instead of once per row.

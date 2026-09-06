@@ -87,15 +87,40 @@ def placer_arbres():
     la lisibilite du terrain de jeu ne se negocie pas contre du decor.
     """
     """
-    Deux rangs, finalement. Un seul rang a treize metres lisait comme un entre-deux, ni la haie
-    claire d'avant ni une lisiere (proprietaire, 6 Sep: "limite c'etait mieux quand il y en
-    avait moins... on peut en mettre plein ?"). Le prix, mesure: le fichier passe d'environ 3 a
-    6 Mo, sur 120 Mo de contenu, et 30 000 triangles de plus sur le million; zero appel de rendu,
-    zero materiau, la vegetation restant UN objet. Le second rang est en quinconce, un demi-pas
-    plus loin le long du bord et plus profond dans la bande, pour que les deux ne fassent pas
-    une double ligne.
+    Trois rangs, et le troisieme colle au mur.
+
+    Deux rangs lisaient encore comme une haie, et le proprietaire en veut plus SANS que la
+    lisiere mange du terrain (6 Sep). Le troisieme rang va donc dans les quatre premiers metres,
+    la ou personne ne marche parce que le mur est juste derriere.
+
+    Ce qu'il a fallu corriger pour que ce soit possible: la taille. Un arbre a l'echelle 2,0
+    porte une ramure de 7,1 m de rayon; pose a 4 m du mur, sa boite sortait de la scene et
+    `instancier` le RENTRAIT de trois metres, vers le terrain. Les gros arbres du rang interieur
+    etaient donc repousses vers le jeu, exactement ce qu'on ne veut pas, et tous a la meme
+    distance, ce qui refaisait une ligne. L'echelle est desormais bornee par la distance au mur
+    (`_echelle_max`), donc un arbre proche du mur est un PETIT arbre: il ne sort jamais de la
+    scene, il n'est jamais repousse, et la taille croissante du mur vers le terrain donne la
+    profondeur que le rang seul ne donnait pas.
+
+    Le prix, mesure sur les fichiers: la vegetation reste DEUX objets rendus et UN materiau,
+    quel que soit le nombre d'arbres, parce que tout est fondu. Ne montent que les triangles
+    (563 par arbre, sur un budget d'un million) et le poids du fichier (52,5 Ko par arbre).
     """
-    return _rang_arbres(0.45, 0.0, 12.0) + _rang_arbres(0.85, 6.0, 12.0)
+    return (_rang_arbres(0.30, 0.0, 11.0)
+            + _rang_arbres(0.62, 5.5, 11.0)
+            + _rang_arbres(0.95, 2.5, 11.0))
+
+
+# Le rayon horizontal de `tree.glb` a l'echelle 1, mesure sur ses sommets. L'origine du modele
+# n'est pas centree: la ramure porte a 3,56 m d'un cote, donc apres une rotation en Y c'est ce
+# rayon-la qui compte, quel que soit l'angle.
+RAYON_ARBRE = 3.56
+
+
+def _echelle_max(x, z):
+    """La plus grande echelle dont la ramure tient dans la scene a cet endroit."""
+    marge = min(x, z, SCENE_SIDE - x, SCENE_SIDE - z) - MARGE_SCENE
+    return marge / RAYON_ARBRE
 
 
 def _rang_arbres(facteur, phase, pas):
@@ -116,7 +141,10 @@ def _rang_arbres(facteur, phase, pas):
                 x, z = SCENE_SIDE - bande + (alea() - 0.5) * 3, d + j
             sc = 1.1 + alea() * 0.9
             ry = alea() * 360
-            if not sur_spawn(x, z):
+            # Borne par la place disponible, jamais rentre de force: un arbre du bord est un
+            # petit arbre, et la taille monte a mesure qu'on s'eloigne du mur.
+            sc = min(sc, _echelle_max(x, z))
+            if sc >= 0.45 and not sur_spawn(x, z):
                 out.append((x, 0.0, z, sc, ry))
             d += pas
     return out

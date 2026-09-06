@@ -239,10 +239,43 @@ export function prestigeMultiplier(n: number): number {
  */
 export const MAX_PRESTIGE = 30
 
-/**
- * Offline earnings are capped in SECONDS OF PRODUCTION, not in hours. An hour-based cap
- * pays an amount that grows with production, so it skips more and more content as the
- * player advances; a production-based cap always grants the same head start.
- */
+/*
+  Offline earnings: a rate, a cap, and a cap that can be BOUGHT.
+
+  The cap was 900 seconds of production, filled after 43 minutes away (900 / 0.35). Standing
+  still in the world already banks 600 seconds, so a whole night away paid one and a half
+  times what ten idle minutes pay and the return had no weight at all (owner, 6 Sep).
+
+  The comment this replaces justified a production-based cap over an hour-based one by saying
+  the latter "grows with production". Both do: the gain is rate x time x income either way, so
+  the two shapes are identical and only the constant differed. The constant was the problem.
+
+  The genre does not merely cap the return, it SELLS the cap, and that is the part we had
+  dropped. Cookie Clicker starts at 5 % of production for one hour and carries that to 91 %
+  over five days through its heavenly upgrades; Egg Inc stores one hour per silo, two silos
+  free, up to thirty hours with the paid permit and maxed research. We had taken the cost of a
+  cap without its benefit, which is a goal for the player who already owns everything. So the
+  base is an hour of production, and each silo adds another.
+*/
 export const OFFLINE_RATE_V2 = 0.35
-export const OFFLINE_CAP_PRODUCTION_S = 900
+/** Base cap, in seconds of ONLINE production. At 35 % it fills after 2 h 51 min away. */
+export const OFFLINE_CAP_PRODUCTION_S = 3600
+/** What one silo adds to that cap, in seconds of production. */
+export const SILO_STEP_S = 3600
+export const SILO_MAX = 6
+/**
+ * The first silo costs six times a first floor, and the ladder then climbs at the floors'
+ * rate. A floor raises production for good; a silo only converts absence, so it is priced
+ * above the floor it competes with rather than beside it. Six of them reach 331M, which is
+ * the same order as the floors a player owns by then.
+ */
+export const SILO_BASE_PRICE = 5_000_000
+/** Price of the nth silo, n counted from 1. Zero past the last one. */
+export function siloCost(n: number): number {
+  if (n < 1 || n > SILO_MAX) return 0
+  return Math.round(SILO_BASE_PRICE * Math.pow(FLOOR_PRICE_GROWTH, n - 1))
+}
+/** The player's cap, in seconds of production, silos included. */
+export function offlineCapProductionS(silos = 0): number {
+  return OFFLINE_CAP_PRODUCTION_S + Math.min(Math.max(0, Math.floor(silos)), SILO_MAX) * SILO_STEP_S
+}

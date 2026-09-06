@@ -9,7 +9,7 @@ export const MESSAGES = {
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
-  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int64, spared: Schemas.Int64, offlineGain: Schemas.Int64, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, luckSec: Schemas.Int, luckPrice: Schemas.Int64, coins: Schemas.Int64, nextPrestige: Schemas.Int64, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int64, rechargeSec: Schemas.Int, pending: Schemas.Int64, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int64, presents: Schemas.Int, prime: Schemas.Float }),
+  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int64, spared: Schemas.Int64, offlineGain: Schemas.Int64, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, offlineCapped: Schemas.Boolean, luckSec: Schemas.Int, luckPrice: Schemas.Int64, coins: Schemas.Int64, nextPrestige: Schemas.Int64, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int64, rechargeSec: Schemas.Int, pending: Schemas.Int64, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int64, silos: Schemas.Int, siloPrice: Schemas.Int64, offlineCapS: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
 
   claimSlot: Schemas.Map({ x: Schemas.Float, z: Schemas.Float }),
   basePositions: Schemas.Map({ xs: Schemas.Array(Schemas.Float), zs: Schemas.Array(Schemas.Float) }),
@@ -131,10 +131,14 @@ export const MESSAGES = {
   dailyReward: Schemas.Map({ log: Schemas.Int, crate: Schemas.Int }),
   questReward: Schemas.Map({ crate: Schemas.Int }),
 
-  offlineEarnings: Schemas.Map({ gain: Schemas.Int64, seconds: Schemas.Int }),
+  offlineEarnings: Schemas.Map({ gain: Schemas.Int64, seconds: Schemas.Int, capped: Schemas.Boolean }),
 
   buyFloor: Schemas.Map({}),
   floorBought: Schemas.Map({ floors: Schemas.Int, cost: Schemas.Int64 }),
+
+  /** The offline cap, bought one silo at a time (see `siloCost` in shared/economy.ts). */
+  buySilo: Schemas.Map({}),
+  siloBought: Schemas.Map({ silos: Schemas.Int, cost: Schemas.Int64, capS: Schemas.Int }),
 
   sold: Schemas.Map({ gain: Schemas.Int64, rarity: Schemas.Int }),
 

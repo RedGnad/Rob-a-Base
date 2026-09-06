@@ -217,6 +217,14 @@ def ui_icone(nom, hexcol):
         poly([(30, 178), (128, 214), (226, 178), (128, 142)], mix(c, (0, 0, 0), 0.25))
         poly([(30, 130), (128, 166), (226, 130), (128, 94)], c)
         poly([(30, 82), (128, 118), (226, 82), (128, 46)], light)
+    elif nom == 'silo':
+        # A grain silo: domed cap, body, one hoop. It is the genre's own word for the thing
+        # that stores what the farm makes while nobody is watching (Egg Inc), and the
+        # silhouette survives the 40 px the shop row gives it.
+        d.pieslice((52, 22, 204, 174), 180, 360, fill=light + (255,), outline=dark + (255,), width=W)
+        d.rounded_rectangle((56, 92, 200, 228), radius=12, fill=c + (255,), outline=dark + (255,), width=W)
+        trait((62, 150), (194, 150))
+        ell((112, 176, 144, 208), dark)
     elif nom == 'shield':
         poly([(128, 30), (216, 68), (216, 140), (128, 226), (40, 140), (40, 68)])
         poly([(128, 30), (216, 68), (216, 140), (128, 226)], mix(c, (0, 0, 0), 0.22))
@@ -437,6 +445,9 @@ ACT_ICONES = [
 
 UI_ICONES = [
     ('crate', '#e0a24a'), ('floor', '#7cc4ff'), ('shield', '#6fb1f2'), ('lock', '#e8b04a'),
+    # Teal, not the grain amber it started as: the shop row already carries an amber crate,
+    # an amber padlock and an amber star, and at forty pixels a fourth was one too many.
+    ('silo', '#48b89f'),
     ('prestige', '#f5a524'), ('luck', '#6cc72e'),
     ('gear-0', '#e06a4a'), ('gear-1', '#4dd2ff'), ('gear-2', '#f2b45a'),
     ('gear-3', '#b48cf0'), ('gear-4', '#ff7a9c'), ('gear-5', '#ffd24a'),
@@ -457,8 +468,14 @@ def fade(left):
 
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
-    for k, (hexcol, glow) in enumerate(RARITIES):
-        icone_glyphe(k, hexcol, glow).save(os.path.join(OUT, f'toy-{k}.png'), optimize=True)
+    # NE PAS reecrire toy-<k>.png ici.
+    #
+    # Ces sept fichiers sont depuis passes sous l'autorite de tools/model/render-item-thumbs.py,
+    # qui rend les VRAIES pieces 3D avec leur matiere. Relancer ce script les remplacait
+    # silencieusement par les anciens glyphes d'echecs, et la boutique, la carte et l'index
+    # perdaient les vignettes que le proprietaire a validees (6 Sep, rattrape avant commit).
+    # Les glyphes restent ici pour memoire; ils s'ecrivent ailleurs.
+    # Rien n'est ecrit pour les raretes ici, et c'est delibere.
     burst().save(os.path.join(OUT, 'burst.png'), optimize=True)
     enseigne().save(os.path.join(OUT, 'sign.png'), optimize=True)
     for nom, col in UI_ICONES:

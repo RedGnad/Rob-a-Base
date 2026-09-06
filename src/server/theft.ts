@@ -19,7 +19,7 @@ import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, lockCooldown, collectPending
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending
 } from './plots'
 
 /*
@@ -432,6 +432,14 @@ export function startTheft(): void {
     void room.send('floorBought', { floors: r.floors ?? 1, cost: r.cost ?? 0 }, { to: [a] })
   })
 
+
+  room.onMessage('buySilo', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const r = buySiloFor(a)
+    if (!r.ok) { refus(a, 'silo', r.reason ?? 'refused'); return }
+    void room.send('siloBought', { silos: r.silos ?? 0, cost: r.cost ?? 0, capS: r.capS ?? 0 }, { to: [a] })
+  })
 
   room.onMessage('rebirth', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

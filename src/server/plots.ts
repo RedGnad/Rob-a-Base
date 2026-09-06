@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, offlineCapProductionS, siloCost, SILO_MAX, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -61,6 +61,8 @@ type Profil = {
   itemsFound?: number
   rebirths?: number
   floorsBought?: number
+  /** Silos bought: each one adds `SILO_STEP_S` seconds of production to the offline cap. */
+  silos?: number
   /** When the last lock the owner PRESSED for ends: the button's recharge counts from here and from nothing else. */
   lockUsedUntil?: number
   vuA?: number
@@ -109,7 +111,7 @@ type Profil = {
   /** Sound effects switched off from the menu. Absent means on. */
   sfxOff?: boolean
   /** The last offline sum cashed, carried in the wallet tick for a while so a late client still hears it. */
-  annonceHL?: { gain: number; seconds: number; at: number }
+  annonceHL?: { gain: number; seconds: number; at: number; capped: boolean }
   /** Bought luck: every mutation's odds doubled until this instant. */
   luckUntil?: number
   /** Achats de chance empiles depuis la derniere expiration: c'est lui qui fait monter le prix. */
@@ -1798,7 +1800,7 @@ export function nextFloorPrice(address: string): number {
   return actuels >= MAX_FLOORS ? 0 : floorPrice(actuels + 1)
 }
 
-export function cashOfflineEarnings(address: string): { gain: number; seconds: number } | null {
+export function cashOfflineEarnings(address: string): { gain: number; seconds: number; capped: boolean } | null {
   const p = profiles.get(address)
   if (!p || p.vuA === undefined) return null
   const elapsed = Math.min(Date.now() - p.vuA, OFFLINE_CAP_MS)
@@ -1810,15 +1812,45 @@ export function cashOfflineEarnings(address: string): { gain: number; seconds: n
   if (perSecond <= 0) return null
 
   const raw = perSecond * (elapsed / 1000)
-  const cap = (perSecond / OFFLINE_RATE) * OFFLINE_CAP_PRODUCTION_S
+  // `perSecond` already carries the offline rate; dividing it out gives the full production
+  // the cap is expressed in, so the cap reads as "N seconds of what this base makes online".
+  const cap = (perSecond / OFFLINE_RATE) * offlineCapProductionS(p.silos ?? 0)
   const gain = Math.floor(Math.min(raw, cap))
   if (gain <= 0) return null
   p.coins += gain
   p.vuA = Date.now()
-  p.annonceHL = { gain, seconds: Math.floor(elapsed / 1000), at: Date.now() }
+  p.annonceHL = { gain, seconds: Math.floor(elapsed / 1000), at: Date.now(), capped: raw > cap }
   dirtyProfiles.add(address)
   log(`${nameOf(address)} cashed ${gain} offline (${Math.round(elapsed / 60000)} min at ${Math.round(OFFLINE_RATE * 100)}%)`)
-  return { gain, seconds: Math.floor(elapsed / 1000) }
+  return { gain, seconds: Math.floor(elapsed / 1000), capped: raw > cap }
+}
+
+/**
+ * Buys one silo, which raises the offline cap by an hour of production.
+ *
+ * The genre's own lever: the cap exists to be lifted, and lifting it is what turns "you are
+ * capped" into a goal (see the note above `SILO_BASE_PRICE`). Nothing about the world grows
+ * here, so unlike a floor this takes no object budget and can never be refused for room.
+ */
+export function buySiloFor(address: string): { ok: boolean; reason?: string; silos?: number; cost?: number; capS?: number } {
+  const p = profiles.get(address)
+  if (!p) return { ok: false, reason: 'no profile' }
+  const owned = p.silos ?? 0
+  if (owned >= SILO_MAX) return { ok: false, reason: 'all silos built' }
+  const cost = siloCost(owned + 1)
+  if (p.coins < cost) return { ok: false, reason: `need ${Math.ceil(cost - p.coins)} more coins` }
+  p.coins -= cost
+  p.silos = owned + 1
+  dirtyProfiles.add(address)
+  const capS = offlineCapProductionS(p.silos)
+  log(`${nameOf(address)} builds silo ${p.silos} for ${cost}, offline cap ${capS}s of production`)
+  return { ok: true, silos: p.silos, cost, capS }
+}
+
+export function nextSiloPrice(address: string): number {
+  const p = profiles.get(address)
+  if (!p) return 0
+  return siloCost((p.silos ?? 0) + 1)
 }
 
 export function collectPending(address: string): number {
@@ -1946,6 +1978,9 @@ export function startPlots(): void {
         basePosee: b !== undefined,
         lockSec: Math.max(0, Math.ceil((lock - Date.now()) / 1000)),
         floorPrice: nextFloorPrice(address),
+        silos: p.silos ?? 0,
+        siloPrice: nextSiloPrice(address),
+        offlineCapS: offlineCapProductionS(p.silos ?? 0),
         pending: pendingOf(address),
         rechargeSec: Math.ceil(lockCooldown(address) / 1000),
         canRecover: hasSomethingToRecover(address),
@@ -1961,6 +1996,7 @@ export function startPlots(): void {
         offlineGain: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.gain : 0,
         offlineSec: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.seconds : 0,
         offlineAt: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.at : 0,
+        offlineCapped: p.annonceHL?.capped === true,
         luckPrice: luckCost(prestige, luckBuysOf(address)),
         nextPrestige: next ? next.cost : 0,
         prestigeEats: objetConsommePar(address),

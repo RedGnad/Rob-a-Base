@@ -1,6 +1,7 @@
 import {
   PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, prestigeCost, prestigeMultiplier, FLOOR_PRESTIGE_GATE,
-  OFFLINE_RATE_V2, OFFLINE_CAP_PRODUCTION_S
+  OFFLINE_RATE_V2, OFFLINE_CAP_PRODUCTION_S, SILO_STEP_S, SILO_MAX, SILO_BASE_PRICE, siloCost,
+  offlineCapProductionS
 } from './economy'
 import { Schemas, engine } from '@dcl/sdk/ecs'
 import { MUTATIONS, crate } from './loot-table'
@@ -947,8 +948,16 @@ export function openSlots(floorsBought = 0): number {
 
 
 export const OFFLINE_RATE = OFFLINE_RATE_V2        // 35 % du income normal
-export const OFFLINE_CAP_MS = 4 * 3600_000
-export { OFFLINE_CAP_PRODUCTION_S }
+/*
+  Une seule regle doit mordre, et c'est le plafond de production.
+
+  Ce clamp valait 4 h. Avec sept heures de production achetables, une absence de vingt heures
+  est necessaire pour remplir le silo plein, et le clamp aurait donc rendu inutiles tous les
+  silos au-dela du deuxieme: le joueur aurait paye pour rien. Vingt-quatre heures le laissent
+  toujours en retrait du plafond de production, quel que soit le nombre de silos.
+*/
+export const OFFLINE_CAP_MS = 24 * 3600_000
+export { OFFLINE_CAP_PRODUCTION_S, SILO_STEP_S, SILO_MAX, SILO_BASE_PRICE, siloCost, offlineCapProductionS }
 
 export const PENDING_CAP_S = 600      // 10 minutes de production accumulables
 

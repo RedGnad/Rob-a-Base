@@ -22,6 +22,10 @@ export const theftView = {
   prime: 0,
   sentries: 0,
   sentryPrice: 0,
+  /** Silos owned, the price of the next one, and the offline cap they buy, in seconds of production. */
+  silos: 0,
+  siloPrice: 0,
+  offlineCapS: 0,
   coins: 0,
   prestige: 0,
   nextPrestige: 0,
@@ -248,6 +252,9 @@ export function setupTheft(): void {
     decideWelcome(d.tutoEtape, tutoView.total)
     theftView.sentries = d.sentries
     theftView.sentryPrice = d.sentryPrice
+    theftView.silos = d.silos
+    theftView.siloPrice = d.siloPrice
+    theftView.offlineCapS = d.offlineCapS
     theftView.presents = d.presents
     theftView.prime = d.prime
     theftView.coins = Math.floor(d.coins)
@@ -273,7 +280,10 @@ export function setupTheft(): void {
     if (d.offlineAt > 0 && d.offlineGain > 0 && d.offlineAt !== derniereAnnonceHL) {
       derniereAnnonceHL = d.offlineAt
       const min = Math.max(1, Math.round(d.offlineSec / 60))
-      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} coins earned in ${min} min away`, '#ffd166', TOAST.event)
+      // A full silo is the only part of this the player can act on, so it is the part that is
+      // said: the genre's cap works by being READ, otherwise being capped is just a small number.
+      const plein = d.offlineCapped ? '  ·  silo full, build another' : ''
+      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} coins earned in ${min} min away${plein}`, '#ffd166', TOAST.event)
     }
   })
 
@@ -336,6 +346,11 @@ export function setupTheft(): void {
     alerterEnFile(`GOAL DONE  ·  ${crate(d.crate).name.toUpperCase()}!`, '#4dd2ff', TOAST.event)
   })
 
+  room.onMessage('siloBought', (d) => {
+    alerter(`SILO ${d.silos}  ·  ${Math.round(d.capS / 60)} min of production banked while away`, '#4dd2ff', TOAST.result)
+    console.log(`[CLIENT] silo ${d.silos} achete pour ${d.cost}, plafond ${d.capS}s`)
+  })
+
   room.onMessage('floorBought', (d) => {
     alerter(`FLOOR ${d.floors} UNLOCKED  ·  +6 slots`, '#4dd2ff', TOAST.result)
     console.log(`[CLIENT] floor ${d.floors} achete pour ${d.cost}`)
@@ -386,6 +401,7 @@ export function lockBase(): void { sendOrHold(() => { void room.send('activateLo
 export function recover(): void { sendOrHold(() => { void room.send('reclaim', {}) }) }
 export function doPrestige(): void { sendOrHold(() => { void room.send('rebirth', {}) }) }
 export function buyFloorFor(): void { sendOrHold(() => { void room.send('buyFloor', {}) }) }
+export function buySilo(): void { sendOrHold(() => { void room.send('buySilo', {}) }) }
 export function armSentry(tier = 0): void { sendOrHold(() => { void room.send('buySentry', { tier }) }) }
 export function collectPending(): void { sendOrHold(() => { void room.send('collect', {}) }) }
 
