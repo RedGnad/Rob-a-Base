@@ -192,10 +192,22 @@ export function tailleAffichee(code: number): number {
  * Common and less than a QUARTER of a Secret, so the rarest piece in the game was the most
  * invisible thing on the floor, and nothing about a dropped piece said which one it was
  * (owner, 7 Sep: "elle est minuscule"). Smaller than a shelf is the right signal, it reads as
- * "loose, come and take it"; a fixed number is not how you say it. Sixty-two percent keeps a
- * Common at 0.62 and puts a Secret at 1.36, still plainly below its own pedestal.
+ * "loose, come and take it"; a fixed number is not how you say it. Three quarters keeps an
+ * Uncommon at 0.86 and puts a Secret at 1.65, both plainly below their own pedestal.
  */
-export function tailleAuSol(code: number): number { return tailleAffichee(code) * 0.62 }
+export function tailleAuSol(code: number): number { return tailleAffichee(code) * 0.75 }
+
+/**
+ * How far the piece's own model hangs below the entity that carries it, at a given size.
+ *
+ * A mounted model is placed at -0.49 in the stand-in's local space, which is where its BASE
+ * sits (see `FIT` in client/toy.ts). The server drops loot at a flat y of 0.5 and the client
+ * drew it there, so a half-metre piece floated a quarter of a metre off the grass: detached
+ * from the ground, which is most of what made it read as a token rather than as a piece
+ * somebody dropped (owner, 7 Sep). Adding this to the drop's floor puts it back on the floor
+ * at any size, and it has to be a function of the size now that the size varies.
+ */
+export function assiseAuSol(code: number): number { return tailleAuSol(code) * 0.49 }
 /**
  * The average mutation multiplier a roll with these weights will produce.
  *
