@@ -18,9 +18,9 @@ export const STEP_TEXTS: ReadonlyArray<{ titre: string; aide: string; verb: stri
   // square (travel.ts), and the world already carries the floating PLACE YOUR BASE, the ghost
   // and the hammer. An empty `aide` simply draws no second line (owner, 6 Sep).
   { titre: 'Place your base', aide: '', verb: 'build', actions: ['construire-base', 'poser-base'] },
-  { titre: 'Open your crate', aide: 'walk to your crate and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
+  { titre: 'Open your box', aide: 'walk to your box and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
   { titre: 'Collect your coins', aide: 'your items earn into a pool: tap COLLECT', verb: 'collect', actions: ['encaisser'] },
-  { titre: 'Buy a crate', aide: 'tap a crate on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
+  { titre: 'Buy a box', aide: 'tap a box on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
   { titre: 'Steal from a neighbour', aide: 'walk into another base, tap an item, hold on, and run it home', verb: 'steal', actions: ['voler'] }
 ]
 

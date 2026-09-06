@@ -124,7 +124,7 @@ export function startBelt(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const art = articles.find((x) => x.id === d.articleId)
-    if (!art) { void room.send('actionRejected', { action: 'purchase', reason: 'that crate is already gone', antiCheat: false }, { to: [a] }); return }
+    if (!art) { void room.send('actionRejected', { action: 'purchase', reason: 'that box is already gone', antiCheat: false }, { to: [a] }); return }
     if (art.vendu) { void room.send('actionRejected', { action: 'purchase', reason: 'someone paid before you', antiCheat: false }, { to: [a] }); return }
 
     const p = positionOf(a)
@@ -141,7 +141,7 @@ export function startBelt(): void {
     }
 
     if (cratesOf(a).length >= MAX_CRATES) {
-      void room.send('actionRejected', { action: 'purchase', reason: `your crate stock is full (${MAX_CRATES}), open some first`, antiCheat: false }, { to: [a] })
+      void room.send('actionRejected', { action: 'purchase', reason: `your box stock is full (${MAX_CRATES}), open some first`, antiCheat: false }, { to: [a] })
       return
     }
     if (!spend(a, art.price)) {
@@ -194,7 +194,7 @@ export function startBelt(): void {
       return
     }
     if (!removeCrate(a, d.crateTier)) {
-      void room.send('actionRejected', { action: 'opening', reason: 'you do not have that crate', antiCheat: true }, { to: [a] })
+      void room.send('actionRejected', { action: 'opening', reason: 'you do not have that box', antiCheat: true }, { to: [a] })
       return
     }
     tutoFait(a, 1)

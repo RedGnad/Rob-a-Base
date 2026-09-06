@@ -1056,7 +1056,7 @@ function hint(): string {
   if (slotView.active && !slotView.valid) return slotView.reason
   // Actionable: it says go home, and the crates are not doing anything until you do.
   if (boxView.stock.length > 0 && !peutOuvrirIci()) {
-    return `${boxView.stock.length} crate${boxView.stock.length > 1 ? 's' : ''} waiting at your base`
+    return `${boxView.stock.length} box${boxView.stock.length > 1 ? 'es' : ''} waiting at your base`
   }
   // Time-critical, and said from the owner's side: what they own here is a protection, and
   // "base locked" describes the mechanism while reading like a fault on your own screen.
@@ -1789,7 +1789,7 @@ const uiComponent = () => {
                     : intentEnAttente() ? 'STARTING UP, ACTION QUEUED' : 'STARTING UP')
                   : (intentEnAttente() ? 'RECONNECTING, ACTION QUEUED' : 'RECONNECTING'))
             : !theftView.basePosee ? 'PLACE YOUR BASE'
-            : theftView.income === 0 ? 'OPEN A CRATE TO EARN'
+            : theftView.income === 0 ? 'OPEN A BOX TO EARN'
             /*
                 The rate, then the two things that multiply it, then the pool to be collected.
 
@@ -1890,7 +1890,7 @@ const uiComponent = () => {
         uiBackground={SKIN.panel}
       >
         <Label
-          value={`FREE CRATE IN ${Math.floor(giftView.leftS / 60)}:${String(giftView.leftS % 60).padStart(2, '0')}`}
+          value={`FREE BOX IN ${Math.floor(giftView.leftS / 60)}:${String(giftView.leftS % 60).padStart(2, '0')}`}
           fontSize={TYPE.caption} color={C.bonus}
           uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
         <Barre hauteur={8} couleur={C.bonus}
@@ -2087,7 +2087,7 @@ const uiComponent = () => {
           <UiEntity uiTransform={{ width: RUSH_CARD_W - 40 - 102, height: RUSH_CARD_H - 20, flexDirection: 'column', justifyContent: 'center' }}>
             <Label value={`${r.grand ? 'GRAND ' : ''}${r.name}`} fontSize={TYPE.label} color={teinte}
               uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
-            <Label value={`belt crates drop ${r.toy} toys  ·  x${r.mult} income`} fontSize={TYPE.label} color={C.name}
+            <Label value={`belt boxes drop ${r.toy} toys  ·  x${r.mult} income`} fontSize={TYPE.label} color={C.name}
               uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
             <Label value={`${Math.floor(r.leftS / 60)}:${String(r.leftS % 60).padStart(2, '0')} left  ·  at the belt${r.grand ? '  ·  belt at double speed' : ''}${r.gift !== '' ? `  ·  ${r.gift}` : ''}`}
               fontSize={TYPE.caption} color={C.dim}

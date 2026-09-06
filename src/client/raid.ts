@@ -132,7 +132,7 @@ export function setupRaid(): void {
       : 'THE BOSS HIT YOU  ·  you dropped what you carried', '#ff6b6b', TOAST.warning)
   })
   room.onMessage('raidWon', (d) => {
-    alerter(`YOU SLEW THE BOSS  ·  ${crate(d.crate).name.toUpperCase()} in your crates`, '#ffd166', TOAST.event)
+    alerter(`YOU SLEW THE BOSS  ·  ${crate(d.crate).name.toUpperCase()} in your boxes`, '#ffd166', TOAST.event)
   })
   room.onMessage('raidOver', (d) => {
     pushToFeed(d.slain ? `${d.winner} slew the raid boss` : 'the raid boss left')

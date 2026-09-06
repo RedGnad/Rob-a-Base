@@ -1,5 +1,5 @@
 import { plasticDe, caisse, FIT, TOY_DIR, spinLoop } from './toy'
-import { engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers, GltfContainer } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers, GltfContainer, TextShape, Billboard, BillboardMode } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
@@ -161,6 +161,27 @@ export function setupBox(): void {
 
   crateMesh = engine.addEntity()
   Transform.create(crateMesh, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
+
+  /*
+    The blow counter, in the world, over the box.
+
+    It was a plate in the middle of the interface, and it failed twice: it covered the view,
+    and the one tester who needed it never read it (owner, 6 Sep). Moving it here is what the
+    reference on game feel actually asks for. `Juice it or lose it` (Jonasson and Purho, GDC
+    Europe 2012) puts every response ON the object being acted upon, never on a status panel
+    beside it: the eye is on the box, so the count goes on the box. Three pips, filled as the
+    blows land, billboarded so they read from any angle, outlined so they hold over any floor.
+
+    Its own entity rather than a child of the box: the box's scale is driven by the impact
+    tween, and a child would swell and squash with it.
+  */
+  crateCount = engine.addEntity()
+  Transform.create(crateCount, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0.55, 0.55, 0.55) })
+  Billboard.create(crateCount, { billboardMode: BillboardMode.BM_Y })
+  TextShape.create(crateCount, {
+    text: '', fontSize: 4, textColor: Color4.fromHexString('#ffd166ff'),
+    outlineWidth: 0.3, outlineColor: Color4.fromHexString('#0b1018ff')
+  })
   /*
     La caisse se frappe, elle ne se heurte pas.
 
@@ -321,9 +342,24 @@ function abandonSmash(): void {
   boxView.phase = 'idle'
   boxView.opening = false
   boxView.coups = 0
+  majCompteur()
   const t = Transform.getMutableOrNull(crateMesh)
   if (t !== null) t.scale = Vector3.Zero()
   console.log('[CLIENT] crate opening abandoned, crate stays in stock')
+}
+
+/** The three pips over the box: filled for blows landed, hollow for blows left. */
+function majCompteur(): void {
+  const ts = TextShape.getMutableOrNull(crateCount)
+  const tc = Transform.getMutableOrNull(crateCount)
+  const tb = Transform.getOrNull(crateMesh)
+  if (ts === null || tc === null || tb === null) return
+  if (!boxView.opening) { tc.position = Vector3.create(0, -10, 0); ts.text = ''; return }
+  const b = crate(boxView.typeEnCours)
+  tc.position = Vector3.create(tb.position.x, tb.position.y + b.size * 0.95, tb.position.z)
+  let s = ''
+  for (let i = 0; i < COUPS; i++) s += (i < boxView.coups ? '\u25c6' : '\u25c7') + (i < COUPS - 1 ? ' ' : '')
+  ts.text = s
 }
 
 export function frapper(): void {
@@ -340,11 +376,15 @@ export function frapper(): void {
     newcomer will not read as damage. So the blow now carries what every reference for this
     beat carries (Jonasson and Purho, GDC Europe 2012, on squash, particles and sound layered
     on one impact): a deeper squash, a turn of the box on its axis so the hit has a direction,
-    a burst of the crate's own colour at the point of contact, and a crate that shrinks a
-    tenth on every blow, so three hits are visible in the silhouette alone.
+    a burst of the box's own colour at the point of contact, and a box that SWELLS on every
+    blow, so the three hits read in the silhouette alone.
+
+    It shrank in the first version, and the owner named the error: an opening is a rising
+    curve, and something getting smaller as you hit it is the curve run backwards (6 Sep). It
+    now swells a tenth per blow, which is the "about to burst" read every chest opening in the
+    genre uses, and the burst at the third blow is then a release rather than a disappearance.
   */
-  const reste = 1 - (boxView.coups / COUPS) * 0.3
-  const fin = b.size * reste
+  const fin = b.size * (1 + (boxView.coups / COUPS) * 0.30)
   Tween.createOrReplace(crateMesh, {
     mode: Tween.Mode.Scale({
       start: Vector3.create(fin * 0.6, fin * 1.34, fin * 0.6),
@@ -360,6 +400,7 @@ export function frapper(): void {
     puff(Vector3.create(tk.position.x, tk.position.y + b.size * 0.3, tk.position.z), b.color, b.size * 1.5)
   }
   jouer(hitSound)
+  majCompteur()
 
   // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
   // Pas de disque au sol: la caisse qu'on ouvre flotte a hauteur de poitrine, son disque
@@ -371,6 +412,7 @@ export function frapper(): void {
 
   if (boxView.coups >= COUPS) {
     boxView.opening = false
+    majCompteur()
     boxView.phase = 'wait'
     boxView.phaseJusqua = Date.now() + 6000
     const t = Transform.getOrNull(crateMesh)
@@ -381,6 +423,7 @@ export function frapper(): void {
   }
 }
 
+let crateCount: Entity
 let refuseSound: Entity
 /**
  * Montre la revelation pour un code deja decide, sans tirage: la sortie du fuser.
@@ -647,6 +690,7 @@ export function openCrate(crateTier: number): void {
   boxView.coups = 0
   boxView.typeEnCours = crateTier
   boxView.message = ''
+  timers.setTimeout(majCompteur, 0)
 
   /*
     In front of the player, at the player's height.

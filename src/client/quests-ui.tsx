@@ -159,7 +159,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
       >
         {/* Same three columns as a quest row: the text spans the first two, the action
             sits in the third, so the buttons of every row in this tab share one edge. */}
-        <Label value="ALL THREE  ·  bonus rare crate" fontSize={TYPE.label}
+        <Label value="ALL THREE  ·  bonus rare box" fontSize={TYPE.label}
           color={allDone ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString('#7d879bff')}
           uiTransform={{ width: '74%', height: 60 }} textAlign="middle-left" />
         <UiEntity uiTransform={{ width: COL.action, height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>

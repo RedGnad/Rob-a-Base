@@ -388,10 +388,21 @@ function vitres() {
   ]
 }
 
-/** Lintel and four corner posts: the base's colour on the parts that never hide. */
+/**
+ * The doorway's whole frame, and four corner posts: the base's colour on the parts that never hide.
+ *
+ * It was a lintel alone, a 30 cm bar over the opening and nothing down the sides, so from the
+ * street the door read as a gap in a wall rather than a way in (tester, 6 Sep). The frame now
+ * follows the opening all the way round, and it is THINNER for it: 18 cm instead of 30, because
+ * a frame that traces three sides carries the shape on its own and does not need weight to be
+ * seen. Two jambs and a lintel, each just outside the opening so the passage keeps its width.
+ */
+const JAMBE = 0.18
 function accent() {
   return [
-    [0, h - 0.15, c / 2, G.DOOR_WIDTH, 0.3, ep],
+    [0, h - JAMBE / 2, c / 2, G.DOOR_WIDTH + 2 * JAMBE, JAMBE, ep],
+    [-(G.DOOR_WIDTH + JAMBE) / 2, h / 2, c / 2, JAMBE, h, ep],
+    [(G.DOOR_WIDTH + JAMBE) / 2, h / 2, c / 2, JAMBE, h, ep],
     [-c / 2, h / 2, -c / 2, 0.28, h, 0.28],
     [c / 2, h / 2, -c / 2, 0.28, h, 0.28],
     [-c / 2, h / 2, c / 2, 0.28, h, 0.28],

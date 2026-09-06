@@ -7,9 +7,9 @@ import {
 
 export const ETAPES = [
   'Place your base',
-  'Open your crate',
+  'Open your box',
   'Collect your coins',
-  'Buy a crate from the belt',
+  'Buy a box from the belt',
   'Leave a gift on another base'
 ] as const
 

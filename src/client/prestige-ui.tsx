@@ -243,7 +243,7 @@ export const PrestigePanel = () => {
           <UiEntity uiTransform={{ width: '100%', height: 28, flexDirection: 'row', alignItems: 'center' }}>
             <Label value="KEEP" fontSize={TYPE.caption} color={KEEP}
               uiTransform={{ width: 70, height: 28 }} textAlign="middle-left" />
-            <Label value={`best ${palier.guard === 1 ? 'item' : palier.guard + ' items'}  ·  floors  ·  sentries  ·  crates  ·  gear`} fontSize={TYPE.caption} color={C.name}
+            <Label value={`best ${palier.guard === 1 ? 'item' : palier.guard + ' items'}  ·  floors  ·  sentries  ·  boxes  ·  gear`} fontSize={TYPE.caption} color={C.name}
               uiTransform={{ width: CARTE * 2 + AIR - 70, height: 28 }} textAlign="middle-left" textWrap="nowrap" />
           </UiEntity>
           <UiEntity uiTransform={{ width: '100%', height: 28, flexDirection: 'row', alignItems: 'center' }}>

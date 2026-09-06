@@ -107,10 +107,10 @@ export function itemName(rarityId: number, mut: number): string {
  * lands on Rare 55% of the time, so the name is a fair description of the odds.
  */
 export const CRATES = [
-  { id: 0, name: 'Basic Crate',  tier: 0, theme: -1, weight: 0,   price: CRATE_PRICE[0],                     color: '#9aa3ad', size: 0.83 },
-  { id: 1, name: 'Good Crate',   tier: 1, theme: -1, weight: 0,   price: CRATE_PRICE[1],                     color: '#4ec04e', size: 0.93 },
-  { id: 2, name: 'Rare Crate',   tier: 2, theme: -1, weight: 0,   price: CRATE_PRICE[2],                     color: '#3d8ef0', size: 1.05 },
-  { id: 3, name: 'Epic Crate',   tier: 3, theme: -1, weight: 0,   price: CRATE_PRICE[3],                     color: '#a855f7', size: 1.20 },
+  { id: 0, name: 'Basic Box',  tier: 0, theme: -1, weight: 0,   price: CRATE_PRICE[0],                     color: '#9aa3ad', size: 0.83 },
+  { id: 1, name: 'Good Box',   tier: 1, theme: -1, weight: 0,   price: CRATE_PRICE[1],                     color: '#4ec04e', size: 0.93 },
+  { id: 2, name: 'Rare Box',   tier: 2, theme: -1, weight: 0,   price: CRATE_PRICE[2],                     color: '#3d8ef0', size: 1.05 },
+  { id: 3, name: 'Epic Box',   tier: 3, theme: -1, weight: 0,   price: CRATE_PRICE[3],                     color: '#a855f7', size: 1.20 },
   /*
     A themed crate's price is its tier's price times the ratio of the expected mutation
     multiplier under its push to the plain roll's (1.63 with today's weights): the price
@@ -118,25 +118,25 @@ export const CRATES = [
     mutation as often as the Cursed does, 54 % of openings (1800 / the mutation's weight);
     the three older pushes stay, their factors recomputed on the 5 Sep weights.
   */
-  { id: 4, name: 'Gold Crate',   tier: 1, theme: 1,  weight: 12,  price: Math.round(CRATE_PRICE[1] * 0.86),  color: '#ffd700', size: 0.99 },
-  { id: 5, name: 'Lava Crate',   tier: 2, theme: 5,  weight: 60,  price: Math.round(CRATE_PRICE[2] * 2.16),  color: '#ff5722', size: 1.11, image: 'crate-5.png' },
-  { id: 6, name: 'Cursed Crate', tier: 3, theme: 9,  weight: 180, price: Math.round(CRATE_PRICE[3] * 3.43),  color: '#3b0a45', size: 1.29, image: 'crate-6.png' },
+  { id: 4, name: 'Gold Box',   tier: 1, theme: 1,  weight: 12,  price: Math.round(CRATE_PRICE[1] * 0.86),  color: '#ffd700', size: 0.99 },
+  { id: 5, name: 'Lava Box',   tier: 2, theme: 5,  weight: 60,  price: Math.round(CRATE_PRICE[2] * 2.16),  color: '#ff5722', size: 1.11, image: 'crate-5.png' },
+  { id: 6, name: 'Cursed Box', tier: 3, theme: 9,  weight: 180, price: Math.round(CRATE_PRICE[3] * 3.43),  color: '#3b0a45', size: 1.29, image: 'crate-6.png' },
   // The two rungs above Epic: what a rich player crosses the plaza for. Rare on the belt, announced.
-  { id: 7, name: 'Legendary Crate', tier: 4, theme: -1, weight: 0, price: CRATE_PRICE[4],                 color: '#f5a524', size: 1.34 },
-  { id: 8, name: 'Mythic Crate',    tier: 5, theme: -1, weight: 0, price: CRATE_PRICE[5],                 color: '#ff4d6d', size: 1.40 },
+  { id: 7, name: 'Legendary Box', tier: 4, theme: -1, weight: 0, price: CRATE_PRICE[4],                 color: '#f5a524', size: 1.34 },
+  { id: 8, name: 'Mythic Box',    tier: 5, theme: -1, weight: 0, price: CRATE_PRICE[5],                 color: '#ff4d6d', size: 1.40 },
   /*
     One themed crate per mutation, so the belt SHOWS the whole ladder: what a player never sees
     does not exist for them (Zendle and Cairns 2018 on loot boxes, the near-miss literature,
     the coloured rarity ladders of the genre). Epic tier and the Cursed's push, prices scaled
     by the mutation's multiplier, rarer on the belt the higher the multiplier (owner, 5 Sep).
   */
-  { id: 9,  name: 'Galaxy Crate',       tier: 3, theme: 6,  weight: 82, price: Math.round(CRATE_PRICE[3] * 2.77), color: '#5b2c8d', size: 1.27, image: 'crate-9.png' },
-  { id: 10, name: 'Yin Yang Crate',     tier: 3, theme: 7,  weight: 106, price: Math.round(CRATE_PRICE[3] * 2.93), color: '#b6b6be', size: 1.28, image: 'crate-10.png' },
-  { id: 11, name: 'Radioactive Crate',  tier: 3, theme: 8,  weight: 138, price: Math.round(CRATE_PRICE[3] * 3.26), color: '#7fff00', size: 1.29, image: 'crate-11.png' },
-  { id: 12, name: 'Divine Crate',       tier: 3, theme: 10, weight: 257, price: Math.round(CRATE_PRICE[3] * 3.76), color: '#ffe9a8', size: 1.30, image: 'crate-12.png' },
-  { id: 13, name: 'Rainbow Crate',      tier: 3, theme: 11, weight: 360, price: Math.round(CRATE_PRICE[3] * 3.76), color: '#ff00ff', size: 1.31, image: 'crate-13.png' },
-  { id: 14, name: 'Cyber Crate',        tier: 3, theme: 12, weight: 514, price: Math.round(CRATE_PRICE[3] * 4.09), color: '#00e5ff', size: 1.32, image: 'crate-14.png' },
-  { id: 15, name: 'Phantom Crate',      tier: 3, theme: 13, weight: 900, price: Math.round(CRATE_PRICE[3] * 4.42), color: '#86ffd0', size: 1.33, image: 'crate-15.png' }
+  { id: 9,  name: 'Galaxy Box',       tier: 3, theme: 6,  weight: 82, price: Math.round(CRATE_PRICE[3] * 2.77), color: '#5b2c8d', size: 1.27, image: 'crate-9.png' },
+  { id: 10, name: 'Yin Yang Box',     tier: 3, theme: 7,  weight: 106, price: Math.round(CRATE_PRICE[3] * 2.93), color: '#b6b6be', size: 1.28, image: 'crate-10.png' },
+  { id: 11, name: 'Radioactive Box',  tier: 3, theme: 8,  weight: 138, price: Math.round(CRATE_PRICE[3] * 3.26), color: '#7fff00', size: 1.29, image: 'crate-11.png' },
+  { id: 12, name: 'Divine Box',       tier: 3, theme: 10, weight: 257, price: Math.round(CRATE_PRICE[3] * 3.76), color: '#ffe9a8', size: 1.30, image: 'crate-12.png' },
+  { id: 13, name: 'Rainbow Box',      tier: 3, theme: 11, weight: 360, price: Math.round(CRATE_PRICE[3] * 3.76), color: '#ff00ff', size: 1.31, image: 'crate-13.png' },
+  { id: 14, name: 'Cyber Box',        tier: 3, theme: 12, weight: 514, price: Math.round(CRATE_PRICE[3] * 4.09), color: '#00e5ff', size: 1.32, image: 'crate-14.png' },
+  { id: 15, name: 'Phantom Box',      tier: 3, theme: 13, weight: 900, price: Math.round(CRATE_PRICE[3] * 4.42), color: '#86ffd0', size: 1.33, image: 'crate-15.png' }
 ] as const
 /*
   `size` is the crate's edge in metres, and it grew by half on 27 Aug: a 0.55 m cube on the
