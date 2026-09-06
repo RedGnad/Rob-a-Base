@@ -12,7 +12,10 @@ export const indexView = { open: false, vus: [] as number[], skin: 0 }
 
 export function basculerIndex(): void { indexView.open = !indexView.open }
 
-const CASE = 30
+// 26, from 30: the four units a row gives back are what two rows of thumb-sized skin chips
+// need under the grid, with the whole tab still inside the window's body (474) and nothing
+// to scroll (owner, 6 Sep: the grid stays visible at all times).
+const CASE = 26
 const GAP = 3
 /*
   The box is the sum of what goes in it, not a guess with a round number added.
@@ -32,7 +35,15 @@ const PANEL_H = PAD * 2 + TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
 
 /** The grid plus its two labels, which is what the window is asked to make room for. */
 /** The skin row under the grid: the buttons for the columns that are full, the count for the nearest ones. */
-const SKINS_H = TAP.rangee
+/**
+ * A skin chip is a thumb target: 80 by 72 units is 7.6 by 6.8 mm on the reference handset
+ * (0.095 mm a unit), at the floor the platform guidelines set. Fourteen of them go on two
+ * rows of seven, all visible, nothing to scroll.
+ */
+const PUCE_L = 80
+const PUCE_H = 72
+const PUCE_GAP = 8
+const SKINS_H = PUCE_H * 2 + PUCE_GAP
 const DOTS_H = 20
 export const HAUTEUR_INDEX = TITRE_H + DOTS_H + RARITIES.length * (CASE + GAP) + PIED_H + SKINS_H
 
@@ -91,7 +102,7 @@ export const IndexContent = () => {
 
       <Label
         uiTransform={{ width: '100%', height: PIED_H }}
-        value={`rows: rarity   ·   columns: mutation   ·   ${SKIN_NEEDS} of ${RARITIES.length} in a column unlocks that base skin`}
+        value={`BASE SKIN  ·  ${indexView.skin > 0 ? MUTATIONS[indexView.skin].name.toUpperCase() : 'NONE'}      ·      ${SKIN_NEEDS} of ${RARITIES.length} in a column unlocks that skin`}
         fontSize={TYPE.caption}
         color={Color4.fromHexString('#7d8798ff')} />
       {/*
@@ -111,19 +122,15 @@ export const IndexContent = () => {
         with its count, and the worn skin's name written once, in the row's label. Fourteen
         chips of 48 fit any width the window can have.
       */}
-      <UiEntity uiTransform={{ width: '100%', height: SKINS_H, flexDirection: 'row', alignItems: 'center' }}>
-        <Label
-          value={`BASE SKIN  ·  ${indexView.skin > 0 ? MUTATIONS[indexView.skin].name.toUpperCase() : 'NONE'}`}
-          fontSize={TYPE.caption} color={Color4.fromHexString('#7d8798ff')}
-          uiTransform={{ width: 210, height: TAP.menu }} textAlign="middle-left" textWrap="nowrap" />
+      <UiEntity uiTransform={{ width: '100%', height: SKINS_H, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
         {MUTATIONS.filter((m) => m.id > 0).map((m) => {
           const ouvert = skinDebloque(indexView.vus, m.id)
           const porte = indexView.skin === m.id
           return (
             <UiEntity key={`s${m.id}`}
               uiTransform={{
-                width: 48, height: TAP.menu, margin: { right: 8 }, borderRadius: 10,
-                borderWidth: porte ? 4 : 0, borderColor: Color4.White(),
+                width: PUCE_L, height: PUCE_H, margin: { right: PUCE_GAP, bottom: PUCE_GAP }, borderRadius: 14,
+                borderWidth: porte ? 5 : 0, borderColor: Color4.White(),
                 justifyContent: 'center', alignItems: 'center', pointerFilter: 'block'
               }}
               uiBackground={{ color: ouvert ? Color4.fromHexString(m.color + 'ff') : Color4.create(0.22, 0.25, 0.32, 1) }}
@@ -137,7 +144,7 @@ export const IndexContent = () => {
             >
               {!ouvert && (
                 <Label value={`${progresDuSkin(indexView.vus, m.id)}/${RARITIES.length}`} fontSize={TYPE.caption}
-                  color={Color4.fromHexString('#7d8798ff')} uiTransform={{ width: 48, height: TAP.menu }}
+                  color={Color4.fromHexString('#7d8798ff')} uiTransform={{ width: PUCE_L, height: PUCE_H }}
                   textAlign="middle-center" textWrap="nowrap" />
               )}
             </UiEntity>
