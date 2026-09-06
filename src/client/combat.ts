@@ -225,7 +225,7 @@ function jouerDraw(sortie: boolean): void {
 const enJoue = new Set<string>()
 const armeDe = new Map<string, ArmeType>()
 
-const piles = new Map<number, { chute: Entity; body: Entity; label: Entity; sec: number }>()
+const piles = new Map<number, { chute: Entity; pivot: Entity; body: Entity; label: Entity; sec: number }>()
 
 /**
  * A holder whose origin is the grip, and the model hung off it by its measured pivot.
@@ -1094,21 +1094,39 @@ function pileSystem(): void {
       while the toys on the shelves stood at a metre (owner, 3 Sep). Eighty centimetres,
       lifted by half its thickness so it lies ON the ground rather than in it.
     */
+    /*
+      A coin STANDS. Lying flat it is a plate.
+
+      The cylinder was laid down, faces up, spinning around its own vertical axis: from the
+      street that is a gold disc turning on the ground, and the tester's words were that it
+      did not look like coins at all (owner, 7 Sep). A coin is read by its edge and its face
+      alternating, which is why every game that drops one stands it up and turns it about the
+      world's vertical. So the tilt goes on the body and the turn on a pivot between it and
+      the faller: an entity carries one tween, the faller already owns the fall, and putting
+      the turn on the tilted body would roll it like a wheel instead of spinning it in place.
+    */
+    const pivot = engine.addEntity()
+    Transform.create(pivot, { parent: chute, position: Vector3.create(0, COIN_DIAMETER / 2, 0) })
+    spinLoop(pivot, 1600)
+
     const body = engine.addEntity()
-    Transform.create(body, { parent: chute, position: Vector3.create(0, COIN_THICKNESS / 2, 0), scale: Vector3.create(COIN_DIAMETER, COIN_THICKNESS, COIN_DIAMETER) })
+    Transform.create(body, {
+      parent: pivot,
+      rotation: Quaternion.fromEulerDegrees(90, 0, 0),
+      scale: Vector3.create(COIN_DIAMETER, COIN_THICKNESS, COIN_DIAMETER)
+    })
     MeshRenderer.setCylinder(body, 0.5, 0.5)
     Material.setPbrMaterial(body, plasticDe(OR, 1.6))
-    spinLoop(body, 3200)
     // Hung from the same faller, so the number arrives with the coin instead of waiting for it.
     const label = engine.addEntity()
-    Transform.create(label, { parent: chute, position: Vector3.create(0, COIN_THICKNESS + 0.75, 0), scale: Vector3.create(0.6, 0.6, 0.6) })
+    Transform.create(label, { parent: chute, position: Vector3.create(0, COIN_DIAMETER + 0.55, 0), scale: Vector3.create(0.6, 0.6, 0.6) })
     Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
     TextShape.create(label, { text: formatIncome(c.amount), fontSize: 3, textColor: OR })
-    piles.set(id, { chute, body, label, sec: -1 })
+    piles.set(id, { chute, pivot, body, label, sec: -1 })
   }
   for (const [id, v] of [...piles]) {
     if (alive.has(id)) continue
-    engine.removeEntity(v.body); engine.removeEntity(v.chute); engine.removeEntity(v.label)
+    engine.removeEntity(v.body); engine.removeEntity(v.pivot); engine.removeEntity(v.chute); engine.removeEntity(v.label)
     piles.delete(id)
   }
 }

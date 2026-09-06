@@ -85,7 +85,13 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
       uiBackground={{ color: SURF.carte }}
     >
       <UiEntity uiTransform={{ width: COL.texte, height: TAP.menu, flexDirection: 'column', justifyContent: 'center' }}>
-        <Label value={q?.texte ?? ''} fontSize={TYPE.label}
+        {/*
+          One line, never two. The box is 34 tall and the text wrapped inside it, so the
+          longest goal ran out under its own progress bar on a handset (owner, 7 Sep). The
+          four longest are shortened at the source and this can no longer wrap whatever
+          arrives: a goal that does not fit its line is a goal to rewrite, not to reflow.
+        */}
+        <Label value={q?.texte ?? ''} fontSize={TYPE.label} textWrap="nowrap"
           color={pris ? Color4.fromHexString('#6f7a6fff') : Color4.White()}
           uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" />
         {/* The fill glides to its value and flashes white the moment it completes. */}

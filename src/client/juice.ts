@@ -20,8 +20,16 @@ import { Vector3 } from '@dcl/sdk/math'
   Free on the object budget: one UI layer, no mesh, no material, no texture, no collider.
 */
 
-const PEAK = 0.45
-const DURATION_MS = 420
+/*
+  Stronger and longer, because it was being missed.
+
+  A vignette shows less of the screen than a full wash did, so it can afford to be deeper, and
+  it has to be: a tester took a hit from the raid boss and remembered neither a jolt nor a red
+  frame (owner, 7 Sep). Peak 0.78 over 620 ms, still with the squared falloff so the hit LANDS
+  and then releases rather than fading evenly.
+*/
+const PEAK = 0.78
+const DURATION_MS = 620
 
 let hitAt = -1
 

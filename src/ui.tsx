@@ -271,7 +271,14 @@ const MenuWindow = () => {
   */
   const dedans = strip(MENU_W).width - MENU_PAD * 2
   const ecart = Math.round(dedans * 0.018)
-  const bourse = Math.round(dedans * 0.19)
+  /*
+    Fifteen percent, from nineteen. Measured, not guessed: at nineteen a tab was 143 wide and
+    the word TRAVEL needs 136 of them, which leaves three and a half units of air on each side
+    and reads as a word jammed into its plate (owner, 7 Sep). The purse never needs that room:
+    the longest sum this game can show is six characters. Four units of the width move from the
+    purse to the tabs, and every tab gains ten.
+  */
+  const bourse = Math.round(dedans * 0.15)
   // CLOSE is utility, not a destination: it took as much of the bar as a whole tab and
   // read as a fifth one. Half the width and a single letter give the four real tabs the
   // room, which is the hierarchy lesson applied to our own header.
@@ -1595,9 +1602,23 @@ const uiComponent = () => {
       behind the interface without ever tinting the buttons or a panel the player is reading.
       Not gated on hud(): being shot while a window is open still has to register.
     */}
+    {/*
+      A red VIGNETTE, not a red pane over the game.
+
+      A tester took a raid boss's swipe and did not notice he had been hit (owner, 7 Sep). The
+      flash was a flat wash of the whole screen at 45 % for 420 ms with a squared falloff, so it
+      was near its peak for barely a tenth of a second and it dimmed the very thing the player
+      was looking at, which makes it easy to read as a lighting change rather than as damage.
+      Every shooter answers this the same way and for the same reason: the damage goes on the
+      EDGES, where peripheral vision is most sensitive to change and where it hides nothing.
+      The texture is the one the cloak already uses, so this costs no new asset.
+    */}
     {damageFlashAlpha() > 0 && (
-      <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}
-        uiBackground={{ color: Color4.create(1, 0.16, 0.16, damageFlashAlpha()) }} />
+      <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+        uiBackground={{
+          texture: { src: 'assets/ui/vignette.png' }, textureMode: 'stretch',
+          color: Color4.create(1, 0.12, 0.12, damageFlashAlpha())
+        }} />
     )}
 
     {/*

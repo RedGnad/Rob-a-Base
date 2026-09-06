@@ -26,8 +26,17 @@ export function dropAt(from: string, amount: number, at: { x: number; y: number;
   for (let i = 0; i < morceaux; i++) {
     // The last piece carries the remainder, so nothing is lost to rounding.
     const valeur = i === morceaux - 1 ? amount - part * (morceaux - 1) : part
-    const angle = (i / morceaux) * Math.PI * 2 + Math.random() * 1.2
-    const rayon = morceaux === 1 ? 0 : EPARPILLEMENT * (0.45 + Math.random() * 0.55)
+    /*
+      Thrown, not arranged.
+
+      The angle was `i / morceaux` of a full turn plus a little jitter, so two pieces always
+      landed opposite each other and three always made a triangle: a player reads that as
+      something PLACED, not as something dropped (tester, 7 Sep). A full random bearing and a
+      wider spread of radius is what makes a scatter read as a scatter, and the first piece
+      no longer lands exactly on the victim's feet either.
+    */
+    const angle = Math.random() * Math.PI * 2
+    const rayon = EPARPILLEMENT * (0.25 + Math.random() * 1.15)
     const x = at.x + Math.cos(angle) * rayon
     const z = at.z + Math.sin(angle) * rayon
 
