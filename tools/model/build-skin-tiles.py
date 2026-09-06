@@ -150,6 +150,35 @@ def rainbow_albedo(x, y):
     # The hue runs down the tile: with the tile mapped on height, red at the foot, violet at the top.
     return hsv(y * 0.92, 0.95, 0.9)
 
+def blood_albedo(x, y):
+    """The pieces' dried burgundy with fresher runs, made periodic: a noise stretched four times
+    along y, so it reads as something that has fallen down the wall. Blood and Candy were the
+    two skins with no pattern at all, a flat colour beside pieces that wear one (owner, 6 Sep)."""
+    # Stretched along y by giving the lattice fewer cells that way, which keeps the tile
+    # periodic: scaling y before a wrapped noise broke the wrap and drew a seam every tile.
+    def etire(nx, ny, seed):
+        fx, fy = x * nx, y * ny
+        ix, iy = math.floor(fx), math.floor(fy)
+        tx, ty = [t * t * (3 - 2 * t) for t in (fx - ix, fy - iy)]
+        c = lambda dx, dy: hash2((ix + dx) % nx, (iy + dy) % ny, seed)
+        top = c(0, 0) + (c(1, 0) - c(0, 0)) * tx
+        bot = c(0, 1) + (c(1, 1) - c(0, 1)) * tx
+        return top + (bot - top) * ty
+    n = 0.6 * etire(4, 1, 61) + 0.4 * etire(12, 3, 62)
+    k = clamp((n - 0.48) / 0.14)
+    m = mottle2(x, y, 63)
+    return (int((34 + 96 * k) * m), int((4 + 14 * k) * m), int((8 + 18 * k) * m))
+
+
+def candy_albedo(x, y):
+    """The stripe, as on the pieces: a diagonal band, white between the pinks for the sugar."""
+    u = (x + y) * 3.0
+    w = u - math.floor(u)
+    band = clamp((0.5 - abs(w - 0.5)) * 6.0)
+    wob = 0.5 + 0.5 * noise2(x, y, 8, 64)
+    return (255, int(120 + 118 * band), int(160 + 90 * band * (0.85 + 0.15 * wob)))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     lava_a, lava_g = lava(); cursed_a, cursed_g = cursed(); galaxy_a, galaxy_g = galaxy()
@@ -160,7 +189,9 @@ def main():
         'skin-6-albedo': galaxy_a, 'skin-6-glow': galaxy_g,
         'skin-12-glow': cyber_glow,
         'skin-11-albedo': rainbow_albedo,
-        'skin-7-albedo': yinyang_a
+        'skin-7-albedo': yinyang_a,
+        'skin-3-albedo': blood_albedo,
+        'skin-4-albedo': candy_albedo
     }
     for name, fn in tiles.items():
         big = name.startswith('skin-5-')  # the lava tile spans 3.6 m: 512 px, no supersampling needed

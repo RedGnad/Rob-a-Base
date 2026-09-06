@@ -456,7 +456,16 @@ const MOTIFS = {
   6: { tuile: 1.2, albedo: 'skin-6-albedo', lueur: 'skin-6-glow', emissif: [0.9, 0.8, 1.0] },       // Galaxy
   11: { tuile: 4.0, albedo: 'skin-11-albedo', lueur: 'skin-11-albedo', emissif: [0.12, 0.12, 0.12] }, // Rainbow, hue on height
   7: { tuile: 1.6, albedo: 'skin-7-albedo' },                                                      // Yin Yang
-  12: { tuile: 0.6, lueur: 'skin-12-glow', emissif: [0.7, 0.7, 0.7], couleur: [0.03, 0.10, 0.13] }   // Cyber
+  12: { tuile: 0.6, lueur: 'skin-12-glow', emissif: [0.7, 0.7, 0.7], couleur: [0.03, 0.10, 0.13] },  // Cyber
+  // Blood and Candy were flat colours beside pieces that wear a pattern (owner, 6 Sep): the
+  // pieces' own recipes on a tile, runs down the wall and the sugar stripe.
+  3: { tuile: 1.6, albedo: 'skin-3-albedo' },                                                      // Blood
+  4: { tuile: 1.2, albedo: 'skin-4-albedo' },                                                      // Candy
+  // Divine was a beige: a flat emissive of its own cream, no texture, costs nothing.
+  10: { emissif: [0.30, 0.27, 0.18] },                                                             // Divine, a third: at half it clipped to white
+  // Phantom is seen through: an alpha under one puts the parts in blend mode. The one skin
+  // that spends fill rate on a phone; judged on the field before it is kept.
+  13: { couleur: [0.53, 1.0, 0.82, 0.62] }                                                         // Phantom
 }
 /** One group for a skin's part: its surface, and its pattern when it has one. */
 function habit(nom, hexa, boites, id) {
@@ -467,7 +476,9 @@ function habit(nom, hexa, boites, id) {
   if (m.albedo) { g.couleur = [1, 1, 1]; g.albedo = tuile(m.albedo) }
   // Its own copy even when the same tile: the docs forbid one image serving albedo and emissive.
   if (m.lueur) { g.lueur = Buffer.from(tuile(m.lueur)); g.emissif = m.emissif }
-  g.tuile = m.tuile
+  // A flat glow with no pattern: the white pixel as the emissive map, the factor as the colour.
+  else if (m.emissif) { g.lueur = PIXEL; g.emissif = m.emissif }
+  if (m.tuile) g.tuile = m.tuile
   return g
 }
 const teintes = [...ACCENTS.map((hexa, i) => ({ suffixe: String(i), hexa })), ...MUTATIONS.map((m) => ({ suffixe: `skin-${m.id}`, hexa: m.color, id: m.id }))]
