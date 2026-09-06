@@ -225,7 +225,14 @@ export const Carried = engine.defineComponent('basetycoon::carried', {
  * raised from three when carrying was made heavy, because a slower runner is a much easier
  * target and the chase had to keep the shape it was tuned for.
  */
-export const CARRY_GRIP = 5
+/*
+  Four, from five. The owner ran the chase himself and called it a little too hard to shake a
+  piece loose (7 Sep). Five point-blank hits is about nine tenths of a second of sustained fire
+  on a runner who is already slowed; four is closer to seven tenths, which keeps it a pursuit
+  rather than a formality. The melee relationship is unchanged: a slap is worth two and a half,
+  so it still tears a piece loose in two hits where the gun needs four.
+*/
+export const CARRY_GRIP = 4
 
 /**
  * How much a shot is worth at the distance it was taken from.

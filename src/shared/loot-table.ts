@@ -171,6 +171,31 @@ export function encoder(rarity: number, mut: number, traits = 0): number {
 export function rarityOf(code: number): number { return Math.floor(code / 100) % 10 }
 export function mutationDe(code: number): number { return code % 100 }
 export function traitsDe(code: number): number { return code < 0 ? 0 : Math.floor(code / 1000) }
+
+/**
+ * How tall a piece stands on its pedestal: its rarity, its mutation and its traits.
+ *
+ * Written here rather than in each of the three files that needed it, because a piece has ONE
+ * size and three copies of a formula drift. A Secret is more than twice a Common, which is the
+ * whole point of a showcase: what somebody owns is legible from the street.
+ */
+export function tailleAffichee(code: number): number {
+  const r = RARITIES[rarityOf(code)]
+  const mult = mutationDe(code) > 0 ? 1.12 : 1
+  return (r?.size ?? 1) * mult * (1 + 0.05 * traitsDe(code))
+}
+
+/**
+ * And how tall it lies on the ground, waiting to be picked up.
+ *
+ * It was a flat 0.5 m for everything. Measured against the pedestal sizes: that is half a
+ * Common and less than a QUARTER of a Secret, so the rarest piece in the game was the most
+ * invisible thing on the floor, and nothing about a dropped piece said which one it was
+ * (owner, 7 Sep: "elle est minuscule"). Smaller than a shelf is the right signal, it reads as
+ * "loose, come and take it"; a fixed number is not how you say it. Sixty-two percent keeps a
+ * Common at 0.62 and puts a Secret at 1.36, still plainly below its own pedestal.
+ */
+export function tailleAuSol(code: number): number { return tailleAffichee(code) * 0.62 }
 /**
  * The average mutation multiplier a roll with these weights will produce.
  *

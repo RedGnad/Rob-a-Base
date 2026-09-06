@@ -2,7 +2,7 @@ import { plasticDe, remonter, rarityShape, spinLoop, demolir } from './toy'
 import { engine, Transform, Entity, Billboard, BillboardMode, TextShape } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { DroppedItem } from '../shared/schemas'
-import { itemColor, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table'
+import { itemColor, rarityOf, mutationDe, nomDuCode, tailleAuSol } from '../shared/loot-table'
 
 /**
  * Loot lying on the ground, drawn from what the server publishes and nothing else.
@@ -34,7 +34,8 @@ export function setupLootUi(): void {
         const reste = d.untilMs - now
         const ct = Transform.getMutableOrNull(vue.corps)
         if (ct !== null) {
-          const k = reste < BLINK_MS && Math.floor(now / 85) % 2 === 0 ? 0.34 : 0.5
+          const plein = tailleAuSol(d.code)
+          const k = reste < BLINK_MS && Math.floor(now / 85) % 2 === 0 ? plein * 0.68 : plein
           if (ct.scale.x !== k) ct.scale = Vector3.create(k, k, k)
         }
         continue
@@ -53,14 +54,16 @@ export function setupLootUi(): void {
         rarity's model, tinted by its mutation.
       */
       const corps = engine.addEntity()
-      Transform.create(corps, { position: t.position, scale: Vector3.create(0.5, 0.5, 0.5) })
+      const taille = tailleAuSol(d.code)
+      Transform.create(corps, { position: t.position, scale: Vector3.create(taille, taille, taille) })
       remonter(corps, `item-${r}.glb`)
       rarityShape(corps, r, plasticDe(teinte, 2.0))
       spinLoop(corps, 2800)
 
       const etiquette = engine.addEntity()
       Transform.create(etiquette, {
-        position: Vector3.create(t.position.x, t.position.y + 0.9, t.position.z),
+        // Above the piece whatever its size now that the size varies: a Secret is twice a Common.
+        position: Vector3.create(t.position.x, t.position.y + taille + 0.4, t.position.z),
         scale: Vector3.create(0.6, 0.6, 0.6)
       })
       Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })

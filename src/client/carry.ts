@@ -5,7 +5,7 @@ import {
 import { sendOrHold } from './intent'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
-import { itemColor, rarity, rarityOf, mutationDe, traitsDe, nomDuCode } from '../shared/loot-table'
+import { itemColor, rarity, rarityOf, mutationDe, traitsDe, nomDuCode, tailleAffichee } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { myClientAddress, alerter } from './theft'
 import { setCarrying } from './locomotion'
@@ -58,12 +58,8 @@ const MAT_FANTOME = plasticDe(VERT, 0.7)
 const JEU = 0.02
 let vuCode = -1
 
-/** La taille qu'aura la piece sur son socle: rarete, mutation et traits, comme dans plots.ts. */
-function tailleDe(code: number): number {
-  const r = rarity(rarityOf(code))
-  const mult = mutationDe(code) > 0 ? 1.12 : 1
-  return r.size * mult * (1 + 0.05 * traitsDe(code))
-}
+/** La taille qu'aura la piece sur son socle. La formule vit dans `loot-table.ts`, une seule fois. */
+const tailleDe = tailleAffichee
 
 export function setupCarry(): void {
   marqueur = engine.addEntity()
