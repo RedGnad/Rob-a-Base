@@ -25,6 +25,13 @@ import { log } from './log'
 
 /** The trace is a ring: the last lines are the ones worth having, and storage is not a log server. */
 const MAX_LIGNES = 600
+/*
+  And a ring PER PLAYER inside it. The first mobile session (6 Sep, 580 lines in twenty
+  minutes) pushed the owner's whole desktop session out of the ring, leaving one line and a
+  header, so the desktop question the trace was built for could not be read at all. No one
+  player may hold more than this many of the lines.
+*/
+const MAX_PAR_JOUEUR = 200
 /** Storage writes are capped per isolate, so the ring is persisted on a timer, never per message. */
 const SAUVE_MS = 30_000
 export const CLE_TRACE = 'debug:ui'
@@ -40,6 +47,15 @@ export function startTrace(): void {
     const tete = `${qui} ${d.phone === true ? 'phone' : 'desk'} ${d.build ?? '????'} R${d.recus ?? 0} S${d.servis ?? 0}`
     for (const ligne of d.lines.split('\n')) {
       if (ligne.length > 0) anneau.push(`${tete}|${ligne}`)
+    }
+    // This player's oldest lines go first, then the ring's oldest, whoever they belong to.
+    const miennes = anneau.filter((l) => l.startsWith(qui + ' ')).length
+    if (miennes > MAX_PAR_JOUEUR) {
+      let aJeter = miennes - MAX_PAR_JOUEUR
+      anneau = anneau.filter((l) => {
+        if (aJeter > 0 && l.startsWith(qui + ' ')) { aJeter -= 1; return false }
+        return true
+      })
     }
     if (anneau.length > MAX_LIGNES) anneau = anneau.slice(-MAX_LIGNES)
     sale = true

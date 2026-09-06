@@ -1,4 +1,4 @@
-import { engine, inputSystem, InputAction, PointerEventType, UiTransform, Entity } from '@dcl/sdk/ecs'
+import { engine, InputAction, PointerEventType, UiTransform, Entity, PointerEventsResult } from '@dcl/sdk/ecs'
 import { isMobile } from '@dcl/sdk/platform'
 import { room } from '../shared/messages'
 import { BUILD } from './build-stamp'
@@ -49,11 +49,13 @@ const ENVOI_MS = 10_000
   covers a handler that ran earlier in the same frame; it is one frame wide, not more, so it can
   never reach the previous press.
 */
-type EnAttente = { at: number; entity: number; ui: boolean; menu: boolean; contexte: string; age: number }
+type EnAttente = { at: number; entity: number; ui: boolean; menu: boolean; contexte: string; age: number; stamp: number; porteur: number }
 /** How far back a serving may sit and still belong to this press: one frame at 30 fps. */
 const AVANT_MS = 40
 
 let attente: EnAttente | null = null
+/** The highest command timestamp seen: the SDK's own newness rule, applied here. */
+let dernierStamp = 0
 /** The recent servings, newest last: a press is matched against this, never against a counter. */
 let servis_recents: Array<{ cle: string; at: number }> = []
 let dernierEvenement = { nom: 'start', at: Date.now() }
@@ -113,7 +115,18 @@ function ecrire(e: EnAttente, servePar: string | null): void {
     that did not answer or the panel swallowing a press beside a control; an unserved press
     with no menu is simply a click on the world.
   */
-  // t | entity | ui? | menu? | served? | control | what happened before | its age in ms | camera flips
+  /*
+    Two more columns, and they are the decisive ones.
+
+    The mobile session of 6 Sep showed that nearly every served tap in the menu is followed,
+    45 to 90 ms later, by a second DOWN nobody serves. Two readings are possible and they call
+    for different fixes: the client sends one tap twice (touch, then an emulated pointer), or
+    the scene reports one tap twice, once from the root entity's pointer result and once from
+    the interface entity's, with different timestamps. The command's own `timestamp` and the
+    entity whose result carried it tell the two apart: same stamp twice is the scene, two
+    stamps from the root is the client.
+  */
+  // t | entity hit | ui? | menu? | served? | control | what happened before | its age | camera flips | client stamp | carrier
   lignes.push([
     e.at,
     e.entity,
@@ -123,7 +136,9 @@ function ecrire(e: EnAttente, servePar: string | null): void {
     servePar ?? '-',
     e.contexte,
     e.age,
-    bascules
+    bascules,
+    e.stamp,
+    e.porteur
   ].join('|'))
   if (lignes.length > TAMPON_MAX) lignes = lignes.slice(-TAMPON_MAX)
 }
@@ -170,21 +185,35 @@ export function setupClics(): void {
       attente = null
     }
 
-    const cmd = inputSystem.getInputCommand(InputAction.IA_POINTER, PointerEventType.PET_DOWN)
-    if (cmd !== null) {
-      recus += 1
-      const id = cmd.hit?.entityId
-      // A press already waiting is judged on the spot: two downs inside one window is itself
-      // a fact worth seeing, and dropping the first would hide exactly the double presses the
-      // owner reports making when a button does not answer.
-      if (attente !== null) ecrire(attente, servingPour(attente.at))
-      attente = {
-        at: maintenant,
-        entity: id === undefined ? -1 : ((id as Entity) & 0xffff),
-        ui: id !== undefined && UiTransform.has(id as Entity),
-        contexte: dernierEvenement.nom,
-        menu: menuOuvert(),
-        age: Math.min(99_999, maintenant - dernierEvenement.at)
+    /*
+      Read the pointer results ourselves, not through `getInputCommand`.
+
+      The SDK's global read returns the FIRST new command of the frame and nothing about which
+      entity carried it. To tell a client double from a scene double (see `ecrire`) every new
+      DOWN is needed, each with its own timestamp and its carrier. The SDK's own rule is kept:
+      a command is new if its stamp is above the highest one seen so far.
+    */
+    for (const [porteur, resultats] of engine.getEntitiesWith(PointerEventsResult)) {
+      for (const cmd of resultats) {
+        if (cmd.button !== InputAction.IA_POINTER || cmd.state !== PointerEventType.PET_DOWN) continue
+        if (cmd.timestamp <= dernierStamp) continue
+        dernierStamp = cmd.timestamp
+        recus += 1
+        const id = cmd.hit?.entityId
+        // A press already waiting is judged on the spot: two downs inside one window is itself
+        // a fact worth seeing, and dropping the first would hide exactly the double presses the
+        // owner reports making when a button does not answer.
+        if (attente !== null) ecrire(attente, servingPour(attente.at))
+        attente = {
+          at: maintenant,
+          entity: id === undefined ? -1 : ((id as Entity) & 0xffff),
+          ui: id !== undefined && UiTransform.has(id as Entity),
+          contexte: dernierEvenement.nom,
+          menu: menuOuvert(),
+          age: Math.min(99_999, maintenant - dernierEvenement.at),
+          stamp: cmd.timestamp,
+          porteur: porteur & 0xffff
+        }
       }
     }
 
