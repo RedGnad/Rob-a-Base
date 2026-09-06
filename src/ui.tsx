@@ -607,6 +607,15 @@ const PadControls = () => {
   */
   const k = phone() ? 1 : DESKTOP_PAD_SCALE
   const pad = arcPour(k)
+  /*
+    On a desktop the shot also goes out on the left mouse button (see `gachette` in combat.ts),
+    so the disc has to answer to that too or the player firing with the mouse sees a button that
+    never moves. Only while aiming, and only off a phone: `IA_POINTER` is the tap everywhere
+    else, and it would light the disc on every press in the interface.
+  */
+  const tirDesktop = combatView.aiming && !phone()
+    ? [InputAction.IA_PRIMARY, InputAction.IA_POINTER]
+    : undefined
   // TEMPORAIRE, pour la video: repasser a `true` ensuite.
   //
   // Les cinq plaques de touches (SPACE, F, 1, E, E) ne servent qu'au bureau et disent au
@@ -644,7 +653,8 @@ const PadControls = () => {
       */}
       <Pouce icone="icon-menu" taille={pad.petit}
         bas={pad.arc[2].bas} droite={pad.arc[2].droite}
-        badge={questsToClaim() > 0} onClick={basculerMenu} touche={touche('1')} />
+        badge={questsToClaim() > 0} onClick={basculerMenu} touche={touche('1')}
+        presseePar={[InputAction.IA_ACTION_3]} />
       {/*
         The central disc is always there. It used to be drawn only while a verb was
         available, so a player standing in the middle of the map saw a pad with a hole in
@@ -655,13 +665,15 @@ const PadControls = () => {
       {a !== null ? (
         <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={pad.gros}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
+          presseePar={tirDesktop}
           frames={!combatView.aiming ? posesDe(a.icon) : undefined}
           pulse={!combatView.aiming && stepExpects(a.id)}
           periodMs={SWING_MS} touche={touche('E')} />
       ) : (
         <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros}
           bas={0} droite={0} primaire disabled={!combatView.aiming}
-          actions={combatView.aiming ? [InputAction.IA_PRIMARY] : undefined} touche={touche('E')} />
+          actions={combatView.aiming ? [InputAction.IA_PRIMARY] : undefined}
+          presseePar={tirDesktop} touche={touche('E')} />
       )}
     </UiEntity>
   )

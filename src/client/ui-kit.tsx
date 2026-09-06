@@ -1,4 +1,4 @@
-import { engine, Transform, AudioSource, Entity, InputAction } from '@dcl/sdk/ecs'
+import { engine, Transform, AudioSource, Entity, InputAction, inputSystem } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity, Label } from '@dcl/sdk/react-ecs'
@@ -34,6 +34,25 @@ import { room } from '../shared/messages'
 */
 const PRESSE_MS = 130
 const presse = new Map<string, number>()
+
+/**
+ * A control looks pressed while the KEY that does the same thing is held.
+ *
+ * The pad is a touch pad, and its discs sank three pixels under a finger. On a keyboard the
+ * same act, E to collect, F to aim, space to jump, moved nothing at all: the button answered
+ * only to the one input the desktop player is not using. Reading the bound action during the
+ * render gives the disc the same state a finger gives it, held for exactly as long as the key
+ * is, which a timed flash cannot do for a key somebody holds down.
+ *
+ * It is a state read, never a trigger: nothing here fires an action, plays a sound or spends a
+ * press. The tap keeps its click; a key stays silent, because the verb it performs already has
+ * its own sound and a second one would be the same act heard twice (memo 511).
+ */
+function toucheEnfoncee(actions: InputAction[] | undefined): boolean {
+  if (actions === undefined) return false
+  for (const a of actions) if (inputSystem.isPressed(a)) return true
+  return false
+}
 let sonClic: Entity | null = null
 /*
   One emitter per cue, made on first use and kept: an AudioSource needs an entity, and the
@@ -241,6 +260,15 @@ export const Pouce = (props: {
   disabled?: boolean
   /** The key that does the same thing, shown on a small plate under the disc: a desktop reads it, a phone has none. */
   touche?: string
+  /**
+   * The actions that make this disc LOOK pressed, when they are not the ones it emits.
+   *
+   * The menu disc is the case that needs it: on a desktop the 1 key opens the menu through
+   * `IA_ACTION_3`, but binding that action to the element would make a tap emit it as well,
+   * and the tap already calls the handler, so the menu would open and close in one press.
+   * Lighting and emitting are two different questions.
+   */
+  presseePar?: InputAction[]
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -282,7 +310,7 @@ export const Pouce = (props: {
     if (t < 300) gonfle = 1 + 0.12 * Math.sin(Math.PI * t / 300)
   }
   gonfle *= balance
-  const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
+  const enfonce = toucheEnfoncee(props.presseePar ?? props.actions) || Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   /*
     The disc, not the plate. The nine-sliced plate passed for round at 86 px and showed
     its flat sides at 168: the one orange square among the client's round controls
@@ -429,7 +457,7 @@ export const Btn = (props: {
   const height = props.height ?? TAP.height
   const actif = props.onClick !== undefined || props.bind !== undefined
   const cle = `${props.label}|${props.width}`
-  const enfonce = actif && Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
+  const enfonce = actif && (toucheEnfoncee(props.bind) || Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS)
   /*
     ONE SHAPE, THREE VALUES. That is the whole language of a control.
 
