@@ -613,7 +613,14 @@ const PadControls = () => {
   */
   const k = phone() ? 1 : DESKTOP_PAD_SCALE
   const pad = arcPour(k)
-  const touche = (t: string): string | undefined => (phone() ? undefined : t)
+  // TEMPORAIRE, pour la video: repasser a `true` ensuite.
+  //
+  // Les cinq plaques de touches (SPACE, F, 1, E, E) ne servent qu'au bureau et disent au
+  // spectateur "ce jeu se joue au clavier", ce qui est l'inverse du message d'un buildathon
+  // mobile. Un seul interrupteur parce qu'un seul point les produit toutes (proprietaire,
+  // 6 Sep). Le comportement du pad, lui, ne change pas: les touches marchent toujours.
+  const TOUCHES_VISIBLES = false
+  const touche = (t: string): string | undefined => (phone() || !TOUCHES_VISIBLES ? undefined : t)
   return (
     <UiEntity
       uiTransform={{
