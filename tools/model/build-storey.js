@@ -383,8 +383,14 @@ function vitres() {
     [0, h / 2, -c / 2, c, h, ep],
     [-c / 2, h / 2, 0, ep, h, c],
     [c / 2, h / 2, 0, ep, h, c],
-    [-(c + G.DOOR_WIDTH) / 4, h / 2, c / 2, (c - G.DOOR_WIDTH) / 2, h, ep],
-    [(c + G.DOOR_WIDTH) / 4, h / 2, c / 2, (c - G.DOOR_WIDTH) / 2, h, ep]
+    // Beside the doorway the pane stops where the jamb starts, and not a centimetre later.
+    // It ran all the way to the opening's edge, so each 18 cm jamb of `accent()` sat INSIDE
+    // the glass over the full four metres, front and back faces exactly coplanar with it:
+    // z-fighting down both sides of every door, plus the tint doubled over the bar (owner,
+    // 7 Sep, "les encadrements rentrent en collision avec les vitres"). Cut back by JAMBE,
+    // the frame occupies glass-free space and the two meet flush.
+    [-(c + G.DOOR_WIDTH + 2 * JAMBE) / 4, h / 2, c / 2, (c - G.DOOR_WIDTH) / 2 - JAMBE, h, ep],
+    [(c + G.DOOR_WIDTH + 2 * JAMBE) / 4, h / 2, c / 2, (c - G.DOOR_WIDTH) / 2 - JAMBE, h, ep]
   ]
 }
 

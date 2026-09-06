@@ -90,7 +90,7 @@ let sonReveal: Entity
 let sonRevealRare: Entity
 let sonRevealBig: Entity
 let sonRevealHuge: Entity
-const eclats: Entity[] = []
+/** How many chips the opening throws. A single blow throws a handful, see `frapper`. */
 const ECLATS = 14
 let sonTic: Entity
 let sonTic2: Entity
@@ -397,7 +397,26 @@ export function frapper(): void {
   const tk = Transform.getMutableOrNull(crateMesh)
   if (tk !== null) {
     tk.rotation = Quaternion.fromEulerDegrees(0, 25 + boxView.coups * 34, 0)
-    puff(Vector3.create(tk.position.x, tk.position.y + b.size * 0.3, tk.position.z), b.color, b.size * 1.5)
+    /*
+      The burst sat at 0.3 of the box's own size above its centre, which is INSIDE the box.
+      A billboard drawn inside an opaque cube is hidden by it: all that ever showed was the
+      thin ring reaching past the silhouette, and the blow read as having no impact at all
+      (owner, 7 Sep). At 0.62 it clears the top face, which is also where the mallet lands.
+    */
+    const sol = tk.position.y - b.size / 2
+    puff(Vector3.create(tk.position.x, tk.position.y + b.size * 0.62, tk.position.z), b.color, b.size * 1.5)
+    /*
+      And chips fly off, on EVERY blow.
+
+      The shard emitter existed and only the third blow called it, so the two blows that are
+      supposed to build the tension had nothing leaving the box: nothing was seen to break
+      (owner, 7 Sep, "on voit pas les eclats quand on smash"). Five small ones, a fifth of
+      the final burst's reach: enough to say the box is giving, not enough to spend its
+      release. The third blow still fires both, so the burst is a step up rather than the
+      first thing that happens.
+    */
+    projeter(Vector3.create(tk.position.x, tk.position.y + b.size * 0.2, tk.position.z),
+      b.color, sol, 5, b.size * 0.75, b.size * 0.11, 620)
   }
   jouer(hitSound)
   majCompteur()
@@ -416,7 +435,7 @@ export function frapper(): void {
     boxView.phase = 'wait'
     boxView.phaseJusqua = Date.now() + 6000
     const t = Transform.getOrNull(crateMesh)
-    if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color)
+    if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color, t.position.y - b.size / 2)
     storeCrate()
     const tier = boxView.typeEnCours
     sendOrHold(() => { void room.send('openBox', { crateTier: tier }) })
@@ -472,48 +491,68 @@ function jouer(e: Entity): void {
   if (a !== null) { a.playing = false; a.playing = true }
 }
 
-function exploser(center: Vector3, color: string): void {
-  lastPosition = center
-  jouer(sonBurst)
+/**
+ * Chips thrown off the box, in whatever quantity the moment deserves.
+ *
+ * This was written inside the final burst and could only ever be the final burst. Every
+ * number that describes the SIZE of the moment is an argument now, so the same throw serves
+ * a single blow (few, short, small) and the opening (many, far, big), and the two cannot
+ * drift apart.
+ *
+ * Each call owns its own batch and its own timer. The old version kept ONE shared array and
+ * one timer over it, wiping whatever was in the array when the timer fired: two throws
+ * inside the same second and the first one's timer deleted the second one's shards on the
+ * spot. Harmless while only the third blow threw; a guaranteed bug the moment every blow does.
+ */
+const ECLATS_MAX = 44
+const eclatsVivants = new Set<Entity>()
+
+function projeter(center: Vector3, color: string, sol: number, combien: number,
+  portee: number, taille: number, vie: number): void {
+  // A ceiling rather than a queue: a player hammering the button cannot flood the scene.
+  if (eclatsVivants.size + combien > ECLATS_MAX) return
   const c = Color4.fromHexString(color + 'ff')
-  for (const vieux of eclats) engine.removeEntity(vieux)
-  eclats.length = 0
-  for (let i = 0; i < ECLATS; i++) {
+  const lot: Entity[] = []
+  for (let i = 0; i < combien; i++) {
     const e = engine.addEntity()
-    Transform.create(e, { position: center, scale: Vector3.create(0.16, 0.16, 0.16) })
+    const s = taille * (0.8 + (i % 3) * 0.2)
+    Transform.create(e, { position: center, scale: Vector3.create(s, s, s) })
     MeshRenderer.setBox(e)
-    eclats.push(e)
-    const a = (i / ECLATS) * Math.PI * 2
-    const h = 0.6 + (i % 3) * 0.5
-    const r = 1.6 + (i % 4) * 0.45
-    const t = Transform.getMutableOrNull(e)
-    if (t === null) continue
-    t.position = center
-    t.scale = Vector3.create(0.16, 0.16, 0.16)
     Material.setPbrMaterial(e, plasticDe(c, 1.4))
+    eclatsVivants.add(e)
+    lot.push(e)
+    const a = (i / combien) * Math.PI * 2 + Math.random() * 0.7
+    const h = portee * (0.35 + (i % 3) * 0.28)
+    const r = portee * (0.7 + (i % 4) * 0.2)
+    const haut = Vector3.create(center.x + Math.cos(a) * r, center.y + h, center.z + Math.sin(a) * r)
     Tween.createOrReplace(e, {
-      mode: Tween.Mode.Move({
-        start: center,
-        end: Vector3.create(center.x + Math.cos(a) * r, center.y + h, center.z + Math.sin(a) * r)
-      }),
-      duration: 260,
+      mode: Tween.Mode.Move({ start: center, end: haut }),
+      duration: Math.round(vie * 0.32),
       easingFunction: EasingFunction.EF_EASEOUTQUAD
     })
     TweenSequence.createOrReplace(e, {
       sequence: [{
         mode: Tween.Mode.Move({
-          start: Vector3.create(center.x + Math.cos(a) * r, center.y + h, center.z + Math.sin(a) * r),
-          end: Vector3.create(center.x + Math.cos(a) * r * 1.5, 0.2, center.z + Math.sin(a) * r * 1.5)
+          // Onto the floor the box is standing on. It fell to a hardcoded world y of 0.2,
+          // so a box opened upstairs threw its chips down through the slab (owner's floor
+          // rule, 7 Sep: what falls, falls onto the storey it fell from).
+          start: haut,
+          end: Vector3.create(center.x + Math.cos(a) * r * 1.5, sol + taille * 0.5, center.z + Math.sin(a) * r * 1.5)
         }),
-        duration: 520,
+        duration: Math.round(vie * 0.62),
         easingFunction: EasingFunction.EF_EASEINQUAD
       }]
     })
   }
   timers.setTimeout(() => {
-    for (const e of eclats) engine.removeEntity(e)
-    eclats.length = 0
-  }, 850)
+    for (const e of lot) if (eclatsVivants.delete(e)) engine.removeEntity(e)
+  }, vie)
+}
+
+function exploser(center: Vector3, color: string, sol: number): void {
+  lastPosition = center
+  jouer(sonBurst)
+  projeter(center, color, sol, ECLATS, 2.2, 0.16, 850)
 }
 
 function storeCrate(): void {
