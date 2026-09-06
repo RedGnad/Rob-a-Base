@@ -19,7 +19,7 @@ import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending, declarerVolEnCours
 } from './plots'
 
 /*
@@ -351,6 +351,12 @@ export function startTheft(): void {
   room.onMessage('cancelSteal', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (a && enCours.delete(a)) void room.send('stealFailed', { reason: 'cancelled' }, { to: [a] })
+  })
+
+  // The base cannot move while somebody is stealing from it: see `placeBase` in plots.ts.
+  declarerVolEnCours((address) => {
+    for (const v of enCours.values()) if (v.victim === address) return true
+    return false
   })
 
   const dernierePose = new Map<string, number>()

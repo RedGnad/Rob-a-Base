@@ -19,9 +19,9 @@ export const STEP_TEXTS: ReadonlyArray<{ titre: string; aide: string; verb: stri
   // and the hammer. An empty `aide` simply draws no second line (owner, 6 Sep).
   { titre: 'Place your base', aide: '', verb: 'build', actions: ['construire-base', 'poser-base'] },
   { titre: 'Open your box', aide: 'walk to your box and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
-  { titre: 'Collect your coins', aide: 'your items earn into a pool: tap COLLECT', verb: 'collect', actions: ['encaisser'] },
+  { titre: 'Collect your coins', aide: 'tap COLLECT at your base', verb: 'collect', actions: ['encaisser'] },
   { titre: 'Buy a box', aide: 'tap a box on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
-  { titre: 'Steal from a neighbour', aide: 'walk into another base, tap an item, hold on, and run it home', verb: 'steal', actions: ['voler'] }
+  { titre: 'Steal from a neighbour', aide: 'tap an item, hold on, run it home', verb: 'steal', actions: ['voler'] }
 ]
 
 /** `since`: when the current step began, on this clock; the hint line waits on it. */

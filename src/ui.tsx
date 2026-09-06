@@ -208,6 +208,18 @@ const SCROLLBAR_COVER_W = 26
  * decides, and it leaves a real gap.
  */
 const COIN_H = [64, 40, 52, 40, 40, 62]
+/*
+  ONE width for the whole corner column.
+
+  Every plate up there sized itself to its own sentence, so their left edges made a staircase
+  and the widest one reached a quarter of the way across the play area while the narrowest was
+  half that (owner, 7 Sep, three screenshots). A column of readouts is one object: it gets one
+  left edge, and that edge is a promise about how much of the screen it will ever take. 440 of
+  1600 is 27 %, which fits the longest step title (`Steal from a neighbour`, 436 measured) and
+  leaves the other 73 % to the game. Anything that does not fit at that width is a sentence to
+  shorten, not a plate to widen.
+*/
+const COIN_W = 440
 /** The rush chip: how long it holds in the middle, then how long its flight to the corner takes. */
 const RUSH_HOLD_MS = 1500
 const RUSH_FLIGHT_MS = 550
@@ -1683,7 +1695,7 @@ const uiComponent = () => {
     {hud() && tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          height: stepChipH(), positionType: 'absolute', padding: { left: 16, right: 20 },
+          width: COIN_W, height: stepChipH(), positionType: 'absolute', padding: { left: 16, right: 20 },
           position: { top: coinDroit(0), right: rightCornerMargin() },
           flexDirection: 'column', justifyContent: 'center'
         }}
@@ -1901,7 +1913,7 @@ const uiComponent = () => {
     {hud() && gearView.cloakLeftS > 0 && (
       <UiEntity
         uiTransform={{
-          width: 240, height: 40, positionType: 'absolute',
+          width: COIN_W, height: 40, positionType: 'absolute',
           position: { top: coinDroit(4), right: rightCornerMargin() },
           justifyContent: 'center', alignItems: 'center'
         }}
@@ -1915,7 +1927,7 @@ const uiComponent = () => {
     {hud() && nextBigText() !== null && (
       <UiEntity
         uiTransform={{
-          height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
+          width: COIN_W, height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
           position: { top: coinDroit(3), right: rightCornerMargin() },
           flexDirection: 'row', alignItems: 'center'
         }}
@@ -1930,7 +1942,7 @@ const uiComponent = () => {
     {hud() && giftView.leftS > 0 && (
       <UiEntity
         uiTransform={{
-          width: 320, height: 52, positionType: 'absolute',
+          width: COIN_W, height: 52, positionType: 'absolute',
           position: { top: coinDroit(2), right: rightCornerMargin() },
           flexDirection: 'column', padding: { left: 14, right: 14, top: 6 }
         }}
@@ -1966,7 +1978,7 @@ const uiComponent = () => {
             plate was a fixed sixty-two whatever it held, so one line sat in a box built for
             three, and centring lines of different lengths turned a list into a shape.
           */
-          width: 400, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
+          width: COIN_W, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
           position: { top: coinDroit(5), right: rightCornerMargin() },
           padding: 8, flexDirection: 'column', alignItems: 'flex-start'
         }}

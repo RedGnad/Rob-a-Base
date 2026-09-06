@@ -1622,9 +1622,33 @@ export function basePoints(sauf?: string): Array<{ x: number; z: number }> {
   return out
 }
 
+/*
+  Whether somebody's hands are on this base right now, asked of whoever knows.
+
+  `theft.ts` owns the attempts in progress and imports this file, so this file cannot import
+  it back. It registers its answer here instead, the same shape as the move hook in
+  `client/deplacer.ts`. Default: nobody is stealing, so a server that never registered it
+  behaves exactly as before.
+*/
+let volEnCours: (address: string) => boolean = () => false
+export function declarerVolEnCours(fn: (address: string) => boolean): void { volEnCours = fn }
+
 export function placeBase(address: string, xb: number, zb: number): { ok: boolean; reason?: string } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
+
+  /*
+    A base cannot be moved out from under a thief.
+
+    A theft is a timed attempt: the server checks every half second that the thief is still
+    within reach of the ITEM, and moving the base takes the item with it, so pressing MOVE MY
+    BASE cancelled any theft in progress, instantly, for free, from anywhere on the map. That
+    is a perfect counter with no risk, and it empties the one moment this game is built around:
+    the thief is supposed to be exposed while the clock runs, and the owner's answer is to come
+    back and shoot them, or to let the sentry do it (measured and reported 6 Sep, entry 523).
+    Only the owner of the base being robbed is stopped, and only while the attempt lasts.
+  */
+  if (volEnCours(address)) return { ok: false, reason: 'someone has their hands on your shelves' }
 
   /*
     Le joueur choisit ou il pose sa base, et peut la deplacer quand il veut.
