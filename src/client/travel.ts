@@ -1,9 +1,10 @@
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
-import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, SCENE_SIDE, orientToBase } from '../shared/schemas'
+import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, SCENE_SIDE, orientToBase, invalidReason, freeSpotNear, snapToGrid } from '../shared/schemas'
 import { moveTo } from './deplacer'
 import { poseView } from './pose'
-import { myClientAddress } from './theft'
+import { myClientAddress, theftView } from './theft'
+import { basesConnues } from './slots'
 import { alerter } from './theft'
 import { TOAST } from './theme'
 
@@ -67,7 +68,28 @@ function apparaitreChezSoi(): void {
     attente += dt
     if (attente > 20) { fait = true; return }
     const chez = maBase()
-    if (chez === null) return
+    if (chez === null) {
+      /*
+        A newcomer is set down somewhere they can actually build.
+
+        The scene's spawn point is a good spot by construction: it sits 24 m clear of the belt
+        and outside the plaza's reserved ellipse (checked against `invalidReason`, 6 Sep). What
+        it cannot know is where the OTHER bases are, and the field fills up: a player arriving
+        next to a neighbour's wall met a red ghost and an inert hammer as their first frame,
+        with no way to read why. So on a first arrival, once the server has said this player
+        owns nothing, an occupied spawn is nudged to the nearest legal square. Only then, only
+        once, and never for somebody who already has a base to go home to.
+      */
+      if (!theftView.walletRecu || theftView.basePosee) return
+      if (!Transform.has(engine.PlayerEntity)) return
+      const p = Transform.get(engine.PlayerEntity).position
+      if (invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, basesConnues()) === null) return
+      const libre = freeSpotNear(p.x, p.z, SCENE_SIDE, basesConnues())
+      if (libre === null) return
+      fait = true
+      moveTo('arrivee sur une place libre', Vector3.create(libre.x, 0, libre.z), Vector3.create(CENTER.x, 1.6, CENTER.z))
+      return
+    }
     fait = true
     moveTo('apparition', chez, Vector3.create(CENTER.x, 1.6, CENTER.z))
   })

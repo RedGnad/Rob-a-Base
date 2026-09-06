@@ -208,6 +208,16 @@ const RUSH_FLIGHT_MS = 550
 /** The rush card: a picture and two lines, sized for its longest sentence at label size. */
 const RUSH_CARD_W = 720
 const RUSH_CARD_H = 132
+/*
+  How much screen the toast column may ever take, and how many plates at once.
+
+  A third of the canvas height, measured from where the column starts, and three plates. The
+  reference this interface follows keeps transient messages out of the acting area; ours grew
+  into it because nothing bounded the stack (6 Sep). Anything past the third is dropped rather
+  than queued: a message worth reading twice is not a toast.
+*/
+const TOASTS_MAX = 3
+const TOASTS_BAS = 240
 /** The step chip grows a line once its hint is due. */
 const stepChipH = (): number => stepHintDue() ? 100 : COIN_H[0]
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
@@ -983,6 +993,9 @@ function hud(): boolean {
  * is drawn on the weapon button.
  */
 function barre(): string {
+  // While the weapon is out this plate carries what the last round did (see `direResultat`).
+  // It is the surface a fight can afford: at the bottom, one line, replaced rather than stacked.
+  if (Date.now() < combatView.resultatJusqua) return combatView.resultat
   if (combatView.aiming) {
     /*
       The reticle names the target at the crosshair and the weapon button wears the sight, so
@@ -2081,14 +2094,25 @@ const uiComponent = () => {
       )
     })()}
 
+    {/*
+      The toasts hang under the top band, and they leave the middle alone.
+
+      Two things put them across the player's view. They are centred on the canvas, and they
+      are as tall as their words: three of them during a firefight reached the middle of the
+      screen and stood between the shooter and the target (testers, 6 Sep). The combat lines
+      are gone from this channel entirely (see `direResultat` in combat.ts), and what is left
+      is capped: at most `TOASTS_MAX` on screen, the newest kept, and the column stops at
+      `TOASTS_BAS` so it can never grow into the play area whatever arrives.
+    */}
     {alertesVisibles().length > 0 && hud() && (
       <UiEntity
         uiTransform={{
-          width: '100%', positionType: 'absolute', position: { top: bandBottom + SOUS_LA_BANDE + (rushCardVisible() ? RUSH_CARD_H + STACK_GAP : 0), left: 0 },
+          width: '100%', height: TOASTS_BAS, overflow: 'hidden',
+          positionType: 'absolute', position: { top: bandBottom + SOUS_LA_BANDE + (rushCardVisible() ? RUSH_CARD_H + STACK_GAP : 0), left: 0 },
           flexDirection: 'column', alignItems: 'center'
         }}
       >
-        {alertesVisibles().map((a) => {
+        {alertesVisibles().slice(-TOASTS_MAX).map((a) => {
           const now = Date.now()
           const entree = Math.min(1, (now - a.ne) / 160)
           const sortie = Math.min(1, Math.max(0, (a.until - now) / 250))
@@ -2159,7 +2183,7 @@ const uiComponent = () => {
       and read the rest in peripheral vision, so anything permanent near the middle is paid
       for out of the part of the screen they are actually using.
     */}
-    {hud() && !slotView.active && barre() !== '' && (
+    {hud() && !slotView.active && barre() !== '' && !boxView.roule && boxView.resultat < 0 && (
       <Centre bottom={row(0)}>
         <UiEntity
           uiTransform={{
@@ -2169,7 +2193,9 @@ const uiComponent = () => {
           uiBackground={SKIN.panel}
         >
           <Label value={barre()} fontSize={TYPE.label}
-            color={combatView.aiming ? C.danger : C.name} textWrap="nowrap" />
+            color={Date.now() < combatView.resultatJusqua
+              ? Color4.fromHexString(lisible(combatView.resultatCouleur) + 'ff')
+              : (combatView.aiming ? C.danger : C.name)} textWrap="nowrap" />
         </UiEntity>
       </Centre>
     )}

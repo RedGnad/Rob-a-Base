@@ -16,7 +16,17 @@ const POOL = 3
 const GROW_MS = 140
 const LIFE_MS = 220
 
-const pool: Array<{ e: Entity; hex: string }> = []
+/*
+  `gen` is what stops a burst from staying on the ground.
+
+  The hide ran only if the sprite had reached its full size, read back from the Transform the
+  client writes after its tween. When a slot was reused inside `LIFE_MS`, or the write-back
+  landed a hair under the target, that test failed and the sprite was left lying flat on the
+  field at full size: the "couronnes qui trainent par terre" of the 6 Sep screenshot, several
+  of them after a firefight. The hide now keys on a generation number: it fires unless the
+  slot was reused since, in which case the newer burst's own hide will fire.
+*/
+const pool: Array<{ e: Entity; hex: string; gen: number }> = []
 let next = 0
 
 function ensurePool(): void {
@@ -26,7 +36,7 @@ function ensurePool(): void {
     Transform.create(e, { position: Vector3.create(0, -60, 0), scale: Vector3.Zero() })
     MeshRenderer.setPlane(e)
     Billboard.create(e, { billboardMode: BillboardMode.BM_ALL })
-    pool.push({ e, hex: '' })
+    pool.push({ e, hex: '', gen: 0 })
   }
 }
 
@@ -53,8 +63,11 @@ export function puff(at: Vector3, hex: string, size = 1.2): void {
   t.scale = Vector3.create(0.2, 0.2, 1)
   Tween.setScale(slot.e, Vector3.create(0.2, 0.2, 1), Vector3.create(size, size, 1), GROW_MS, EasingFunction.EF_EASEOUTQUAD)
   const mine = slot.e
+  slot.gen += 1
+  const gen = slot.gen
   timers.setTimeout(() => {
+    if (slot.gen !== gen) return
     const tt = Transform.getMutableOrNull(mine)
-    if (tt !== null && tt.scale.x >= size - 0.01) { tt.scale = Vector3.Zero(); tt.position = Vector3.create(0, -60, 0) }
+    if (tt !== null) { tt.scale = Vector3.Zero(); tt.position = Vector3.create(0, -60, 0) }
   }, LIFE_MS)
 }

@@ -21,6 +21,8 @@ let fantome: Entity
 let label: Entity
 let glyphes: Entity | null = null
 let autres: Array<{ x: number; z: number }> = []
+/** Where the other bases stand, as the server last said. Read by `travel.ts` on arrival. */
+export function basesConnues(): Array<{ x: number; z: number }> { return autres }
 /** Vrai quand le marqueur s'est allume tout seul, faux quand le joueur l'a demande. */
 let auto = false
 

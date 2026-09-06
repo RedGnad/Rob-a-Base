@@ -59,7 +59,24 @@ export const combatView = {
   lastShotAt: 0,
   lastHitAt: 0,
   /** What is in the hand: the HUD button wears this weapon's own picture. */
-  arme: 'shoot' as 'shoot' | 'slap' | 'taser'
+  arme: 'shoot' as 'shoot' | 'slap' | 'taser',
+  /**
+   * What the last round did, as one short line for the status plate above the pad.
+   *
+   * It was a toast in the upper middle of the screen, one per hit, stacked, at four rounds a
+   * second: a wall of plates between the shooter and the target (testers, 6 Sep). The fact is
+   * kept, the surface changes: the plate at the bottom that the drawn weapon leaves empty.
+   */
+  resultat: '',
+  resultatJusqua: 0,
+  resultatCouleur: '#ffd166'
+}
+
+/** Say what a round did, on the status line, for a moment. */
+function direResultat(texte: string, couleur: string): void {
+  combatView.resultat = texte
+  combatView.resultatCouleur = couleur
+  combatView.resultatJusqua = Date.now() + 2200
 }
 
 type ArmeType = 'shoot' | 'slap' | 'taser'
@@ -225,7 +242,7 @@ function jouerDraw(sortie: boolean): void {
 const enJoue = new Set<string>()
 const armeDe = new Map<string, ArmeType>()
 
-const piles = new Map<number, { chute: Entity; body: Entity; label: Entity }>()
+const piles = new Map<number, { chute: Entity; body: Entity; label: Entity; sec: number }>()
 
 /**
  * A holder whose origin is the grip, and the model hung off it by its measured pivot.
@@ -447,26 +464,32 @@ export function setupCombat(): void {
     const qui = d.hitName.toUpperCase()
     if (d.loot > 0) combatView.lastHitAt = Date.now()
     if (d.loot === 3) {
-      alerter(`${qui} LOST THEIR GRIP, THE THEFT IS OFF`, '#8fe08f', TOAST.result)
+      direResultat(`${qui} LOST THEIR GRIP  ·  THEFT OFF`, '#8fe08f')
     } else if (d.loot === 2) {
-      alerter(`${qui} DROPPED IT, GRAB IT OFF THE GROUND`, '#ff6b6b', TOAST.warning)
+      direResultat(`${qui} DROPPED IT  ·  GRAB IT`, '#ff6b6b')
     } else if (d.loot === 1) {
-      alerter(`${qui} ALMOST LOST IT, KEEP FIRING`, '#ffd166', TOAST.result)
+      direResultat(`${qui} ALMOST LOST IT  ·  KEEP FIRING`, '#ffd166')
     } else if (d.reason === 'hit') {
       combatView.lastHitAt = Date.now()
-      // No sum in a toast (memo 420): the pile on the ground says how much. The same line on
-      // every hit refreshes the one on screen instead of churning the stack at four rounds a second.
-      alerter(`HIT ${qui}  ·  COINS ON THE GROUND, GO TAKE THEM`, '#ffd166', TOAST.result)
+      // No sum here (memo 420): the pile on the ground says how much.
+      direResultat(`COINS ON THE GROUND  ·  GO TAKE THEM`, '#ffd166')
     } else if (d.reason === 'nothing to drop') {
-      alerter(`${qui} HAS NOTHING TO DROP`, '#9aa3ad', TOAST.result)
+      direResultat(`${qui} HAS NOTHING TO DROP`, '#9aa3ad')
     }
   })
+  /*
+    Being shot has three channels and no toast.
+
+    The red flash says it happened, the red figure says what it cost, the sound says it hurt.
+    A fourth, "X SHOT YOU · YOURS AGAIN IN 6s", was the largest plate on the screen, two of
+    them stacked when two players fired, right where the fight was (tester's screenshot,
+    6 Sep). The one fact it carried that the others do not, how long until the pile can be
+    taken back, now sits on the pile itself (see `pileSystem`).
+  */
   room.onMessage('wasShot', (d) => {
     flashDamage()
     floatAmount(d.lost, true)
     playHurt()
-    const s = Math.round(LOOT_OWNER_LOCK_MS / 1000)
-    alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  YOURS AGAIN IN ${s}s`, '#ff6b6b', TOAST.warning)
   })
   // Same channel as collecting: the number says how much, and a sound says it landed. The
   // sound is the soft take rather than the coin, because a pile off the floor is the most
@@ -1063,7 +1086,17 @@ function pileSystem(): void {
     const id = ent as unknown as number
     alive.add(id)
     const t = Transform.get(ent)
-    if (piles.has(id)) continue
+    const deja = piles.get(id)
+    if (deja !== undefined) {
+      // The owner lock, counted down on the pile: the number is what a toast used to say.
+      const reste = Math.max(0, Math.ceil((c.untilMs - Date.now()) / 1000))
+      if (reste !== deja.sec) {
+        deja.sec = reste
+        const ts = TextShape.getMutableOrNull(deja.label)
+        if (ts !== null) ts.text = reste > 0 ? `${formatIncome(c.amount)}  ·  ${reste}s` : formatIncome(c.amount)
+      }
+      continue
+    }
     /*
       Two entities per coin, because one of them can only be doing one thing.
 
@@ -1094,7 +1127,7 @@ function pileSystem(): void {
     Transform.create(label, { parent: chute, position: Vector3.create(0, COIN_THICKNESS + 0.75, 0), scale: Vector3.create(0.6, 0.6, 0.6) })
     Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
     TextShape.create(label, { text: formatIncome(c.amount), fontSize: 3, textColor: OR })
-    piles.set(id, { chute, body, label })
+    piles.set(id, { chute, body, label, sec: -1 })
   }
   for (const [id, v] of [...piles]) {
     if (alive.has(id)) continue
