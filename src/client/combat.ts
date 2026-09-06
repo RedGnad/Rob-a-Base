@@ -59,24 +59,7 @@ export const combatView = {
   lastShotAt: 0,
   lastHitAt: 0,
   /** What is in the hand: the HUD button wears this weapon's own picture. */
-  arme: 'shoot' as 'shoot' | 'slap' | 'taser',
-  /**
-   * What the last round did, as one short line for the status plate above the pad.
-   *
-   * It was a toast in the upper middle of the screen, one per hit, stacked, at four rounds a
-   * second: a wall of plates between the shooter and the target (testers, 6 Sep). The fact is
-   * kept, the surface changes: the plate at the bottom that the drawn weapon leaves empty.
-   */
-  resultat: '',
-  resultatJusqua: 0,
-  resultatCouleur: '#ffd166'
-}
-
-/** Say what a round did, on the status line, for a moment. */
-function direResultat(texte: string, couleur: string): void {
-  combatView.resultat = texte
-  combatView.resultatCouleur = couleur
-  combatView.resultatJusqua = Date.now() + 2200
+  arme: 'shoot' as 'shoot' | 'slap' | 'taser'
 }
 
 type ArmeType = 'shoot' | 'slap' | 'taser'
@@ -458,24 +441,18 @@ export function setupCombat(): void {
       const h = AudioSource.getMutableOrNull(hitmark)
       if (h !== null) { h.playing = false; h.playing = true }
     }
-    // The boss flashes when hit; a line per round at five rounds a second would be noise.
-    if (d.reason === 'boss') return
-    // One shot, one line. What it did to their hands leads, because that is the bigger prize.
-    const qui = d.hitName.toUpperCase()
+    /*
+      A landed shot writes NOTHING on the interface. It never should have.
+
+      Five lines used to leave here, one per round at four rounds a second. Every fact they
+      carried is already in the world, and in a form that costs no reading: the hit-marker on
+      the reticle and its tick say the round connected, the coin pile falls at the target's
+      feet WITH its amount printed on it, a dropped item lands where it fell and is visible,
+      and the red flash, the red figure and the hurt sound answer for being shot. Words on
+      top of that are a fourth copy printed over the fight (owner, 6 Sep: "soit du design
+      contextuel, soit on enleve tout").
+    */
     if (d.loot > 0) combatView.lastHitAt = Date.now()
-    if (d.loot === 3) {
-      direResultat(`${qui} LOST THEIR GRIP  ·  THEFT OFF`, '#8fe08f')
-    } else if (d.loot === 2) {
-      direResultat(`${qui} DROPPED IT  ·  GRAB IT`, '#ff6b6b')
-    } else if (d.loot === 1) {
-      direResultat(`${qui} ALMOST LOST IT  ·  KEEP FIRING`, '#ffd166')
-    } else if (d.reason === 'hit') {
-      combatView.lastHitAt = Date.now()
-      // No sum here (memo 420): the pile on the ground says how much.
-      direResultat(`COINS ON THE GROUND  ·  GO TAKE THEM`, '#ffd166')
-    } else if (d.reason === 'nothing to drop') {
-      direResultat(`${qui} HAS NOTHING TO DROP`, '#9aa3ad')
-    }
   })
   /*
     Being shot has three channels and no toast.

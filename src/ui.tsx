@@ -445,10 +445,22 @@ const SellChip = (props: { right?: number }) => {
   // and a price under a piece not yet revealed spoils the reveal (owner, 5 Sep).
   if (carryView.code < 0 || carryView.vole || boxView.roule || boxView.resultat >= 0) return null
   const prix = formatIncome(prixDeRevente(carryView.code))
+  const mot = phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`
+  /*
+    Sized to its words, and no taller than a thumb needs.
+
+    It was a fixed 250 by 96 slab riding above the pad, which on a handset is a banner across
+    the right of the screen that met the corner column coming down (owner, 6 Sep, screenshot).
+    It now takes the width its own sentence needs and the platform's minimum touch height,
+    80 units, 7.6 mm on the reference handset, exactly Material's floor. The desktop keeps the
+    full row height: there is room there and the key hint rides with it.
+  */
+  const taille = phone() ? TYPE.caption : TYPE.body
+  const large = Math.round(largeurTexte(mot, taille) * 1.12) + 44
   return (
-    <Btn label={phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
-      width={phone() ? 250 : 290} right={props.right}
-      bind={[InputAction.IA_ACTION_4]} />
+    <Btn label={mot} size={taille}
+      width={phone() ? large : 290} height={phone() ? TAP.menu : undefined}
+      right={props.right} bind={[InputAction.IA_ACTION_4]} />
   )
 }
 
@@ -993,9 +1005,6 @@ function hud(): boolean {
  * is drawn on the weapon button.
  */
 function barre(): string {
-  // While the weapon is out this plate carries what the last round did (see `direResultat`).
-  // It is the surface a fight can afford: at the bottom, one line, replaced rather than stacked.
-  if (Date.now() < combatView.resultatJusqua) return combatView.resultat
   if (combatView.aiming) {
     /*
       The reticle names the target at the crosshair and the weapon button wears the sight, so
@@ -1112,19 +1121,14 @@ function Crosshair() {
       {bar(-th / 2, gap, th, len, 'down')}
       {bar(-(gap + len), -th / 2, len, th, 'left')}
       {bar(gap, -th / 2, len, th, 'right')}
-      {locked && (
-        <UiEntity
-          uiTransform={{
-            width: 300, height: 24, positionType: 'absolute',
-            position: { top: '50%', left: '50%' }, margin: { left: -150 + c.x, top: 34 + c.y },
-            justifyContent: 'center'
-          }}
-        >
-          <Label uiTransform={{ width: '100%' }} textWrap="nowrap"
-            value={`${combatView.targetName.toUpperCase()}  ·  ${Math.round(combatView.targetDist)} m`}
-            fontSize={TYPE.label} color={Color4.fromHexString('#ff8b8bff')} textAlign="middle-center" />
-        </UiEntity>
-      )}
+      {/*
+        No name and no range under the reticle.
+
+        The lock is already said by the reticle itself, which turns red and tightens with the
+        shot's strength, and the target wears their own nameplate in the world. A third copy
+        printed over the middle of the screen was words where the picture had already spoken
+        (owner, 6 Sep). `combatView.targetName` stays: it is what tells the reticle it is locked.
+      */}
     </UiEntity>
   )
 }
@@ -2183,7 +2187,7 @@ const uiComponent = () => {
       and read the rest in peripheral vision, so anything permanent near the middle is paid
       for out of the part of the screen they are actually using.
     */}
-    {hud() && !slotView.active && barre() !== '' && !boxView.roule && boxView.resultat < 0 && (
+    {hud() && !slotView.active && barre() !== '' && (
       <Centre bottom={row(0)}>
         <UiEntity
           uiTransform={{
@@ -2193,9 +2197,7 @@ const uiComponent = () => {
           uiBackground={SKIN.panel}
         >
           <Label value={barre()} fontSize={TYPE.label}
-            color={Date.now() < combatView.resultatJusqua
-              ? Color4.fromHexString(lisible(combatView.resultatCouleur) + 'ff')
-              : (combatView.aiming ? C.danger : C.name)} textWrap="nowrap" />
+            color={combatView.aiming ? C.danger : C.name} textWrap="nowrap" />
         </UiEntity>
       </Centre>
     )}

@@ -14,10 +14,10 @@ import { TOAST } from './theme'
   noise (owner, 3 Sep, after testers saying "I don't know what to do").
 */
 export const STEP_TEXTS: ReadonlyArray<{ titre: string; aide: string; verb: string; actions: readonly string[] }> = [
-  // The hint says the one thing the world does not: the ghost has to be green. The world
-  // already says the rest, with the floating PLACE YOUR BASE, the ghost and the hammer disc;
-  // naming buttons on top of that only adds words (owner, 6 Sep).
-  { titre: 'Place your base', aide: 'find a green spot', verb: 'build', actions: ['construire-base', 'poser-base'] },
+  // No hint at all. A red ghost is read without being told, the arrival is placed on a legal
+  // square (travel.ts), and the world already carries the floating PLACE YOUR BASE, the ghost
+  // and the hammer. An empty `aide` simply draws no second line (owner, 6 Sep).
+  { titre: 'Place your base', aide: '', verb: 'build', actions: ['construire-base', 'poser-base'] },
   { titre: 'Open your crate', aide: 'walk to your crate and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
   { titre: 'Collect your coins', aide: 'your items earn into a pool: tap COLLECT', verb: 'collect', actions: ['encaisser'] },
   { titre: 'Buy a crate', aide: 'tap a crate on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
@@ -47,7 +47,9 @@ export function stepVerb(): 'build' | 'crate' | 'collect' | 'steal' {
 }
 
 export function stepHintDue(): boolean {
-  return tutoView.etape < tutoView.total && Date.now() - tutoView.since > HINT_AFTER_MS
+  return tutoView.etape < tutoView.total
+    && (STEP_TEXTS[tutoView.etape]?.aide ?? '') !== ''
+    && Date.now() - tutoView.since > HINT_AFTER_MS
 }
 
 /** Seconds until the play-time crate, and the full span, so a bar can be drawn from them. */
