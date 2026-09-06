@@ -177,17 +177,23 @@ export function setupUi() {
  * declare, and padding it out to a fixed one is how a two-word hint came to take a third of
  * a phone screen. This lets the layout do the centring instead of the arithmetic.
  */
-const Centre = (props: { top?: number; bottom?: number; children?: unknown }) => (
-  <UiEntity
-    uiTransform={{
-      width: '100%', positionType: 'absolute',
-      position: props.top !== undefined ? { top: props.top, left: 0 } : { bottom: props.bottom ?? 0, left: 0 },
-      justifyContent: 'center', alignItems: 'center'
-    }}
-  >
-    {props.children}
-  </UiEntity>
-)
+const Centre = (props: { top?: number; bottom?: number; decalage?: boolean; children?: unknown }) => {
+  // `decalage` moves the row onto the middle of the SCREEN rather than the middle of the
+  // rectangle the renderer hands us; see `decalageCentre` in layout.ts. Only what has to line
+  // up with the glass asks for it: the reticle, and the reel.
+  const dx = props.decalage === true ? decalageCentre().x : 0
+  return (
+    <UiEntity
+      uiTransform={{
+        width: '100%', positionType: 'absolute',
+        position: props.top !== undefined ? { top: props.top, left: dx } : { bottom: props.bottom ?? 0, left: dx },
+        justifyContent: 'center', alignItems: 'center'
+      }}
+    >
+      {props.children}
+    </UiEntity>
+  )
+}
 
 const MENU_W = 1088
 /** The strip at the right edge of a dialog body where the client draws its scrollbar. */
@@ -1337,7 +1343,17 @@ function CrateReveal(): ReactEcs.JSX.Element {
   // The hero: after the hold, the glyph, then the name, then the income.
   const heroVisible = !tourne && t >= hold
   const h = t - hold
-  const fond = tourne ? 0.34 : Math.min(0.62, 0.34 + 0.28 * clamp01(h / 180))
+  /*
+    The backdrop is a NIGHT, not a tint.
+
+    It was 34 % black while the strip ran, which on a bright field is a grey haze: the world
+    stayed perfectly readable behind the one moment that is supposed to own the screen
+    (owner, 7 Sep, screenshot). This is not a `Juice it or lose it` question, and I should not
+    pretend it is: that talk is about squash, particles, shake and sound ON the object. The
+    rule at work here is staging, the same one the 3D reveal already follows with its own
+    veil at 78 %. The strip now sits on 66 %, and the hero deepens to 80 %.
+  */
+  const fond = tourne ? 0.66 : Math.min(0.80, 0.66 + 0.14 * clamp01(h / 180))
   const heroPop = easeOutBack(clamp01(h / 320))
   const nomPop = easeOutBack(clamp01((h - 120) / 260))
   const lignePop = easeOutBack(clamp01((h - 260) / 260))
@@ -1381,8 +1397,18 @@ function CrateReveal(): ReactEcs.JSX.Element {
           uiBackground={{ color: Color4.create(0, 0, 0, fond * sortie) }} />
       )}
 
+      {/*
+        Centred on the GLASS, not on our canvas.
+
+        `Centre` centres inside the rectangle the renderer gives us, which on a phone is the
+        screen minus the notch: the reel came out a full card right of centre on the tester's
+        handset, and sitting on `bottom: 250` it was also a tenth of the height above the
+        middle (owner, 7 Sep, screenshot). The vertical placement is now the middle of the
+        canvas, and `decalageCentre()` carries the strip back onto the middle of the glass,
+        the same correction the reticle has used since the 5th.
+      */}
       {bandeVisible && (
-        <Centre bottom={250}>
+        <Centre top={Math.round(active.h / 2 - (REEL_H + 12) / 2 + decalageCentre().y)} decalage>
           {/*
             TWO boxes, and only the inner one clips.
 
@@ -2159,16 +2185,27 @@ const uiComponent = () => {
       TYPE.body, so a thumb can hit them and an eye can read them on a phone. What the
       player is merely waiting for sits above as one dim line, never as a dead button.
     */}
+    {/*
+      A plate, not a whisper.
+
+      This was caption-sized dim grey text on the world, and a player asked out loud how he was
+      supposed to know how many boxes were waiting at his base: the line telling him had been
+      on his screen the whole time (owner, 7 Sep). It is the one channel that says what the
+      player is WAITING for, so it gets the plate every other statement in this interface has,
+      body size, and the amber that means "there is something for you here".
+    */}
     {hint() !== '' && !combatView.aiming && hud() && (
-      <UiEntity
-        uiTransform={{
-          width: strip(620).width, height: 34, positionType: 'absolute',
-          position: { bottom: row(0) + 62, left: '50%' }, margin: strip(620).margin,
-          justifyContent: 'center', alignItems: 'center'
-        }}
-      >
-        <Label uiTransform={{ width: '100%' }} value={hint()} fontSize={TYPE.caption} color={C.dim} textAlign="middle-center" />
-      </UiEntity>
+      <Centre bottom={row(0) + 62}>
+        <UiEntity
+          uiTransform={{
+            height: 52, padding: { left: 22, right: 22 },
+            justifyContent: 'center', alignItems: 'center'
+          }}
+          uiBackground={SKIN.panel}
+        >
+          <Label value={hint()} fontSize={TYPE.body} color={C.bonus} textWrap="nowrap" />
+        </UiEntity>
+      </Centre>
     )}
 
     {/*

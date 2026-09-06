@@ -675,7 +675,7 @@ function tenirLePave(racine: Entity, lockedUntil: number, hex: string, skin: num
     PointerEvents.createOrReplace(lockTap as Entity, {
       pointerEvents: [{
         eventType: PointerEventType.PET_DOWN,
-        eventInfo: { button: InputAction.IA_POINTER, hoverText: locked ? 'Base locked' : recharging ? 'Lock recharging' : `Lock base  \u00b7  ${Math.round(LOCK_FREE_MS / 1000)} s` }
+        eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: locked ? 'Base locked' : recharging ? 'Lock recharging' : `Lock base  \u00b7  ${Math.round(LOCK_FREE_MS / 1000)} s` }
       }]
     })
   }
@@ -720,7 +720,7 @@ function createPedestal(racine: Entity, k: number): Entity {
     MeshCollider.setBox(o, ColliderLayer.CL_POINTER)
     PointerEvents.create(o, {
       pointerEvents: [
-        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
+        { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: 'Steal' } }
       ]
     })
   }
@@ -843,7 +843,7 @@ function garnirBase(v: View): void {
   MeshCollider.setBox(v.ascenseur)
   Material.setPbrMaterial(v.ascenseur, { ...plastic(TOY.elevator, 0.5), metallic: 0.85, roughness: 0.25 })
   PointerEvents.createOrReplace(v.ascenseur, {
-    pointerEvents: [{ eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Go up' } }]
+    pointerEvents: [{ eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: 'Go up' } }]
   })
   /*
     The shield is a FILE, not a primitive box (tools/model/build-shield.py). Two reasons. The
@@ -1510,11 +1510,19 @@ export function setupPlots(): void {
           trapped thief would only stand in a sealed room for sixty seconds, out of the game
           (owner, 4 Sep). So the seal is a broom here, and the reference's trap stays theirs.
         */
-        const solide = locked && !monBase
-        if (solide && !MeshCollider.has(v.door)) {
-          MeshCollider.setBox(v.door)
-          expulser(t.position, p.floors)
-        } else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
+        /*
+          The shield is SEEN, never touched. Nobody is ever kept out of a base.
+
+          It used to be a solid box for everyone but the owner, and it swept whoever was inside
+          out to the door. Two facts killed that: the protection does not come from the wall,
+          it comes from the server refusing the theft while the lock stands, so the collider
+          added no security at all; and a base is a SHOWCASE whose whole point is that people
+          come and look at it, so a wall around it closes the one thing the venue is for. A
+          newcomer met an invisible refusal with no explanation on the very first base he tried
+          to visit (owner, 6 Sep). The dome still stands and still breathes, so the protection
+          reads at a glance; it simply lets you walk through and read the shelves.
+        */
+        if (MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
       }
 
       // The lock pad: the one control of the base that is a thing on its floor.
@@ -1540,7 +1548,7 @@ export function setupPlots(): void {
           : `${verb} ${nomDuCode(code)} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
         PointerEvents.createOrReplace(v.items[k], {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: label } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: label } }
           ]
         })
       }

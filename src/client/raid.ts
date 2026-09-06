@@ -64,7 +64,7 @@ export function setupRaid(): void {
   Material.setPbrMaterial(corps, plastic(PEAU, 0.35))
   PointerEvents.create(corps, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'RAID BOSS  ·  draw (F) and fire (E)' } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: 'RAID BOSS  ·  draw (F) and fire (E)' } }
     ]
   })
 

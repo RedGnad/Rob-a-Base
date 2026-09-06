@@ -49,7 +49,7 @@ export function setupFuser(): void {
   Material.setPbrMaterial(tambour, plastic(TOY.belt))
   PointerEvents.create(tambour, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Fuser  ·  ${FUSION_NEEDS} of a kind become one better` } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: `Fuser  ·  ${FUSION_NEEDS} of a kind become one better` } }
     ]
   })
 

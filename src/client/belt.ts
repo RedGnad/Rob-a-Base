@@ -151,7 +151,7 @@ export function setupBelt(): void {
         const haut = r.size - 0.27
         PointerEvents.create(item, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${crateSummary(b.crateTier)}` } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${crateSummary(b.crateTier)}` } }
           ]
         })
 

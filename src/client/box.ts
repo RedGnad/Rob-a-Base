@@ -200,7 +200,7 @@ export function setupBox(): void {
   MeshCollider.setBox(crateMesh, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
   PointerEvents.create(crateMesh, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Smash' } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: 'Smash' } }
     ]
   })
 
