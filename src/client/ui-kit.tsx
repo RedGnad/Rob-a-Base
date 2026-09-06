@@ -100,7 +100,7 @@ export const SoundBtn = (props: { size: number; right: number }) => {
       }}
       uiBackground={sfxView.on ? SKIN.secondary : SKIN.inset}
       onMouseDown={() => {
-        noterServi()
+        noterServi(cle)
         presse.set(cle, Date.now())
         if (sfxView.on) tic()
         setSfx(!sfxView.on)
@@ -305,7 +305,7 @@ export const Pouce = (props: {
         built; the thumb buttons, which are the ones a player presses every ten seconds, were
         silent, so the loudest control in the game gave the least feedback (owner, 5 Sep).
       */
-      onMouseDown={props.disabled === true ? undefined : () => { noterServi(); presse.set(cle, Date.now()); tic(); props.onClick?.() }}
+      onMouseDown={props.disabled === true ? undefined : () => { noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.() }}
     >
       {/*
         The glyph takes the disc, measured against the platform's own pad.
@@ -390,7 +390,7 @@ export const CloseBtn = (props: { size: number; onClick: () => void }) => {
         justifyContent: 'center', alignItems: 'center', pointerFilter: 'block'
       }}
       uiBackground={SKIN.danger}
-      onMouseDown={() => { noterServi(); presse.set(cle, Date.now()); tic(); props.onClick() }}
+      onMouseDown={() => { noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick() }}
     >
       <UiEntity
         uiTransform={{
@@ -480,7 +480,7 @@ export const Btn = (props: {
       }}
       uiBackground={SKIN[props.skin ?? (props.primary === true ? 'primary' : 'secondary')]}
       uiInputBinding={props.bind !== undefined ? { actions: props.bind } : undefined}
-      onMouseDown={actif ? () => { noterServi(); presse.set(cle, Date.now()); tic(); props.onClick?.() } : undefined}
+      onMouseDown={actif ? () => { noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.() } : undefined}
     >
       <UiEntity uiTransform={{ width: props.width, height, positionType: 'absolute', position: { top: enfonce ? 3 : 0, left: 0 } }}>
         {contenu}

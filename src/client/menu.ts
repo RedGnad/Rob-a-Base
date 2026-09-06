@@ -2,6 +2,7 @@ import { questsView } from './quests-ui'
 import { indexView } from './index-ui'
 import { travelView } from './travel'
 import { shopView } from './shop-ui'
+import { noterEvenement } from './clics'
 
 /**
  * One way in, three destinations.
@@ -31,6 +32,9 @@ export function closeMenu(): void {
 }
 
 export function basculerMenu(): void {
+  // Dated for the trace: the presses that go missing are reported just after the menu opens,
+  // so every line the client records carries how long ago that was (src/client/clics.ts).
+  noterEvenement(menuView.open ? 'menu-close' : 'menu-open')
   if (menuView.open) { closeMenu(); return }
   questsView.open = true
 }

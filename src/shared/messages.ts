@@ -137,6 +137,12 @@ export const MESSAGES = {
   floorBought: Schemas.Map({ floors: Schemas.Int, cost: Schemas.Int64 }),
 
   /** The offline cap, bought one silo at a time (see `siloCost` in shared/economy.ts). */
+  /** TEMPORARY: the interface trace, one line per received press (src/client/clics.ts). */
+  uiTrace: Schemas.Map({
+    lines: Schemas.String, build: Schemas.String, phone: Schemas.Boolean,
+    recus: Schemas.Int, servis: Schemas.Int
+  }),
+
   buySilo: Schemas.Map({}),
   siloBought: Schemas.Map({ silos: Schemas.Int, cost: Schemas.Int64, capS: Schemas.Int }),
 

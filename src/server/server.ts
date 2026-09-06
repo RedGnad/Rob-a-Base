@@ -16,6 +16,7 @@ import { startRecords } from './records'
 import { startFuser } from './fusion'
 import { startRaid } from './raid'
 import { startAdmin } from './admin'
+import { startTrace } from './trace'
 
 /*
   The template's tap counter was deleted here on 25 Aug.
@@ -50,6 +51,7 @@ export function startServer(): void {
   startFuser()
   startRaid()
   startAdmin()
+  startTrace()
   runConvoys()
   sweepConvoys()
   startCombat()

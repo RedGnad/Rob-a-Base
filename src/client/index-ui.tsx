@@ -135,7 +135,7 @@ export const IndexContent = () => {
               }}
               uiBackground={{ color: ouvert ? Color4.fromHexString(m.color + 'ff') : Color4.create(0.22, 0.25, 0.32, 1) }}
               onMouseDown={ouvert ? () => {
-                noterServi()
+                noterServi(`skin-${m.id}`)
                 tic()
                 const cible = porte ? 0 : m.id
                 indexView.skin = cible
