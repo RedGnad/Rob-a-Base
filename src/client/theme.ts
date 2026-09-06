@@ -289,7 +289,7 @@ export const FORCE_MOBILE_LAYOUT = false
  * The slice fraction is the corner radius over the texture size, 40 over 128. Change one
  * in the generator and this has to follow, which is why the generator prints it.
  */
-const SLICE = { top: 0.3125, right: 0.3125, bottom: 0.3125, left: 0.3125 }
+const SLICE = { top: 0.15625, right: 0.15625, bottom: 0.15625, left: 0.15625 }
 const skin = (name: string) => ({
   // White, explicitly: the Button component supplies a variant colour of its own, and a
   // texture drawn under it comes out multiplied into whatever that colour is. Naming the

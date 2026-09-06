@@ -27,8 +27,20 @@ const zlib = require('zlib')
 
 const OUT = path.resolve(__dirname, '../../assets/ui')
 const SIZE = 128
-/** Corner radius in pixels. The slice fraction in theme.ts has to match RADIUS / SIZE. */
-const RADIUS = 40
+/**
+ * Corner radius in pixels. The slice fraction in theme.ts has to match RADIUS / SIZE.
+ *
+ * Twenty, from forty, and the reason is a third mobile fact next to the two above: the phone
+ * draws a nine-slice with Godot's NinePatchRect, whose patch margins are the slices in texture
+ * pixels, and a NinePatchRect can never be SMALLER than its margins added up. At forty a
+ * plate could not go under eighty units tall or wide, so every plate drawn shorter (the raid
+ * countdown at forty, the rush chip, the cloak line, the crate timer at fifty-two, the close
+ * button at fifty-seven wide) was silently stretched to eighty on the tester's phone: text
+ * off-centre in a box it was not laid out for, and stacked plates eating the gap between them
+ * (6 Sep, screenshot). The desktop enforces no minimum, which is why none of it showed there.
+ * At twenty the floor is forty, under every plate the interface draws.
+ */
+const RADIUS = 20
 /** The shared outline, the one silhouette every control wears. */
 const OW = 6
 

@@ -140,7 +140,16 @@ export function setupSlots(): void {
     slotView.valid = reason === null
     slotView.reason = reason ?? ''
 
-    const muet = auto && !slotView.valid
+    /*
+      The ghost that lights by itself says NO as well now, in red, with the reason.
+
+      It used to show only on a valid spot (2 Sep: the first frame of the game was a red
+      rectangle on the belt corridor, where everyone spawns). The playtest of 6 Sep turned
+      that around: a player with an inert hammer and no ghost had no idea what was wrong, and
+      the owner asked for the red ghost back. The hammer no longer swings on a red ghost, so
+      the two together read as one sentence: not here, and this is why.
+    */
+    const muet = false
     const t = Transform.getMutableOrNull(fantome)
     if (t !== null) {
       t.position = Vector3.create(x, 0.08, z)

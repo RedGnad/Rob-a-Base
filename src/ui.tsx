@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP, SKIN, btn, lisible, largeurTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, RAD, btn, lisible, largeurTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs, glyphWidth } from './client/glyphs'
 import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
@@ -18,6 +18,7 @@ import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { toyImage } from './client/toy'
 import { noterEvenement, signalerMenu } from './client/clics'
+import { loadingView } from './client/loading'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
@@ -517,6 +518,20 @@ function sonDuVerbe(icone: string | undefined): void {
   }
 }
 
+/**
+ * The hammer moves only when a strike would land.
+ *
+ * It swung whenever the build verb was up, including on a spot where nothing can be built,
+ * which is where every new player starts (the belt corridor). A cue that says "press this"
+ * over an act that will be refused teaches the wrong thing (owner, 6 Sep). For the build
+ * verbs the swing and the pulse wait for the ghost to be green; every other verb keeps its cue.
+ */
+function peutConstruireIci(a: { id: string } | null): boolean {
+  if (a === null) return false
+  if (a.id !== 'construire-base' && a.id !== 'poser-base') return true
+  return slotView.active && slotView.valid
+}
+
 const POSES = ['build'] as const
 function posesDe(icone: string | undefined): [string, string] | undefined {
   const nom = POSES.find((v) => icone === ico(v))
@@ -672,8 +687,8 @@ const PadControls = () => {
         <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={pad.gros}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
           presseePar={tirDesktop}
-          frames={!combatView.aiming ? posesDe(a.icon) : undefined}
-          pulse={!combatView.aiming && stepExpects(a.id)}
+          frames={!combatView.aiming && peutConstruireIci(a) ? posesDe(a.icon) : undefined}
+          pulse={!combatView.aiming && stepExpects(a.id) && peutConstruireIci(a)}
           periodMs={SWING_MS} touche={touche('E')} />
       ) : (
         <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros}
@@ -2159,6 +2174,52 @@ const uiComponent = () => {
       </Centre>
     )}
 
+    <LoadingScreen />
   </UiEntity>
+  )
+}
+
+/**
+ * The game's own loading screen, held up until the field is really there.
+ *
+ * Drawn LAST so it covers every other layer, and it swallows every press. It stays while
+ * any of three things is still missing: the heavy models (`loading.ts` reads the client's
+ * own load states), the wallet (the first message that says who this player is) and a live
+ * server heartbeat. Each has its own ceiling elsewhere, and this screen adds one of its own,
+ * so nothing can hold a player on a picture for good. The picture is the world's thumbnail,
+ * the one thing every player has already seen before arriving.
+ */
+const LOADING_CEILING_MS = 30_000
+const LoadingScreen = () => {
+  const pret = loadingView.assetsReady && theftView.walletRecu && view.serverAlive
+  if (pret || Date.now() - loadingView.since > LOADING_CEILING_MS) return null
+  const h = Math.round(active.h * 0.52)
+  const w = Math.round(h * 1.5)
+  const t = Date.now() / 1000
+  const attend = !loadingView.assetsReady ? 'LOADING THE FIELD'
+    : !theftView.walletRecu ? 'OPENING YOUR BASE'
+    : 'WAKING THE SERVER'
+  return (
+    <UiEntity
+      uiTransform={{
+        width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 },
+        justifyContent: 'center', alignItems: 'center', flexDirection: 'column', pointerFilter: 'block'
+      }}
+      uiBackground={{ color: Color4.fromHexString('#0f1524ff') }}
+    >
+      <UiEntity uiTransform={{ width: w, height: h, borderRadius: RAD.card, margin: { bottom: 28 } }}
+        uiBackground={{ texture: { src: 'images/base-war-thumbnail.png' }, textureMode: 'stretch' }} />
+      <Label value={attend} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
+        uiTransform={{ width: 600, height: 40 }} textAlign="middle-center" textWrap="nowrap" />
+      {/* Three dots breathing in turn: the interface has no rotation, so a wheel is out. */}
+      <UiEntity uiTransform={{ height: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+        {[0, 1, 2].map((i) => (
+          <UiEntity key={`dot${i}`}
+            uiTransform={{ width: 14, height: 14, borderRadius: 7, margin: { left: 7, right: 7 },
+              opacity: 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 4 - i * 1.1)) }}
+            uiBackground={{ color: Color4.fromHexString('#ffd166ff') }} />
+        ))}
+      </UiEntity>
+    </UiEntity>
   )
 }

@@ -37,6 +37,7 @@ import { setupLootUi } from './loot-ui'
 import { setupPreload } from './preload'
 import { setupIntent } from './intent'
 import { setupClics } from './clics'
+import { setupLoading } from './loading'
 
 export const view = {
   items: 0,
@@ -122,6 +123,7 @@ export function startClient(): void {
   room.onMessage('serverLog', (d) => console.log(`[SERVER] ${d.line}`))
   setupIntent()
   setupClics()
+  setupLoading()
   setupTouchHud()
   if (!isMobile()) setupPointerLock()
   reportPlatform()

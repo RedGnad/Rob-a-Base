@@ -163,7 +163,23 @@ function placeAvailable(): boolean { return !isMobile() }
   transform lag and the camera flipped between first and third person until they stopped
   (mobile tester, 3 Sep). 2.2 m still only catches a neighbour standing inside arm's reach.
 */
-const ZONE_VISEE = Vector3.create(2.2, 2.8, 2.2)
+/*
+  Eight metres a side, from two point two.
+
+  The area is a trigger volume the client tests against the avatar's own collider: read in
+  both clients on 6 Sep (`CameraModeAreaHandlerSystem.cs` on desktop, `camera_mode_area_
+  detector.gd` on the phone), the mode is applied on ENTER and released on EXIT, nothing
+  else. A box barely wider than the avatar, parented to a player running at eight metres a
+  second, sits one frame behind the body on the clients that move the avatar in physics and
+  the scene graph in another step: the body clips the wall of the box, exits, re-enters, and
+  the camera flips with it. That is the "camera qui clignote quand on court en visee" of
+  every playtest since August. A box the avatar cannot leave in one frame ends it. Nobody
+  else is affected: the desktop only tests the main player, the phone only its own detector.
+*/
+const ZONE_VISEE = Vector3.create(8, 8, 8)
+/** Where the area waits while the weapon is away: far under the map, relative to the player. */
+const ZONE_RANGEE = Vector3.create(0, -300, 0)
+const ZONE_EN_JOUE = Vector3.create(0, 1, 0)
 /** How long the explorer takes to slide from one camera mode to the other. */
 const TRANSITION_MS = 350
 
@@ -190,8 +206,6 @@ let degainages = 0
 let armeAffichee: ArmeType = 'shoot'
 let enRafale = false
 let rafaleJusqua = 0
-/** Whether first person was the player's own setting when the weapon came out. */
-let prefersFirstPerson = false
 let dernierRecensement = 0
 let targetName = ''
 let cbtTargetAddr = ''
@@ -295,17 +309,29 @@ function montrer(g: Gun | null, on: boolean): void {
  * The local player is the one special case, because first person and third person need
  * two different models and only one of them may be on screen at a time.
  */
+/*
+  Which of the two guns the player sees depends on the DRAW, never on the camera report.
+
+  It depended on `combatView.firstPerson`, which is the client's own `CameraMode` component
+  as the scene last heard it. When that report lagged or never came, the scene believed it
+  was still in third person while the client was already in first: it hid the view model and
+  showed the HAND gun, an item attached to the right hand of a body the first-person camera
+  does not draw. What is left on screen is a pistol off to the right, turned with the arm,
+  floating: the "pistolet bloque en position laterale, rotate bizarrement" reported since
+  August and photographed on 6 Sep. Drawing forces first person by construction, so while the
+  weapon is out the player sees the view model and never their own hand gun. Other players
+  still see this player's hand gun, which is what `a !== moi` keeps.
+*/
 function rafraichirVisibilite(): void {
   for (const [a, g] of armes) {
     const arme = enJoue.has(a)
-    montrer(g, a === moi ? arme && !combatView.firstPerson : arme)
+    montrer(g, a === moi ? false : arme)
   }
-  // The camera slides between the two modes while CameraMode flips at once, so a view
-  // model shown on the flip is briefly drawn at third-person distance and fills the
-  // screen. It waits for the move to finish.
-  montrer(vue, combatView.aiming && combatView.firstPerson && Date.now() >= viewVisibleAfter)
+  // The camera slides into first person over `TRANSITION_MS` from the draw; a view model
+  // shown before the slide ends is drawn at third-person distance and fills the screen.
+  montrer(vue, combatView.aiming && Date.now() >= viewVisibleAfter)
 
-  const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
+  const porteur = combatView.aiming ? vue : (armes.get(moi) ?? null)
   if (porteur !== null) {
     const t = Transform.getOrNull(flash)
     if (t !== null && t.parent !== porteur.poignee) {
@@ -647,8 +673,8 @@ function gunSystem(dt: number): void {
 
   // The view model pulls to centre while aiming, and stops being written once it is
   // there: asking for a mutable Transform every frame dirties the component every frame.
-  if (vue !== null && combatView.firstPerson) {
-    const cible = combatView.aiming ? VISEE_POS : VIEW_POS
+  if (vue !== null && combatView.aiming) {
+    const cible = VISEE_POS
     const t = Transform.getOrNull(vue.racine)
     if (t !== null && Vector3.distance(t.position, cible) > 0.002) {
       Transform.getMutable(vue.racine).position = Vector3.lerp(t.position, cible, Math.min(1, dt * 12))
@@ -697,6 +723,18 @@ function gunSystem(dt: number): void {
  * nothing: measured identical to the hundredth of a degree, before and after a 192 degree
  * turn. Holstering drops the area and the explorer restores the camera the player chose.
  */
+/** The one aim area of the session, parented to the player: see `ZONE_VISEE` and `degainer`. */
+function placerZone(ou: Vector3): void {
+  if (zoneVisee === null) {
+    zoneVisee = engine.addEntity()
+    Transform.create(zoneVisee, { parent: engine.PlayerEntity, position: ou, scale: ZONE_VISEE })
+    CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
+    return
+  }
+  const t = Transform.getMutableOrNull(zoneVisee)
+  if (t !== null) t.position = ou
+}
+
 function degainer(on: boolean): void {
   if (combatView.aiming === on) return
   // Drawing and putting away were both silent: the emote played and nothing was heard.
@@ -709,8 +747,6 @@ function degainer(on: boolean): void {
   void room.send('aim', { on, arme: ARME_INT[armeEnMain()] })
   if (on) {
     degainages += 1
-    const c = CameraMode.getOrNull(engine.CameraEntity)
-    prefersFirstPerson = c !== null && c.mode === CameraType.CT_FIRST_PERSON
     /*
       Gated like every other emote here. This one call was not: a phone drew the weapon
       and started the looping aim pose, and the stop below was gated, so the pose was
@@ -718,18 +754,34 @@ function degainer(on: boolean): void {
       floor frozen in the aim (owner, playing with the testers, 4 Sep).
     */
     if (placeAvailable()) void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
-    // Parented, not chased. Written to the player's position every frame it trailed by a
-    // frame, so a running player reached the leading edge of a box this tight, dropped out
-    // of the region, and the camera flipped back and forth. As a child it cannot lag.
-    zoneVisee = engine.addEntity()
-    Transform.create(zoneVisee, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0), scale: ZONE_VISEE })
-    CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
+    /*
+      The view model shows after the camera's own slide, timed from the draw itself.
+
+      It used to wait on the camera reporting first person, and that report is what the
+      lateral gun came from (see `rafraichirVisibilite`). The draw is the one moment the scene
+      knows for certain; the client's slide takes `TRANSITION_MS` from it.
+    */
+    viewVisibleAfter = Date.now() + TRANSITION_MS
+    /*
+      The area is moved onto the player, never created here.
+
+      It was created on every draw and destroyed on every holster, and destruction is the one
+      path the clients handle worst. On the desktop, destroying the entity fires the exit
+      handler whether or not the player had already left the box; on the phone, freeing the
+      Area3D node can leave a dead reference in the detector's overlap list, after which the
+      detector reads a freed object and the forced mode never lifts: the "stuck in first
+      person, holster does nothing" of the 6 Sep playtest, on desktop and phone alike. The
+      enter and exit path, by contrast, is what every scene with a camera area exercises. So
+      the area lives for the whole session and is moved three hundred metres under the map
+      when the weapon is away, which is an ordinary exit on both clients.
+    */
+    placerZone(ZONE_EN_JOUE)
   } else {
     enRafale = false
     // Unconditional: stopping an emote that is not playing costs nothing, and a pose that
     // was started by an older build must still be stoppable.
     void stopEmote({})
-    if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
+    placerZone(ZONE_RANGEE)
     // The cursor is NOT given back here any more. This used to release the capture on the
     // way out of first person, and since 27 Aug the desktop policy is the opposite: captured
     // while the HUD is on screen (setup.ts owns it). Releasing here undid that policy every

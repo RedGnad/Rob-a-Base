@@ -14,7 +14,10 @@ import { TOAST } from './theme'
   noise (owner, 3 Sep, after testers saying "I don't know what to do").
 */
 export const STEP_TEXTS: ReadonlyArray<{ titre: string; aide: string; verb: string; actions: readonly string[] }> = [
-  { titre: 'Place your base', aide: 'tap BUILD BASE, then pick a spot', verb: 'build', actions: ['construire-base', 'poser-base'] },
+  // The hint names what is on screen and nothing else: the hammer disc and the ghost's colour.
+  // "tap BUILD BASE, then pick a spot" named a button by words the phone never shows, and put
+  // the two acts in the order the code has rather than the one the player lives (owner, 6 Sep).
+  { titre: 'Place your base', aide: 'walk until the ghost turns green, then tap the hammer', verb: 'build', actions: ['construire-base', 'poser-base'] },
   { titre: 'Open your crate', aide: 'walk to your crate and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
   { titre: 'Collect your coins', aide: 'your items earn into a pool: tap COLLECT', verb: 'collect', actions: ['encaisser'] },
   { titre: 'Buy a crate', aide: 'tap a crate on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },

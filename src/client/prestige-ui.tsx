@@ -166,8 +166,13 @@ export const PrestigePanel = () => {
               uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
           </Carte>
           <Carte>
-            <Label value={`x${palier.multiplier}`} fontSize={TYPE.hero} color={C.money}
-              uiTransform={{ width: '100%', height: 62 }} textAlign="middle-center" textWrap="nowrap" />
+            {/*
+              Title size, not hero: a seventy-two point figure in a sixty-two tall box ran
+              over the caption under it on the phone (tester's screenshot, 6 Sep). The two
+              multipliers now share one size and one box, and gold alone says which matters.
+            */}
+            <Label value={`x${palier.multiplier}`} fontSize={TYPE.title} color={C.money}
+              uiTransform={{ width: '100%', height: 58 }} textAlign="middle-center" textWrap="nowrap" />
             <Label value="AFTER, ON EVERYTHING YOU EARN" fontSize={TYPE.caption} color={C.bonus}
               uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" textWrap="nowrap" />
           </Carte>
