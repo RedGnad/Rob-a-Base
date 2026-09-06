@@ -5,10 +5,9 @@ import { room } from '../shared/messages'
 import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/loot-table'
 import { plasticDe, plastic, vif, TOY } from './toy'
 import { carryView } from './carry'
-import { alerter, pushToFeed } from './theft'
+import { pushToFeed } from './theft'
 import { revealItem } from './box'
 import { openFuser } from './fusion-ui'
-import { TOAST } from './theme'
 import { clicMonde } from './monde'
 
 /**
@@ -82,10 +81,9 @@ export function setupFuser(): void {
   room.onMessage('fusionState', (d) => {
     fuserView.codes = [...d.codes]
     if (d.made >= 0) {
-      // La meme revelation que pour une caisse: c'est deja le moment "vous avez obtenu
-      // quelque chose", et le fuser n'en avait aucun. Le texte reste, plus court.
+      // The same reveal as a crate, and nothing else: it already names the piece, and a
+      // toast saying it again at the same instant told the story twice (owner, 6 Sep).
       revealItem(d.made)
-      alerter(`FUSED  ·  a ${itemName(rarityOf(d.made), mutationDe(d.made)).toUpperCase()} is in your hand`, '#4dd2ff', TOAST.result)
     }
   })
   room.onMessage('fused', (d) => {
