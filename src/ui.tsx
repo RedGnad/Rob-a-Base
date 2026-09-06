@@ -86,7 +86,7 @@ import { slotView, togglePlacing, placeHere } from './client/slots'
 import { ico, ICONES_VERBES } from './client/icones'
 import { carryView, placeDown, dropCarried, vendre } from './client/carry'
 import { baseIci, padEnFace, agirSurPad, elevatorInReach, monterIci, lockPostInReach } from './client/plots'
-import { combatView } from './client/combat'
+import { combatView, holster } from './client/combat'
 
 export function setupUi() {
   /*
@@ -616,13 +616,9 @@ const PadControls = () => {
   const tirDesktop = combatView.aiming && !phone()
     ? [InputAction.IA_PRIMARY, InputAction.IA_POINTER]
     : undefined
-  // TEMPORAIRE, pour la video: repasser a `true` ensuite.
-  //
-  // Les cinq plaques de touches (SPACE, F, 1, E, E) ne servent qu'au bureau et disent au
-  // spectateur "ce jeu se joue au clavier", ce qui est l'inverse du message d'un buildathon
-  // mobile. Un seul interrupteur parce qu'un seul point les produit toutes (proprietaire,
-  // 6 Sep). Le comportement du pad, lui, ne change pas: les touches marchent toujours.
-  const TOUCHES_VISIBLES = false
+  // One switch for the five key plates (SPACE, F, 1, E, E): they were hidden for the video
+  // shoot of 6 Sep and put back the same night. Desktop only; a phone never shows them.
+  const TOUCHES_VISIBLES = true
   const touche = (t: string): string | undefined => (phone() || !TOUCHES_VISIBLES ? undefined : t)
   return (
     <UiEntity
@@ -644,9 +640,19 @@ const PadControls = () => {
 
       <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={pad.petit}
         bas={pad.arc[0].bas} droite={pad.arc[0].droite} actions={[InputAction.IA_JUMP]} touche={touche('SPACE')} />
+      {/*
+        Two different controls on one disc. Weapon away: the disc EMITS the secondary action,
+        and combat draws on it, gated on the world being open. Weapon out: the disc calls the
+        holster DIRECTLY and emits nothing, so putting the weapon away depends on no gate and
+        on no input reaching the scene (players stuck aiming, playtest of 6 Sep). The F plate
+        lights it in both states.
+      */}
       <Pouce icone={combatView.aiming ? 'icon-holster' : iconeArme(combatView.arme)} taille={pad.petit}
         bas={pad.arc[1].bas} droite={pad.arc[1].droite}
-        primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} touche={touche('F')} />
+        primaire={combatView.aiming}
+        actions={combatView.aiming ? undefined : [InputAction.IA_SECONDARY]}
+        onClick={combatView.aiming ? holster : undefined}
+        presseePar={[InputAction.IA_SECONDARY]} touche={touche('F')} />
       {/*
         One pip, on the rim. The alert glyph carried a second, smaller dot inside the
         icon, and two red dots on one button read as a mistake (mobile tester, 3 Sep).
@@ -688,17 +694,11 @@ const SWING_MS = 1200
 
 /** The desktop canvas is 1080 high against the phone's 720: the same pad, drawn at that ratio. */
 const DESKTOP_PAD_SCALE = 1.5
-/*
-  TEMPORAIRE, pour la video, a remettre a 40 avec `TOUCHES_VISIBLES`.
-
-  Le pad du bureau etait a 40 unites des deux bords, soit 2,1 % de la largeur, alors que celui
-  du telephone est a 113 sur 1600, soit 7,1 %. La video est tournee au bureau et doit montrer
-  la disposition qu'un joueur aura sur son telephone, donc l'ancrage suit la meme regle que la
-  TAILLE du pad: l'ancrage du telephone multiplie par `DESKTOP_PAD_SCALE`. Tout l'assemblage
-  devient alors un agrandissement uniforme du pad mobile, marges comprises.
-*/
-const DESKTOP_PAD_BOTTOM = Math.round(THUMB.bottom * DESKTOP_PAD_SCALE)
-const DESKTOP_PAD_RIGHT = Math.round(THUMB.right * DESKTOP_PAD_SCALE)
+// For the video shoot of 6 Sep the desktop pad briefly sat at the phone's proportion
+// (`THUMB.right * DESKTOP_PAD_SCALE`, 170 and 75); it is back in its corner. The phone's
+// own anchor lives in layout.ts and was never touched.
+const DESKTOP_PAD_BOTTOM = 40
+const DESKTOP_PAD_RIGHT = 40
 
 /** Les trois places de l'arc, du bord du bas au bord droit, comme `joypad_arc.gd` les calcule, a l'echelle `k`. */
 function arcPour(k: number): { gros: number; petit: number; arc: Array<{ droite: number; bas: number }>; boite: number } {

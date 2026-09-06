@@ -19,6 +19,16 @@ import { movePlayerTo } from '~system/RestrictedActions'
 function fini(n: number): boolean { return typeof n === 'number' && isFinite(n) }
 
 /*
+  What has to happen BEFORE the player is moved, registered by whoever owns it.
+
+  Combat registers its holster here (see `avantDeplacement` in combat.ts). A hook rather than
+  an import in the other direction: this file is imported by the movers, and combat is
+  imported by half the client, so an import from here into combat would close a cycle.
+*/
+const avant: Array<() => void> = []
+export function avantDeplacement(fn: () => void): void { avant.push(fn) }
+
+/*
   The move is logged with its caller's name and NOT announced on screen. For three days a
   toast said "MOVED BY: <caller>" at every move, which found one wrong caller in that time and
   then kept reading as an alarm for things that are not alarms: being set down outside a base
@@ -32,6 +42,7 @@ export function moveTo(quoi: string, cible: Vector3, camera: Vector3): boolean {
     return false
   }
   console.log(`[CLIENT] deplacement (${quoi}) vers ${ou}`)
+  for (const fn of avant) fn()
   void movePlayerTo({ newRelativePosition: cible, cameraTarget: camera })
   return true
 }

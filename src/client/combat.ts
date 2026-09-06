@@ -13,6 +13,7 @@ import { alerter, theftView } from './theft'
 import { cue } from './ui-kit'
 import { noterBascule } from './clics'
 import { mondeOuvert } from './monde'
+import { avantDeplacement } from './deplacer'
 import { flashDamage, floatAmount, playHurt } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 import { TOAST } from './theme'
@@ -376,6 +377,18 @@ export function setupCombat(): void {
   Transform.create(emetteurRange, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
   AudioSource.create(emetteurRange, { audioClipUrl: 'assets/sounds/holster.wav', playing: false, loop: false, volume: 0.7 })
 
+  /*
+    Any move of the player puts the weapon away first.
+
+    The aim is a first-person area parented to the player, and `movePlayerTo` relocates that
+    player in a single frame, area and all. The lift, GO HOME and TO BELT all do this, and the
+    screenshot of the stuck state (owner, 6 Sep) shows exactly what a client that lost the
+    thread of it would draw: a third-person camera off the avatar, the cursor free, and the
+    view model floating where the first-person camera last was. A holster before the move
+    removes the whole case rather than guessing at the client.
+  */
+  avantDeplacement(() => degainer(false))
+
   CameraMode.onChange(engine.CameraEntity, (c) => {
     if (c === undefined) return
     // TEMPORARY: counted on screen, to tell a camera mode flip from a render flicker.
@@ -563,10 +576,16 @@ function gunSystem(dt: number): void {
   // is out the shot leaves on its own as soon as the reticle locks someone. That is the
   // fire mode Fortnite recommends to players new to mobile, and a judge here has five
   // minutes: a second button for the trigger would buy nothing and cost a thumb.
-  if (mondeOuvert() && inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
-    // F draws and holsters, and does nothing else. It used to pull the cloak on when one sat
-    // in the pocket and no weapon was out, so BUYING a cloak silently took the draw key away
-    // (owner, 5 Sep). The cloak is used from its own row in the gear panel.
+  /*
+    The DRAW is gated on the world being open; the HOLSTER never is.
+
+    Both went through `mondeOuvert()` since the menu wall (6 Sep), and the playtest that night
+    reported players stuck with the weapon out, unable to fire and unable to put it away, on
+    phones and on the owner's desktop alike. Whatever put the client in that state, a way out
+    that depends on a gate is not a way out. Drawing can be refused; holstering cannot, ever.
+    F draws and holsters, and does nothing else (the cloak has its own row, owner, 5 Sep).
+  */
+  if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN) && (combatView.aiming || mondeOuvert())) {
     degainer(!combatView.aiming)
   }
 
@@ -717,6 +736,18 @@ function degainer(on: boolean): void {
     // time the weapon was holstered (tester: "aim and back, the camera follow is gone").
   }
 }
+
+/**
+ * Put the weapon away, from anywhere.
+ *
+ * The pad's weapon disc calls this DIRECTLY while the weapon is out, instead of emitting the
+ * secondary action for the input system to toggle. Two reasons. A direct call does not depend
+ * on the input reaching the scene at all, which is the second independent way out the stuck
+ * state needs. And a toggle raced with the binding: had the disc kept its action while also
+ * calling this, one press would holster here and draw again on the action a frame later.
+ * `degainer` is idempotent, so a second call from any path costs nothing.
+ */
+export function holster(): void { degainer(false) }
 
 /**
  * What the shot would reach, computed the way the server computes it.
