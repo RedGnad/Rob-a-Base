@@ -17,7 +17,7 @@ import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { toyImage } from './client/toy'
-import { noterEvenement } from './client/clics'
+import { noterEvenement, signalerMenu } from './client/clics'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
@@ -1473,6 +1473,8 @@ const uiComponent = () => {
   const visible = hud()
   if (visible && !theftView.hudVisible) theftView.hudDepuis = Date.now()
   theftView.hudVisible = visible
+  // The trace needs to know whether a press landed inside an open panel (see client/clics.ts).
+  signalerMenu(menuView.open)
   /*
     The top band, resolved once per frame, in priority order.
 

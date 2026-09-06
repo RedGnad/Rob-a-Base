@@ -34,17 +34,28 @@ const TAMPON_MAX = 60
 const ENVOI_MS = 10_000
 
 /*
-  `servisAvant` is what makes an attribution honest.
+  Attribution by TIME WINDOW, after two wrong tries, and the second one is the instructive one.
 
-  The first version compared timestamps against the LAST handler that ran, so two presses
-  inside one window both read as served by the second one's control. Counting the handlers
-  instead answers the only question that matters per line, "did anything run for THIS press",
-  without ever crediting one press with another's handler.
+  Version one compared against the last handler that ran, so two presses inside one window both
+  read as served by the second one's control. Version two counted handlers instead and compared
+  the count before and after: that assumed this system sees the press BEFORE the interface
+  dispatches it. It does not. The renderer's dispatch and this system are two systems in one
+  frame, and the first reading of real data (6 Sep, `debug:ui`) showed the consequence plainly:
+  batches reporting eleven servings carried three lines marked served. The handler had already
+  run when the press was recorded, so the counter had already moved and the comparison said no.
+
+  A serving is therefore kept with its own timestamp, and a press counts as served if a serving
+  landed anywhere in [press - `AVANT_MS`, press + `FENETRE_MS`]. The backward tolerance is what
+  covers a handler that ran earlier in the same frame; it is one frame wide, not more, so it can
+  never reach the previous press.
 */
-type EnAttente = { at: number; entity: number; ui: boolean; contexte: string; age: number; servisAvant: number }
+type EnAttente = { at: number; entity: number; ui: boolean; menu: boolean; contexte: string; age: number }
+/** How far back a serving may sit and still belong to this press: one frame at 30 fps. */
+const AVANT_MS = 40
 
 let attente: EnAttente | null = null
-let servi: { cle: string } | null = null
+/** The recent servings, newest last: a press is matched against this, never against a counter. */
+let servis_recents: Array<{ cle: string; at: number }> = []
 let dernierEvenement = { nom: 'start', at: Date.now() }
 let bascules = 0
 let lignes: string[] = []
@@ -55,8 +66,30 @@ let servis = 0
 /** A control handler ran. `cle` names it (see `ui-kit.tsx`), which is how a miss gets a name. */
 export function noterServi(cle = '?'): void {
   servis += 1
-  servi = { cle }
+  // The key carries the separator this file writes with (`LABEL|WIDTH` in ui-kit), which split
+  // one column into two in the first dump. It is cleaned here, once, at the source.
+  servis_recents.push({ cle: cle.replace(/\|/g, '/'), at: Date.now() })
+  if (servis_recents.length > 16) servis_recents = servis_recents.slice(-16)
 }
+
+/** The serving that belongs to a press at `t`, or null. */
+function servingPour(t: number): string | null {
+  for (let i = servis_recents.length - 1; i >= 0; i--) {
+    const s = servis_recents[i]
+    if (s.at >= t - AVANT_MS && s.at <= t + FENETRE_MS) return s.cle
+  }
+  return null
+}
+
+/*
+  The panel state is PUSHED in, never imported.
+
+  `menu.ts` imports this file to date its own moments, so reading `menuView` from here would
+  close a cycle. The interface already knows the answer once a frame and hands it over.
+*/
+let menu = false
+export function signalerMenu(ouvert: boolean): void { menu = ouvert }
+function menuOuvert(): boolean { return menu }
 
 /** A moment worth dating: the menu opened, a tab changed. The leading hypothesis needs it. */
 export function noterEvenement(nom: string): void {
@@ -70,11 +103,22 @@ export function noterBascule(): void {
 }
 
 function ecrire(e: EnAttente, servePar: string | null): void {
-  // t | entity | ui? | served? | control | what happened before | its age in ms | camera flips
+  /*
+    The hit entity is kept even though the first dump had it at -1 on every single line.
+
+    That is a result, not a gap: the global pointer command carries no hit for a press that
+    lands on the interface, so "which element" is not a question this channel can answer. What
+    replaces it is `menu`, which says whether a panel was open at the moment of the press. An
+    unserved press with the menu open is one of the two things worth telling apart, a control
+    that did not answer or the panel swallowing a press beside a control; an unserved press
+    with no menu is simply a click on the world.
+  */
+  // t | entity | ui? | menu? | served? | control | what happened before | its age in ms | camera flips
   lignes.push([
     e.at,
     e.entity,
     e.ui ? 1 : 0,
+    e.menu ? 1 : 0,
     servePar === null ? 0 : 1,
     servePar ?? '-',
     e.contexte,
@@ -122,7 +166,7 @@ export function setupClics(): void {
 
     // A press held from an earlier frame: judge it now that the handlers have had their turn.
     if (attente !== null && maintenant - attente.at >= FENETRE_MS) {
-      ecrire(attente, servis > attente.servisAvant ? (servi?.cle ?? '?') : null)
+      ecrire(attente, servingPour(attente.at))
       attente = null
     }
 
@@ -133,14 +177,14 @@ export function setupClics(): void {
       // A press already waiting is judged on the spot: two downs inside one window is itself
       // a fact worth seeing, and dropping the first would hide exactly the double presses the
       // owner reports making when a button does not answer.
-      if (attente !== null) ecrire(attente, servis > attente.servisAvant ? (servi?.cle ?? '?') : null)
+      if (attente !== null) ecrire(attente, servingPour(attente.at))
       attente = {
         at: maintenant,
         entity: id === undefined ? -1 : ((id as Entity) & 0xffff),
         ui: id !== undefined && UiTransform.has(id as Entity),
         contexte: dernierEvenement.nom,
-        age: Math.min(99_999, maintenant - dernierEvenement.at),
-        servisAvant: servis
+        menu: menuOuvert(),
+        age: Math.min(99_999, maintenant - dernierEvenement.at)
       }
     }
 
