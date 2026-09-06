@@ -827,7 +827,18 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   // not only by clicking the crate itself: on a phone the click is a hunt, the button is a thumb.
   // And while that crate is in flight, result, reel or landing, the button offers nothing at
   // all: a fourth press in a rhythm used to open a second crate under the first one's reel.
-  if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: ico('crate'), action: frapper }
+  /*
+    A MALLET, not the crate icon again.
+
+    The disc wore `ico('crate')` before the press and `ico('crate')` after it, so on a phone,
+    where the disc draws no label, pressing OPEN changed nothing on the button at all. A
+    first-time tester pressed it, saw a crate appear, believed he had PLACED something, and
+    walked away; the crate went back to his stock and he tried again (owner, 6 Sep). The
+    mallet is the verb: the button turns into the tool that hits the thing in front of you,
+    and because `posesDe` keys on this icon the disc starts SWINGING by itself. That is the
+    affordance shown rather than told, which is what the onboarding literature asks for.
+  */
+  if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: ico('build'), action: frapper }
   if (boxView.phase !== 'idle') return null
   /*
     At the lock post with the lock ready, the thumb takes it, so a phone never has to aim a
@@ -1548,7 +1559,6 @@ const uiComponent = () => {
   */
   const notice = noticeBand([
     ['stealing', theftView.stealing, 76],
-    ['opening', boxView.opening, 76],
     ['carrying', carryView.code >= 0 && carryView.vole, 64],
   ])
   return (
@@ -1983,27 +1993,16 @@ const uiComponent = () => {
 
 
 
-    {hud() && boxView.opening && (
-      <UiEntity
-        uiTransform={{
-          width: strip(400).width, height: 76, positionType: 'absolute',
-          flexDirection: 'column', padding: { top: 6, bottom: 6 },
-          position: { bottom: notice.opening, left: '50%' }, margin: strip(400).margin,
-          justifyContent: 'center', alignItems: 'center'
-        }}
-        uiBackground={SKIN.panel}
-      >
-        <Label uiTransform={{ width: '100%', height: 30 }} textWrap="nowrap" value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={TYPE.body} color={C.bonus} textAlign="middle-center" />
-        {/* Three segments that fill as the blows land: the chest-tap bar every reference shows. */}
-        <UiEntity uiTransform={{ width: '86%', height: 10, margin: { top: 2 }, flexDirection: 'row', justifyContent: 'space-between' }}>
-          {[0, 1, 2].map((k) => (
-            <UiEntity key={`seg${k}`} uiTransform={{ width: '31%', height: 10, borderRadius: 5 }}
-              uiBackground={{ color: pctAnime(`smash${k}`, boxView.coups > k ? 100 : 0) > 50 ? C.bonus : SURF.piste }} />
-          ))}
-        </UiEntity>
-      </UiEntity>
-    )}
+    {/*
+      No plate for the smash. The crate carries it.
 
+      "SMASH THE CRATE 0/3" was a plate in the middle of the screen, the place this interface
+      spends its whole effort keeping clear, and it did not help the one tester who needed it
+      (owner, 6 Sep). What replaces it is the thing the player is already looking at: a mallet
+      on the button, swinging, and a crate that visibly shrinks, turns and throws debris on
+      every blow. Teaching by action rather than by a caption is the rule the genre's own
+      onboarding guidance states, and it is the rule this file already follows everywhere else.
+    */}
     {hud() && theftView.stealing && (
       <UiEntity
         uiTransform={{

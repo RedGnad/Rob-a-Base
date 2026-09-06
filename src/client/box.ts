@@ -12,6 +12,7 @@ import { sendOrHold } from './intent'
 import { TOAST } from './theme'
 import { preparerRevealToy, ouvrirRevealToy, fermerRevealToy, revealToyView } from './reveal-toy'
 import { clicMonde } from './monde'
+import { puff } from './impact'
 
 let monAdresse = ''
 
@@ -331,15 +332,33 @@ export function frapper(): void {
   // Every blow buys more time: only a crate nobody is hitting gets abandoned.
   boxView.phaseJusqua = Date.now() + SMASH_TIMEOUT_MS
   const b = crate(boxView.typeEnCours)
+  /*
+    A blow that reads as a blow: squash, kick, debris, and a crate that ends up smaller.
+
+    It squashed for a fifth of a second and changed colour, and the tester's words were that
+    the crate "did not look like it was breaking" (owner, 6 Sep). Colour is the one channel a
+    newcomer will not read as damage. So the blow now carries what every reference for this
+    beat carries (Jonasson and Purho, GDC Europe 2012, on squash, particles and sound layered
+    on one impact): a deeper squash, a turn of the box on its axis so the hit has a direction,
+    a burst of the crate's own colour at the point of contact, and a crate that shrinks a
+    tenth on every blow, so three hits are visible in the silhouette alone.
+  */
+  const reste = 1 - (boxView.coups / COUPS) * 0.3
+  const fin = b.size * reste
   Tween.createOrReplace(crateMesh, {
     mode: Tween.Mode.Scale({
-      start: Vector3.create(b.size * 0.72, b.size * 1.25, b.size * 0.72),
-      end: Vector3.create(b.size, b.size, b.size)
+      start: Vector3.create(fin * 0.6, fin * 1.34, fin * 0.6),
+      end: Vector3.create(fin, fin, fin)
     }),
-    duration: 190,
+    duration: 220,
     easingFunction: EasingFunction.EF_EASEOUTELASTIC,
     currentTime: 0
   })
+  const tk = Transform.getMutableOrNull(crateMesh)
+  if (tk !== null) {
+    tk.rotation = Quaternion.fromEulerDegrees(0, 25 + boxView.coups * 34, 0)
+    puff(Vector3.create(tk.position.x, tk.position.y + b.size * 0.3, tk.position.z), b.color, b.size * 1.5)
+  }
   jouer(hitSound)
 
   // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
@@ -347,6 +366,8 @@ export function frapper(): void {
   // flottait avec elle, en plein milieu de rien (proprietaire, 3 Sep). Le disque est une
   // flaque de lumiere pour une caisse POSEE, il n'a de sens que sur le tapis.
   caisse(crateMesh, boxView.typeEnCours, boxView.coups / COUPS, false)
+  // The heat is repainted on a mesh whose scale the tween now owns, so the shrink is applied
+  // to the tween's target only; nothing here writes the scale back.
 
   if (boxView.coups >= COUPS) {
     boxView.opening = false
