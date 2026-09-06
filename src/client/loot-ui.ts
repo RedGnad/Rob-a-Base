@@ -55,9 +55,9 @@ export function setupLootUi(): void {
       */
       const corps = engine.addEntity()
       const taille = tailleAuSol(d.code)
-      // On the floor, not above it: the server drops at a flat y of 0.5, and `assiseAuSol`
+      // On the floor, not above it: the server publishes the floor itself, and `assiseAuSol`
       // is how far this piece's own model hangs below its entity (see loot-table.ts).
-      const sol = t.position.y - 0.5
+      const sol = t.position.y
       Transform.create(corps, {
         position: Vector3.create(t.position.x, sol + assiseAuSol(d.code), t.position.z),
         scale: Vector3.create(taille, taille, taille)

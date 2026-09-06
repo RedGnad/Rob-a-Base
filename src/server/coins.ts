@@ -55,8 +55,17 @@ export function dropAt(from: string, amount: number, at: { x: number; y: number;
     }
     if (fusionne) continue
 
+    /*
+      The published point is the FLOOR, and the client sits the coin on it.
+
+      It was a constant 0.6, and the client hangs the coin's lower edge on the point it is
+      given, so every dropped coin floated sixty centimetres over the grass, and a player
+      shot on an upper storey rained coins onto the plaza below (owner, 7 Sep). The victim's
+      own y is the floor they were standing on, which is the only value that is right on both
+      counts.
+    */
     const e = engine.addEntity()
-    Transform.create(e, { position: Vector3.create(x, 0.6, z) })
+    Transform.create(e, { position: Vector3.create(x, at.y, z) })
     DroppedCoins.create(e, { amount: valeur, droppedBy: from, untilMs: now + LOOT_LIFETIME_MS })
     syncEntity(e, [DroppedCoins.componentId, Transform.componentId])
   }

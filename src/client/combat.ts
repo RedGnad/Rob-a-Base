@@ -1092,7 +1092,8 @@ function pileSystem(): void {
       A coin you can see from across a base. It was 23 cm across, the footprint of the
       cube it replaced, and a thief's dropped coins were the smallest thing on the floor
       while the toys on the shelves stood at a metre (owner, 3 Sep). Eighty centimetres,
-      lifted by half its thickness so it lies ON the ground rather than in it.
+      standing on the floor point the server publishes: the pivot below carries the coin
+      half a diameter up, so its lower edge rests exactly on that point.
     */
     /*
       A coin STANDS. Lying flat it is a plate.

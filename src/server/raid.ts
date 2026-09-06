@@ -208,7 +208,7 @@ function finir(vaincu: boolean): void {
         suite ramassables"). An empty owner matches nobody, so every pile is open the instant
         it lands, to everyone.
       */
-      dropAt('', pluie, { x: m.x + Math.cos(a2) * 3, y: 0.6, z: m.z + Math.sin(a2) * 3 })
+      dropAt('', pluie, { x: m.x + Math.cos(a2) * 3, y: 0, z: m.z + Math.sin(a2) * 3 })
       k += 1
     }
     const top = meneur()

@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import {
   DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
   SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, TASER_FREEZE_MS
-, MELEE_FORCE} from '../shared/schemas'
+, MELEE_FORCE, SAME_STOREY} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import { hitCarrier } from './carry'
@@ -233,6 +233,8 @@ export function startCombat(): void {
         if (addr === c.droppedBy && now < ouvert) continue
         const p = positionOf(addr)
         if (p === null) continue
+        // Same rule as a dropped piece: a pile lies on a storey, and you reach it from there.
+        if (Math.abs(p.y - t.position.y) > SAME_STOREY) continue
         const d = Math.sqrt((p.x - t.position.x) ** 2 + (p.z - t.position.z) ** 2)
         if (d > plusPres) continue
         plusPres = d

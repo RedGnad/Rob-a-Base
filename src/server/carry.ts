@@ -5,7 +5,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import {
   Carried, DroppedItem, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE, STEAL_REACH,
   LOOT_ITEM_LIFETIME_MS, LOOT_ITEM_PICKUP_RANGE, LOOT_ITEM_OWNER_LOCK_MS,
-  FLOOR_HEIGHT, SLOTS_PER_FLOOR, VIDE
+  FLOOR_HEIGHT, SLOTS_PER_FLOOR, VIDE, SAME_STOREY
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { rarityOf, mutationDe } from '../shared/loot-table'
@@ -172,8 +172,15 @@ export function forcerLacher(address: string, pourquoi: string): boolean {
 
 /** Put it on the floor, right where they were standing, for whoever gets there first. */
 function jeterAuSol(code: number, origin: string, par: string, ou: Vector3): void {
+  /*
+    Where they stood means their floor too, not a constant half metre.
+
+    The height was fixed, so a piece dropped on the second storey of a base appeared on the
+    plaza underneath it, and on the plaza it sat half a metre up in the air with the client
+    hanging its model below that again (owner, 7 Sep). The carrier's own y is the floor.
+  */
   const e = engine.addEntity()
-  Transform.create(e, { position: Vector3.create(ou.x, 0.5, ou.z) })
+  Transform.create(e, { position: Vector3.create(ou.x, ou.y, ou.z) })
   DroppedItem.create(e, { code, origin, droppedBy: par, untilMs: Date.now() + LOOT_ITEM_LIFETIME_MS })
   syncEntity(e, [DroppedItem.componentId, Transform.componentId])
 }
@@ -449,6 +456,9 @@ export function startCarry(): void {
         if (carriesFor(addr)) continue
         const p = positionOf(addr)
         if (p === null) continue
+        // A piece now lies on the storey it fell on, so the storey has to count: reaching
+        // one is walking to it, never standing under the floor it rests on.
+        if (Math.abs(p.y - t.position.y) > SAME_STOREY) continue
         const dist = Math.sqrt((p.x - t.position.x) ** 2 + (p.z - t.position.z) ** 2)
         if (dist > plusPres) continue
         plusPres = dist

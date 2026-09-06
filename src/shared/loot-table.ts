@@ -201,11 +201,12 @@ export function tailleAuSol(code: number): number { return tailleAffichee(code) 
  * How far the piece's own model hangs below the entity that carries it, at a given size.
  *
  * A mounted model is placed at -0.49 in the stand-in's local space, which is where its BASE
- * sits (see `FIT` in client/toy.ts). The server drops loot at a flat y of 0.5 and the client
- * drew it there, so a half-metre piece floated a quarter of a metre off the grass: detached
- * from the ground, which is most of what made it read as a token rather than as a piece
- * somebody dropped (owner, 7 Sep). Adding this to the drop's floor puts it back on the floor
- * at any size, and it has to be a function of the size now that the size varies.
+ * sits (see `FIT` in client/toy.ts). The client drew the piece AT the point the server
+ * published, so the model hung half its height below that point and the piece floated
+ * detached from the ground, which is most of what made it read as a token rather than as a
+ * piece somebody dropped (owner, 7 Sep). The server now publishes the floor; adding this to
+ * it puts the piece back ON the floor at any size. Separate defect from the size itself,
+ * which was a flat 0.5 for every rarity: being lifted never made anything smaller.
  */
 export function assiseAuSol(code: number): number { return tailleAuSol(code) * 0.49 }
 /**
