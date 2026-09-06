@@ -1495,6 +1495,21 @@ const uiComponent = () => {
   */
   const bandBottom = topBlocks.reduce<number>((y, [name, present, h]) => present && band[name] >= 0 ? Math.max(y, band[name] + h) : y, BAND.top)
   /*
+    The air under the band is TWICE the air inside it, and that is the point.
+
+    Everything hanging here (a toast, the rush card, the chip on its way to the corner) used a
+    hardcoded 12, while the plates inside the band are spaced by `STACK_GAP`, 16. So the one
+    seam that separates two different GROUPS was the tightest seam on the screen, and a toast
+    landing under the raid banner read as glued to it (owner, 6 Sep). The band's own height was
+    fixed on 5 Sep, which is a different bug: the plate used to overflow a band shorter than
+    itself. This is the gap, not the overflow.
+
+    Proximity is what says "these belong together": members of a group sit closer to each other
+    than the group sits to its neighbour. One `STACK_GAP` between two plates of the band, two
+    between the band and whatever hangs below it.
+  */
+  const SOUS_LA_BANDE = STACK_GAP * 2
+  /*
     What the game is waiting for, stacked above the controls, most urgent first.
   */
   const notice = noticeBand([
@@ -1619,7 +1634,7 @@ const uiComponent = () => {
       const age = Date.now() - eventView.sinceMs
       const p = Math.max(0, Math.min(1, (age - RUSH_HOLD_MS) / RUSH_FLIGHT_MS))
       const e = 1 - Math.pow(1 - p, 3)
-      const fromTop = bandBottom + 12, fromRight = active.w / 2 - w / 2
+      const fromTop = bandBottom + SOUS_LA_BANDE, fromRight = active.w / 2 - w / 2
       const top = Math.round(fromTop + (coinDroit(1) - fromTop) * e)
       const right = Math.round(fromRight + (rightCornerMargin() - fromRight) * e)
       return (
@@ -2028,7 +2043,7 @@ const uiComponent = () => {
         <UiEntity
           uiTransform={{
             width: RUSH_CARD_W, height: RUSH_CARD_H, positionType: 'absolute',
-            position: { top: bandBottom + 12, left: '50%' }, margin: { left: -RUSH_CARD_W / 2 },
+            position: { top: bandBottom + SOUS_LA_BANDE, left: '50%' }, margin: { left: -RUSH_CARD_W / 2 },
             padding: { left: 20, right: 20 }, flexDirection: 'row', alignItems: 'center', pointerFilter: 'block'
           }}
           uiBackground={SKIN.panel}
@@ -2052,7 +2067,7 @@ const uiComponent = () => {
     {alertesVisibles().length > 0 && hud() && (
       <UiEntity
         uiTransform={{
-          width: '100%', positionType: 'absolute', position: { top: bandBottom + 12 + (rushCardVisible() ? RUSH_CARD_H + STACK_GAP : 0), left: 0 },
+          width: '100%', positionType: 'absolute', position: { top: bandBottom + SOUS_LA_BANDE + (rushCardVisible() ? RUSH_CARD_H + STACK_GAP : 0), left: 0 },
           flexDirection: 'column', alignItems: 'center'
         }}
       >
