@@ -676,8 +676,17 @@ const SWING_MS = 1200
 
 /** The desktop canvas is 1080 high against the phone's 720: the same pad, drawn at that ratio. */
 const DESKTOP_PAD_SCALE = 1.5
-const DESKTOP_PAD_BOTTOM = 40
-const DESKTOP_PAD_RIGHT = 40
+/*
+  TEMPORAIRE, pour la video, a remettre a 40 avec `TOUCHES_VISIBLES`.
+
+  Le pad du bureau etait a 40 unites des deux bords, soit 2,1 % de la largeur, alors que celui
+  du telephone est a 113 sur 1600, soit 7,1 %. La video est tournee au bureau et doit montrer
+  la disposition qu'un joueur aura sur son telephone, donc l'ancrage suit la meme regle que la
+  TAILLE du pad: l'ancrage du telephone multiplie par `DESKTOP_PAD_SCALE`. Tout l'assemblage
+  devient alors un agrandissement uniforme du pad mobile, marges comprises.
+*/
+const DESKTOP_PAD_BOTTOM = Math.round(THUMB.bottom * DESKTOP_PAD_SCALE)
+const DESKTOP_PAD_RIGHT = Math.round(THUMB.right * DESKTOP_PAD_SCALE)
 
 /** Les trois places de l'arc, du bord du bas au bord droit, comme `joypad_arc.gd` les calcule, a l'echelle `k`. */
 function arcPour(k: number): { gros: number; petit: number; arc: Array<{ droite: number; bas: number }>; boite: number } {

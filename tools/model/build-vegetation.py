@@ -70,51 +70,75 @@ def sur_spawn(x, z):
 
 def placer_arbres():
     """
-    Un rang d'arbres le long des quatre bords, dans la bande interdite aux bases.
+    Une lisiere semee, pas une grille: des candidats en surnombre, et une regle d'ecart qui
+    tranche.
 
-    C'etait un tous les dix-sept metres, quarante-quatre arbres pour sept cent soixante-huit
-    metres de pourtour: une haie clairsemee qui lisait comme un alignement plutot que comme une
-    lisiere. Le pas descend a treize.
+    Trois rangs a pas fixe donnaient des arbres qui se fondaient les uns dans les autres et une
+    repartition irreguliere, surtout aux quatre coins ou deux cotes deposaient leurs arbres au
+    meme endroit (proprietaire, 6 Sep). Un pas plus large aurait eclairci partout au lieu de
+    corriger les amas. On tire donc trois fois plus de candidats qu'il n'en faut, on les melange,
+    et on ne garde un arbre que s'il degage tous ceux deja poses: c'est le semis a disque de
+    Poisson, et sa propriete est exactement celle qui manquait, aucun couple trop proche et
+    aucun grand vide.
 
-    Pourquoi pas plus, alors que la vegetation est fondue en UN objet et ne coute donc rien sur
-    les deux compteurs tendus: parce qu'elle coute du CONTENU. Un arbre pese 490 triangles, et
-    le second rang essaye a onze metres portait le fichier de 2,3 a 6,1 Mo, soit le plus gros
-    fichier du jeu, sur le chemin de chargement dont le proprietaire trouve deja qu'il arrive
-    trop tard (5 Sep). La profondeur vient donc des BUISSONS, qui coutent 53 triangles piece:
-    dix fois moins cher pour le meme service a l'arriere-plan.
+    L'ecart demande vaut `SERREMENT` fois la somme des deux rayons de ramure, donc deux petits
+    arbres peuvent se serrer et deux grands non, ce qui est la regle qu'on veut: c'est la
+    ramure, pas le tronc, qui decide de la lecture.
 
-    La bande reste celle ou aucune base ne peut se poser, et le point d'apparition reste vide:
-    la lisibilite du terrain de jeu ne se negocie pas contre du decor.
+    Le prix reste le meme qu'avant: la vegetation est fondue en DEUX objets rendus, donc un
+    arbre coute des triangles et du poids de fichier, jamais un appel de rendu ni un materiau.
     """
-    """
-    Trois rangs, et le troisieme colle au mur.
+    candidats = []
+    # La phase se deduit du rang de la bande: une liste ecrite a cote se serait desynchronisee
+    # a la premiere bande ajoutee, en silence, et la bande en trop n'aurait rien produit.
+    for i, facteur in enumerate(BANDES_ARBRES):
+        candidats += _candidats_arbres(facteur, i * PAS_CANDIDAT / len(BANDES_ARBRES), PAS_CANDIDAT)
+    # Melange deterministe (Fisher-Yates sur notre propre generateur): sans lui, le premier
+    # rang parcouru raflerait toutes les places et les deux autres n'auraient que des restes.
+    for i in range(len(candidats) - 1, 0, -1):
+        j = int(alea() * (i + 1))
+        candidats[i], candidats[j] = candidats[j], candidats[i]
 
-    Deux rangs lisaient encore comme une haie, et le proprietaire en veut plus SANS que la
-    lisiere mange du terrain (6 Sep). Le troisieme rang va donc dans les quatre premiers metres,
-    la ou personne ne marche parce que le mur est juste derriere.
-
-    Ce qu'il a fallu corriger pour que ce soit possible: la taille. Un arbre a l'echelle 2,0
-    porte une ramure de 7,1 m de rayon; pose a 4 m du mur, sa boite sortait de la scene et
-    `instancier` le RENTRAIT de trois metres, vers le terrain. Les gros arbres du rang interieur
-    etaient donc repousses vers le jeu, exactement ce qu'on ne veut pas, et tous a la meme
-    distance, ce qui refaisait une ligne. L'echelle est desormais bornee par la distance au mur
-    (`_echelle_max`), donc un arbre proche du mur est un PETIT arbre: il ne sort jamais de la
-    scene, il n'est jamais repousse, et la taille croissante du mur vers le terrain donne la
-    profondeur que le rang seul ne donnait pas.
-
-    Le prix, mesure sur les fichiers: la vegetation reste DEUX objets rendus et UN materiau,
-    quel que soit le nombre d'arbres, parce que tout est fondu. Ne montent que les triangles
-    (563 par arbre, sur un budget d'un million) et le poids du fichier (52,5 Ko par arbre).
-    """
-    return (_rang_arbres(0.30, 0.0, 11.0)
-            + _rang_arbres(0.62, 5.5, 11.0)
-            + _rang_arbres(0.95, 2.5, 11.0))
+    poses = []
+    for (x, z, sc, ry) in candidats:
+        r = RAYON_ARBRE * sc
+        if not degage_de_la_rue(z, r):
+            continue
+        if any((x - px) ** 2 + (z - pz) ** 2 < ((r + RAYON_ARBRE * psc) * SERREMENT) ** 2
+               for (px, _, pz, psc, _) in poses):
+            continue
+        poses.append((x, 0.0, z, sc, ry))
+    return poses
 
 
 # Le rayon horizontal de `tree.glb` a l'echelle 1, mesure sur ses sommets. L'origine du modele
 # n'est pas centree: la ramure porte a 3,56 m d'un cote, donc apres une rotation en Y c'est ce
 # rayon-la qui compte, quel que soit l'angle.
 RAYON_ARBRE = 3.56
+# Les trois bandes, en part de la marge ou aucune base ne peut se poser.
+BANDES_ARBRES = (0.28, 0.60, 0.92)
+# Le pas des CANDIDATS, pas des arbres: la regle d'ecart en refusera la plupart.
+PAS_CANDIDAT = 3.5
+# La part des deux rayons additionnes que deux ramures ont le droit de partager.
+#
+# C'est le seul bouton a tourner si la lisiere doit etre plus dense ou plus claire. A 1,0 les
+# ramures se touchent sans jamais se recouvrir, ce qui lit comme un verger plante; a 0,52 elles
+# se fondent, ce que le proprietaire a rejete (6 Sep). Mesure sur les quatre valeurs essayees,
+# a bandes et pas egaux: 0,52 donne 148 arbres et des amas, 0,62 en donne 121, 0,75 en donne 114
+# sans un seul couple fondu, 0,88 en donne 80 et ouvre des trous. 0,75 est la valeur la plus
+# dense qui ne fasse aucun amas.
+SERREMENT = 0.75
+# La rue traverse la carte en z = CZ sur toute sa largeur; sa largeur vit dans `decor.ts`.
+LARGEUR_RUE = 6.0
+# Le plus grand des deux buissons, mesure sur ses sommets (bush-02 1,14 m, bush-03 1,16 m).
+# La rue se traverse: y laisser des buissons apres avoir degage les arbres n'aurait fait que
+# rendre l'incoherence plus visible.
+RAYON_BUISSON = 1.16
+
+
+def degage_de_la_rue(z, rayon):
+    """La rue reste libre, ramure comprise: on la traverse, on n'y pousse pas."""
+    return abs(z - CZ) >= LARGEUR_RUE / 2 + rayon
 
 
 def _echelle_max(x, z):
@@ -123,14 +147,14 @@ def _echelle_max(x, z):
     return marge / RAYON_ARBRE
 
 
-def _rang_arbres(facteur, phase, pas):
+def _candidats_arbres(facteur, phase, pas):
+    """Des places possibles le long des quatre bords, sans aucun test entre elles."""
     out = []
     bande = EDGE_MARGIN * facteur
     for cote in (0, 1, 2, 3):
-        d = 10.0 + phase
-        while d < SCENE_SIDE - 10:
+        d = 8.0 + phase
+        while d < SCENE_SIDE - 8:
             j = (alea() - 0.5) * 6
-            x = z = 0.0
             if cote == 0:
                 x, z = d + j, bande + (alea() - 0.5) * 3
             elif cote == 1:
@@ -141,11 +165,11 @@ def _rang_arbres(facteur, phase, pas):
                 x, z = SCENE_SIDE - bande + (alea() - 0.5) * 3, d + j
             sc = 1.1 + alea() * 0.9
             ry = alea() * 360
-            # Borne par la place disponible, jamais rentre de force: un arbre du bord est un
+            # Bornee par la place disponible, jamais rentree de force: un arbre du bord est un
             # petit arbre, et la taille monte a mesure qu'on s'eloigne du mur.
             sc = min(sc, _echelle_max(x, z))
             if sc >= 0.45 and not sur_spawn(x, z):
-                out.append((x, 0.0, z, sc, ry))
+                out.append((x, z, sc, ry))
             d += pas
     return out
 
@@ -153,7 +177,6 @@ def _rang_arbres(facteur, phase, pas):
 # La couronne de la place: entre le trait au sol (18 x 13) et la limite de construction
 # (27 x 22). Un arbre pose la ne sera jamais dans le salon de personne.
 PLACE_A, PLACE_B = 23.0, 18.0
-LARGEUR_RUE = 6.0
 
 
 def placer_arbres_de_la_place():
@@ -206,7 +229,7 @@ def placer_buissons():
         k = 0 if alea() < 0.5 else 1
         sc = 0.9 + alea() * 0.7
         ry = alea() * 360
-        if not sur_spawn(x, z):
+        if not sur_spawn(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
             out.append((k, x, 0.0, z, sc, ry))
     d = 8.0
     while d < SCENE_SIDE - 8:
@@ -216,7 +239,7 @@ def placer_buissons():
             z = bz + (alea() - 0.5) * 2
             sc = 0.8 + alea() * 0.6
             ry = alea() * 360
-            if not sur_spawn(x, z):
+            if not sur_spawn(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
                 out.append((k, x, 0.0, z, sc, ry))
         d += 23
     # Un second cordon, entre les arbres et le mur: c'est lui qui donne la profondeur que le
@@ -229,7 +252,7 @@ def placer_buissons():
             z = bz + (alea() - 0.5) * 3
             sc = 0.7 + alea() * 0.8
             ry = alea() * 360
-            if not sur_spawn(x, z):
+            if not sur_spawn(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
                 out.append((k, x, 0.0, z, sc, ry))
         d += 12
     return out
@@ -309,6 +332,10 @@ if __name__ == '__main__':
         prims.append(q)
     ecrire('vegetation-arbres.glb', prims, img_arbre, {0: (0.0, 0.0, 1.0, 1.0)})
 
+    # Le semis des buissons repart de la graine: sans ca, toucher au tirage des arbres deplace
+    # toute la vegetation basse par ricochet, et chaque retouche des arbres coute une relecture
+    # des buissons.
+    _graine = 987654321
     b0, img0 = primitive_de(os.path.join(OUT, 'bush-02.glb'))
     b1, img1 = primitive_de(os.path.join(OUT, 'bush-03.glb'))
     H = max(img0.height, img1.height)
