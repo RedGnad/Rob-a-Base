@@ -532,7 +532,6 @@ const SellChip = (props: { right?: number }) => {
 */
 let compteurVu = -1
 let gainA = 0
-let gainMontant = 0
 /*
   Le solde ne bouge que sur des EVENEMENTS, donc chaque hausse merite son nombre flottant.
 
@@ -561,14 +560,26 @@ function compteurAffiche(): number {
     converge en une trentaine d'images quel que soit l'ecart, donc rien ne rampe.
   */
   if (compteurVu < 0 || compteurVu - vrai > Math.max(1000, vrai * 0.5)) { compteurVu = vrai; return vrai }
-  if (vrai > compteurVu) { gainMontant = gainMontant > 0 && Date.now() - gainA < 700 ? gainMontant + (vrai - compteurVu) : vrai - compteurVu; gainA = Date.now() }
+  // Toute hausse relance le coup de pouce. Le MONTANT du gain n'est plus retenu: il n'avait
+  // qu'un lecteur, le petit "+X", et il est parti avec lui.
+  if (vrai > compteurVu) gainA = Date.now()
   compteurVu = compteurVu + (vrai - compteurVu) * 0.16
   if (Math.abs(vrai - compteurVu) < Math.max(2, vrai * 0.0002)) compteurVu = vrai
   return Math.round(compteurVu)
 }
+/*
+  Le seul reste de l'arrivee d'argent: le gros nombre qui enfle un instant.
+
+  Un petit "+X" montait a cote de lui, et il disait une troisieme fois ce que le compteur qui
+  grimpe et le son de piece disaient deja (proprietaire, 7 Sep). Trois canaux pour un evenement,
+  c'est un de trop: on le lit une fois et on cesse de le voir, et il occupait un coin d'ecran
+  au-dessus du nombre le plus regarde du jeu.
+
+  Ce qui reste est le coup de pouce sur le nombre lui-meme, neuf pour cent pendant un quart de
+  seconde: le retour est porte par la chose qui change, ce qui est la regle que ce depot suit
+  partout ailleurs.
+*/
 function poussee(): number { return Math.max(0, 1 - (Date.now() - gainA) / 260) }
-function gainMonte(): number { return Math.min(1, (Date.now() - gainA) / 900) }
-function gainRecent(): string { return gainMontant > 0 && Date.now() - gainA < 900 ? `+${formatIncome(gainMontant)}` : '' }
 
 /*
   The verbs that MOVE, and the two poses each plays. There is exactly one.
@@ -1938,14 +1949,6 @@ const uiComponent = () => {
         <Glyphs
           value={formatSolde(compteurAffiche())}
           size={Math.round(TYPE.hero * (1 + poussee() * 0.09))} role="money" align="center" box={strip(760).width} />
-        {gainRecent() !== '' && (
-          <UiEntity uiTransform={{
-            width: 300, height: 40, positionType: 'absolute',
-            position: { top: -26 - gainMonte() * 26, left: '50%' }, margin: { left: 170 }
-          }}>
-            <Glyphs value={gainRecent()} size={30} role="money" align="left" box={300} />
-          </UiEntity>
-        )}
       </UiEntity>
       {/*
         The line under it, in the same face for the same reason: no plate, so it has to
