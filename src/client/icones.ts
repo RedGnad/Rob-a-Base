@@ -33,7 +33,7 @@ const PREFIXE = { blanc: 'icon', encre: 'encre', plaque: 'act' } as const
   image que rien n'affiche. Elle part avec ses deux fichiers.
 */
 const VERBES = [
-  'build', 'crate', 'place', 'give', 'drop', 'recover', 'collect', 'fire',
+  'build', 'smash', 'crate', 'place', 'give', 'drop', 'recover', 'collect', 'fire',
   'pickup', 'steal', 'up', 'fuse', 'outbid', 'buy', 'lock'
 ] as const
 

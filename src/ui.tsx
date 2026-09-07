@@ -593,7 +593,9 @@ function peutConstruireIci(a: { id: string } | null): boolean {
   return slotView.active && slotView.valid
 }
 
-const POSES = ['build'] as const
+/* Les verbes qui SE BALANCENT sur le bouton: le maillet nu pour batir, le maillet sur une
+   boite pour l'ouvrir. Chacun a ses trois images (`-raised`, `-mid`, et la frappe au repos). */
+const POSES = ['build', 'smash'] as const
 function posesDe(icone: string | undefined): [string, string] | undefined {
   const nom = POSES.find((v) => icone === ico(v))
   return nom === undefined ? undefined : [`${ico(nom)}-raised`, `${ico(nom)}-mid`]
@@ -867,17 +869,20 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   // And while that crate is in flight, result, reel or landing, the button offers nothing at
   // all: a fourth press in a rhythm used to open a second crate under the first one's reel.
   /*
-    A MALLET, not the crate icon again.
+    Le maillet SUR une boite, et pas la meme image que batir.
 
-    The disc wore `ico('crate')` before the press and `ico('crate')` after it, so on a phone,
-    where the disc draws no label, pressing OPEN changed nothing on the button at all. A
-    first-time tester pressed it, saw a crate appear, believed he had PLACED something, and
-    walked away; the crate went back to his stock and he tried again (owner, 6 Sep). The
-    mallet is the verb: the button turns into the tool that hits the thing in front of you,
-    and because `posesDe` keys on this icon the disc starts SWINGING by itself. That is the
-    affordance shown rather than told, which is what the onboarding literature asks for.
+    Premier defaut (6 Sep): le disque portait `ico('crate')` avant la pression et apres, donc
+    sur telephone, ou il ne dessine aucun libelle, appuyer sur OPEN ne changeait rien du tout.
+    Un testeur a cru avoir POSE quelque chose et s'est eloigne; la caisse est repartie dans son
+    stock et il a recommence. Le maillet a corrige ca.
+
+    Deuxieme defaut, celui-ci (7 Sep): le maillet nu est deja BUILD. Deux verbes, une seule
+    image, c'est l'interface qui ne dit rien. L'outil reste le meme parce que c'est le meme
+    outil, et jeter ce que le joueur a deja appris serait absurde; ce qui change entre les deux
+    verbes est l'OBJET, donc c'est l'objet que le dessin ajoute. C'est aussi ainsi que le genre
+    dessine "ouvre ca": le contenant plus ce qui le frappe, jamais l'outil seul.
   */
-  if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: ico('build'), action: frapper }
+  if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: ico('smash'), action: frapper }
   if (boxView.phase !== 'idle') return null
   /*
     At the lock post with the lock ready, the thumb takes it, so a phone never has to aim a

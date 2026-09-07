@@ -728,8 +728,69 @@ function createPedestal(racine: Entity, k: number): Entity {
   return o
 }
 
-/** Quand chaque base fera flotter son prochain gain, et sur quel socle. Voir `emettreGain`. */
-const rythmeGain = new Map<number, { t: number; k: number }>()
+/*
+  Quand chaque socle lachera sa prochaine piece. Un minuteur PAR SOCLE, pas un par base.
+
+  La portee est ce qui tient le cout, et elle est volontairement drastique. Sa propre base
+  seulement: c'est au proprietaire qu'il faut apprendre que ses pieces rapportent, et une
+  place de soixante batiments n'a pas a cracher de la monnaie partout. A portee seulement,
+  parce que dehors on n'a pas besoin de le voir. Et l'etage ou l'on se tient seulement, parce
+  qu'une tour de douze etages en a soixante-douze, dont on n'en voit jamais que six.
+
+  Il en resulte six socles au plus, donc huit emplacements dans `gains.ts` suffisent, et
+  l'affichage ne depend plus d'un rythme invente pour un budget.
+*/
+const rythmeSocle = new Map<number, number>()
+const GAIN_PERIODE_MS = 3000
+const GAIN_PORTEE_M = 26
+
+function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
+  const rt = Transform.getOrNull(v.racine)
+  const me = Transform.getOrNull(engine.PlayerEntity)
+  if (rt === null || me === null) return
+  if (Math.abs(me.position.x - rt.position.x) + Math.abs(me.position.z - rt.position.z) > GAIN_PORTEE_M) return
+  const now = Date.now()
+  for (let k = 0; k < p.items.length; k++) {
+    const code = p.items[k]
+    if (code === undefined || code === VIDE) continue
+    const ent = v.items[k]
+    if (ent === undefined) continue
+    const socle = Transform.getOrNull(ent)
+    if (socle === null || socle.scale.x <= 0) continue
+    // L'etage ou l'on se tient. Les socles sont locaux a une racine posee au sol, donc leur
+    // y local est deja leur hauteur reelle.
+    if (Math.abs(socle.position.y - me.position.y) > FLOOR_HEIGHT) continue
+    /*
+      Chaque socle sur son propre minuteur, decale de ses voisins.
+
+      Sans decalage les six partent sur la meme image et l'etagere fait une bouffee au lieu
+      d'une production. Le decalage est deterministe, tire de l'indice du socle: c'est la
+      seule contrainte imposee au rythme, tout le reste est le meme pour tout le monde.
+    */
+    const cle = (v.racine as unknown as number) * 64 + k
+    // Une vue recyclee laisse ses cles derriere elle. Elles ne peuvent pas s'accumuler sans
+    // fin: au-dela d'un plafond large, on repart de zero, ce qui ne coute qu'un decalage de
+    // rythme sur un cycle.
+    if (rythmeSocle.size > 512) rythmeSocle.clear()
+    const du = rythmeSocle.get(cle)
+    if (du === undefined) {
+      rythmeSocle.set(cle, now + Math.round((k / Math.max(1, p.items.length)) * GAIN_PERIODE_MS))
+      continue
+    }
+    if (now < du) continue
+    rythmeSocle.set(cle, now + GAIN_PERIODE_MS)
+    // Monde: la racine ne porte qu'une rotation autour de Y et aucune echelle. On passe par
+    // `orientToBase`, la meme fonction que tout le reste du depot, plutot que de reecrire le
+    // demi-tour a la main: deux calculs du meme changement de repere finissent toujours par
+    // diverger (la rampe dessinee d'un cote et marchable de l'autre, 3 Sep).
+    const o = orientToBase(rt.position.z, socle.position.x, socle.position.z)
+    emettreGain(Vector3.create(
+      rt.position.x + o.dx,
+      socle.position.y + socle.scale.y * 1.15,
+      rt.position.z + o.dz
+    ), rarityOf(code))
+  }
+}
 
 /*
   Le seul objet de son espece dans le monde: la colonne qui dit "ici, c'est chez toi".
@@ -1329,44 +1390,7 @@ export function setupPlots(): void {
       } else if (p.lockedUntil < v.lockSeen) v.lockSeen = p.lockedUntil
       const monBase = p.ownerId.toLowerCase() === myClientAddress()
 
-      /*
-        Chaque piece posee montre ce qu'elle rapporte, sur elle.
-
-        Une seule piece a la fois par base, en tournant le long des etageres: six socles qui
-        crachent ensemble font une bouffee illisible, alors qu'une onde qui court le long du
-        rayon se lit d'un coup. Le rythme suit le nombre de pieces, plancher a sept dixiemes
-        de seconde, donc une base pleine pulse trois fois plus vite qu'une base a une piece:
-        c'est la DENSITE qui dit la richesse, pas un chiffre a lire.
-
-        Bases proches seulement (`v.loin` est deja le niveau de detail du jeu): une place de
-        soixante bases n'a pas a faire flotter soixante nombres, et une base a l'autre bout
-        du terrain n'apprend rien a personne.
-      */
-      if (!v.loin) {
-        const etat = rythmeGain.get(id) ?? { t: 0, k: 0 }
-        if (Date.now() >= etat.t) {
-          let combien = 0
-          for (const code of p.items) if (code !== VIDE) combien += 1
-          if (combien > 0) {
-            const intervalle = Math.max(700, 2500 / combien)
-            etat.t = Date.now() + intervalle
-            // Le curseur avance jusqu'au prochain socle OCCUPE, en boucle sur l'etagere.
-            for (let n = 0; n < p.items.length; n++) {
-              etat.k = (etat.k + 1) % p.items.length
-              if (p.items[etat.k] !== VIDE) break
-            }
-            const code = p.items[etat.k]
-            const socle = v.items[etat.k] !== undefined ? Transform.getOrNull(v.items[etat.k]) : null
-            if (code !== undefined && code !== VIDE && socle !== null) {
-              // Meme base de calcul que le panneau au-dessus du toit, pour que les deux
-              // nombres racontent la meme chose: la production nue, sans les bonus.
-              const par = itemIncome(code, PRODUCTION_PER_RARITY) * (intervalle / 1000)
-              emettreGain(v.racine, Vector3.create(socle.position.x, socle.position.y + socle.scale.y * 0.8, socle.position.z), par)
-            }
-          }
-          rythmeGain.set(id, etat)
-        }
-      }
+      if (monBase) emissionsDeBase(v, p)
 
       /*
         The signature is computed here rather than further down, because it guards twice.
