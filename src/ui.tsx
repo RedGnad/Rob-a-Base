@@ -220,6 +220,28 @@ const COIN_H = [64, 40, 52, 40, 40, 62]
   shorten, not a plate to widen.
 */
 const COIN_W = 440
+/**
+ * La largeur d'une rangee du coin: la sienne, plafonnee, jamais celle du groupe.
+ *
+ * Une seule largeur pour toute la colonne etait MA decision, pas une demande, et elle repondait
+ * a cote (proprietaire, 7 Sep). Ce qui avait ete signale, capture a l'appui, c'est que ces
+ * plaques s'etendaient trop loin vers la GAUCHE, dans le champ de jeu, et qu'elles changeaient
+ * de taille entre deux etats. Les figer toutes a la plus longue supprime bien le changement de
+ * taille, mais en donnant a "RAID IN 3:41" une plaque trois fois plus large que son texte: une
+ * grosse bulle a moitie vide, exactement le defaut qu'il fallait corriger.
+ *
+ * Une colonne calee a DROITE n'a pas besoin d'une largeur commune: ses bords droits sont deja
+ * alignes, c'est la ou l'oeil se pose, et des bords gauches inegaux y sont aussi normaux que
+ * dans un texte aligne a droite. Chaque rangee prend donc la largeur de ce qu'elle dit, avec
+ * un plancher pour qu'une ligne de trois mots reste une plaque, et le plafond de 440 qui
+ * garde les trois quarts de l'ecran au jeu.
+ */
+const COIN_MIN = 210
+function coinW(...textes: string[]): number {
+  let large = 0
+  for (const t of textes) large = Math.max(large, largeurTexte(t, TYPE.caption))
+  return Math.round(Math.max(COIN_MIN, Math.min(COIN_W, large + 44)))
+}
 /** The rush chip: how long it holds in the middle, then how long its flight to the corner takes. */
 const RUSH_HOLD_MS = 1500
 const RUSH_FLIGHT_MS = 550
@@ -1604,8 +1626,18 @@ const uiComponent = () => {
     // Aussi hautes que la plaque dessinee dedans: une bande plus courte que sa plaque mangeait
     // l'ecart en dessous, et les toasts arrivaient colles a une ligne de boss (5 Sep). Les deux
     // sont a 52 pour que les TROIS blocs tiennent, voir `BAND.topHeight`.
-    ['event', bannerLine() !== null, 52],
-    ['belt', beltView.annonce !== '', 52]
+    /*
+      L'annonce du tapis passe AVANT la banniere d'evenement, et l'ordre est la vraie garantie.
+
+      Faire tenir les trois blocs corrige le cas d'aujourd'hui, pas la classe de defaut: le
+      dernier de la liste reste celui qu'on abandonne le jour ou une plaque grandit. Alors on
+      choisit lequel on est pret a perdre. L'annonce est RARE (1,7 % des caisses, une toutes les
+      quatre minutes et demie) et elle ne repasse jamais; la banniere est un compte a rebours
+      qui se redessine a chaque image et qu'on retrouve seconde apres seconde. Perdre une
+      seconde de compte a rebours ne coute rien, manquer une Divine coute le moment.
+    */
+    ['belt', beltView.annonce !== '', 52],
+    ['event', bannerLine() !== null, 52]
   ]
   const band = topBand(topBlocks)
   /*
@@ -1725,7 +1757,10 @@ const uiComponent = () => {
     {hud() && tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          width: COIN_W, height: stepChipH(), positionType: 'absolute', padding: { left: 16, right: 20 },
+          width: Math.min(COIN_W, coinW(STEP_TEXTS[tutoView.etape]?.titre ?? '') + 88,
+            Math.max(coinW(STEP_TEXTS[tutoView.etape]?.titre ?? '') + 88,
+              stepHintDue() ? coinW(STEP_TEXTS[tutoView.etape]?.aide ?? '') : 0)),
+          height: stepChipH(), positionType: 'absolute', padding: { left: 16, right: 20 },
           position: { top: coinDroit(0), right: rightCornerMargin() },
           flexDirection: 'column', justifyContent: 'center'
         }}
@@ -1770,8 +1805,32 @@ const uiComponent = () => {
       const fromTop = bandBottom + SOUS_LA_BANDE, fromRight = active.w / 2 - w / 2
       const top = Math.round(fromTop + (coinDroit(1) - fromTop) * e)
       const right = Math.round(fromRight + (rightCornerMargin() - fromRight) * e)
-      return (
-      <UiEntity
+      /*
+        Un halo qui respire, et seulement sous celle-ci.
+
+        C'est la seule plaque du coin qui prenne un appui: elle ouvre la carte de l'evenement.
+        Rien ne le disait, donc l'affordance existait sans etre signifiee (proprietaire, 7 Sep:
+        "c'etait bien et affordant mais pas assez signifiant"), ce qui est exactement le defaut
+        que Norman nomme en propre, un signifiant manquant sur une affordance reelle. Le
+        mouvement est le canal preattentif le moins couteux ici: une lueur qui monte et descend
+        dit "vivant, appuie" sans un mot et sans une fleche.
+
+        Il est dessine AVANT la plaque et deborde de onze unites tout autour, donc il est
+        derriere elle et ne touche pas la lisibilite du texte. Lent, deux secondes et demie par
+        cycle, et d'amplitude tenue basse: un clignotement rapide dans un coin de compteurs
+        serait precisement le bruit que cette colonne existe pour eviter.
+      */
+      const pulse = 0.14 + 0.13 * (0.5 + 0.5 * Math.sin(Date.now() / 400))
+      const teinte = Color4.fromHexString(lisible(rushChip()?.color ?? '#ffffff') + 'ff')
+      return [
+      <UiEntity key="rush-halo"
+        uiTransform={{
+          width: w + 22, height: COIN_H[1] + 22, positionType: 'absolute',
+          position: { top: top - 11, right: right - 11 },
+          borderRadius: RAD.card, opacity: pulse
+        }}
+        uiBackground={{ color: teinte }} />,
+      <UiEntity key="rush-chip"
         uiTransform={{
           height: COIN_H[1], positionType: 'absolute', padding: { left: 16, right: 16 },
           position: { top, right },
@@ -1786,7 +1845,7 @@ const uiComponent = () => {
           color={Color4.fromHexString(lisible(rushChip()?.color ?? '#ffffff') + 'ff')}
           uiTransform={{ height: COIN_H[1] }} textAlign="middle-center" textWrap="nowrap" />
       </UiEntity>
-      )
+      ]
     })()}
 
     {/*
@@ -1942,7 +2001,7 @@ const uiComponent = () => {
     {hud() && gearView.cloakLeftS > 0 && (
       <UiEntity
         uiTransform={{
-          width: COIN_W, height: 40, positionType: 'absolute',
+          width: coinW(`INVISIBLE  ${gearView.cloakLeftS}s`), height: 40, positionType: 'absolute',
           position: { top: coinDroit(4), right: rightCornerMargin() },
           justifyContent: 'center', alignItems: 'center'
         }}
@@ -1956,7 +2015,7 @@ const uiComponent = () => {
     {hud() && nextBigText() !== null && (
       <UiEntity
         uiTransform={{
-          width: COIN_W, height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
+          width: coinW(nextBigText() ?? ''), height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
           position: { top: coinDroit(3), right: rightCornerMargin() },
           flexDirection: 'row', alignItems: 'center'
         }}
@@ -1981,7 +2040,8 @@ const uiComponent = () => {
     {hud() && giftView.leftS > 0 && (
       <UiEntity
         uiTransform={{
-          width: COIN_W, height: 52, positionType: 'absolute',
+          width: coinW(`FREE BOX IN ${Math.floor(giftView.leftS / 60)}:${String(giftView.leftS % 60).padStart(2, '0')}`),
+          height: 52, positionType: 'absolute',
           position: { top: coinDroit(2), right: rightCornerMargin() },
           flexDirection: 'column', padding: { left: 14, right: 14, top: 6 }
         }}
