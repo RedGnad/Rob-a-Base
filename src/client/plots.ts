@@ -768,6 +768,16 @@ function createPedestal(racine: Entity, k: number): Entity {
   l'affichage ne depend plus d'un rythme invente pour un budget.
 */
 const rythmeSocle = new Map<number, number>()
+/*
+  Quand la base emettra sa prochaine piece, pour ne pas parcourir ses socles avant.
+
+  La fonction lisait les soixante-douze emplacements a chaque image, et n'y trouvait quelque
+  chose a faire que trois fois par seconde: a soixante images, cinquante-sept parcours sur
+  soixante ne servaient a rien. Tant que la portee valait quarante-cinq metres le gaspillage
+  restait rare; en la portant a cent vingt on le rendrait permanent. Un seul nombre par base
+  suffit: l'echeance la plus proche de ses socles.
+*/
+const prochainGain = new Map<number, number>()
 const GAIN_PERIODE_MS = 3000
 /*
   Quarante-cinq metres, et TOUS les etages, y compris ceux au-dessus de soi.
@@ -779,19 +789,28 @@ const GAIN_PERIODE_MS = 3000
   precisement ce qu'on lui demande.
 */
 /*
-  Soixante-dix metres, et c'est la limite OPTIQUE, pas budgetaire.
+  CENT VINGT METRES, POUR QUE LA COUPURE SOIT OPTIQUE ET NON GEOMETRIQUE.
 
-  Le cout d'un elargissement est NUL: `gains.ts` tient un pool de huit entites fixes, creees une
-  fois et garees sous le sol entre deux apparitions, et le debit de la base est deja borne a
-  trois pieces par seconde. Zero materiau, zero draw, zero entite en plus quelle que soit la
-  portee. Ce qui plafonne est la taille apparente: une piece Legendary de 0,196 m, portee a
-  1,8 fois au maximum, fait 0,35 m; a 45 m elle couvre 0,45 degre soit ~5 pixels sur un ecran de
-  720, a 70 m 0,29 degre soit ~3,5 pixels, a 100 m deux pixels. A soixante-dix metres c'est
-  encore un point dore qui BOUGE, et le mouvement se voit meme a trois pixels; au-dela on
-  paierait en credibilite ce qu'on ne gagnerait plus en information. Le terrain fait 192 m de
-  cote, donc soixante-dix couvrent la moitie du chemin depuis le tapis central.
+  Le defaut n'etait pas la valeur, c'etait le MUR. A une distance precise les pieces
+  disparaissaient d'un coup, et une coupure geometrique se trouve: on recule de deux pas et le
+  monde s'eteint (proprietaire, 7 Sep). Une piece qui retrecit jusqu'a devenir invisible, elle,
+  ne se remarque jamais. La bonne portee est donc celle qui DEPASSE ce que l'oeil peut voir,
+  pour que ce soit l'oeil qui coupe.
+
+  Le calcul, sachant que `grossir` plafonne a 1,8 des trente-quatre metres, donc qu'au-dela la
+  piece ne fait plus que retrecir en 1/D. Une Common porte a 0,216 m, une Legendary a 0,35 m,
+  sur un ecran de 720 pixels:
+      45 m   3,4 px / 5,4 px       100 m   1,5 px / 2,4 px
+      70 m   2,1 px / 3,5 px       120 m   1,2 px / 2,0 px
+  A cent vingt metres la plus petite piece fait UN pixel: personne ne peut voir la limite,
+  parce qu'il n'y a plus rien a voir avant elle. Le terrain fait 192 m de cote.
+
+  Le cout n'est pas les entites (huit, fixes, en pool dans `gains.ts`) mais le PARCOURS des
+  soixante-douze emplacements a chaque image tant qu'on est a portee: elargir le ferait tourner
+  presque tout le temps. C'est pourquoi le raccourci ci-dessous existe, et il fallait le poser
+  dans le meme geste, sinon on echangeait un mur visible contre une depense invisible.
 */
-const GAIN_PORTEE_M = 70
+const GAIN_PORTEE_M = 120
 /*
   Le DEBIT de la base est borne, et c'est ce qui rend l'elargissement possible.
 
@@ -815,6 +834,10 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
   const dist = Math.abs(me.position.x - rt.position.x) + Math.abs(me.position.z - rt.position.z)
   if (dist > GAIN_PORTEE_M) return
   const now = Date.now()
+  // Rien n'est du: on sort avant de lire quoi que ce soit. C'est le cas de la grande majorite
+  // des images, et c'est ce qui rend la portee de cent vingt metres gratuite.
+  const cleBase = v.racine as unknown as number
+  if (now < (prochainGain.get(cleBase) ?? 0)) return
   /*
     La piece grossit avec l'eloignement, sinon la portee ne sert a rien.
 
@@ -843,6 +866,8 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
   if (occupes === 0) return
   const intervalle = Math.max(GAIN_PERIODE_MS, (occupes / GAIN_DEBIT_MAX) * 1000)
 
+  // La plus proche echeance rencontree: elle devient le laissez-passer de la base.
+  let prochaine = Infinity
   for (let k = 0; k < p.items.length; k++) {
     const code = p.items[k]
     if (code === undefined || code === VIDE) continue
@@ -875,10 +900,12 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
         exactement la propriete qu'on cherche ici.
       */
       const phase = (k * 0.6180339887) % 1
-      rythmeSocle.set(cle, now + Math.round(phase * intervalle))
+      const quand = now + Math.round(phase * intervalle)
+      rythmeSocle.set(cle, quand)
+      if (quand < prochaine) prochaine = quand
       continue
     }
-    if (now < du) continue
+    if (now < du) { if (du < prochaine) prochaine = du; continue }
     /*
       L'intervalle est TIRE, il n'est pas une periode.
 
@@ -888,7 +915,9 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
       "humanisation" d'un sequenceur, qui existe pour la meme raison: une quantification
       parfaite s'entend comme une machine.
     */
-    rythmeSocle.set(cle, now + Math.round(intervalle * (0.72 + Math.random() * 0.56)))
+    const suivant = now + Math.round(intervalle * (0.72 + Math.random() * 0.56))
+    rythmeSocle.set(cle, suivant)
+    if (suivant < prochaine) prochaine = suivant
     // Monde: la racine ne porte qu'une rotation autour de Y et aucune echelle. On passe par
     // `orientToBase`, la meme fonction que tout le reste du depot, plutot que de reecrire le
     // demi-tour a la main: deux calculs du meme changement de repere finissent toujours par
@@ -909,6 +938,7 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
       rt.position.z + o.dz
     ), rarityOf(code), grossir)
   }
+  prochainGain.set(cleBase, prochaine === Infinity ? now + GAIN_PERIODE_MS : prochaine)
 }
 
 function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }, teinte: string, loin = false): View {
