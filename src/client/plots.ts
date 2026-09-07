@@ -742,14 +742,57 @@ function createPedestal(racine: Entity, k: number): Entity {
 */
 const rythmeSocle = new Map<number, number>()
 const GAIN_PERIODE_MS = 3000
-const GAIN_PORTEE_M = 26
+/*
+  Quarante-cinq metres, et TOUS les etages, y compris ceux au-dessus de soi.
+
+  La portee valait vingt-six et l'emission etait limitee a l'etage ou l'on se tient. Depuis que
+  la balise a ete retiree, ce sont ces pieces qui disent "cette base est la tienne", et un
+  repere qu'on ne voit qu'a vingt-six metres et sur un seul niveau ne remplit pas ce role
+  (proprietaire, 7 Sep). Une tour qui paie sur toute sa hauteur se reconnait de loin, et c'est
+  precisement ce qu'on lui demande.
+*/
+const GAIN_PORTEE_M = 45
+/*
+  Le DEBIT de la base est borne, et c'est ce qui rend l'elargissement possible.
+
+  Le pool tient huit pieces en l'air et chacune vit une seconde: au-dela de huit emissions par
+  seconde les suivantes sont refusees. Avec un intervalle fixe par socle, ouvrir les douze
+  etages porterait la base a vingt-quatre emissions par seconde, donc les trois quarts seraient
+  jetees: elargir la portee aurait rendu l'effet PLUS PAUVRE, pas plus riche.
+
+  L'intervalle par socle s'etire donc avec leur nombre pour que la base entiere reste sous
+  trois pieces par seconde. Un etage plein garde ses trois secondes, une tour de douze etages
+  passe a vingt-quatre secondes par socle mais paie toujours trois fois par seconde a
+  l'ensemble. La densite lue reste constante quelle que soit la fortune, ce qui est le prix a
+  payer, et le pool ne sature jamais, ce qui est le gain.
+*/
+const GAIN_DEBIT_MAX = 3
 
 function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
   const rt = Transform.getOrNull(v.racine)
   const me = Transform.getOrNull(engine.PlayerEntity)
   if (rt === null || me === null) return
-  if (Math.abs(me.position.x - rt.position.x) + Math.abs(me.position.z - rt.position.z) > GAIN_PORTEE_M) return
+  const dist = Math.abs(me.position.x - rt.position.x) + Math.abs(me.position.z - rt.position.z)
+  if (dist > GAIN_PORTEE_M) return
   const now = Date.now()
+  /*
+    La piece grossit avec l'eloignement, sinon la portee ne sert a rien.
+
+    Douze centimetres a quarante metres ne couvrent plus un pixel: etendre la portee sans
+    compenser la taille aurait ajoute du travail pour rien. La compensation ne demarre qu'au
+    -dela de huit metres, pour que la piece vue de pres reste exactement celle qui a ete reglee
+    hier ("fait les juste un plus petites"), et elle est plafonnee a trois fois pour que ca
+    reste une piece et pas un panneau. Elle ne rend pas la taille apparente constante, ce qui
+    donnerait des pieces d'un metre: elle maintient un reflet visible, ce qui est le role
+    demande.
+  */
+  const grossir = Math.min(3.2, 1 + Math.max(0, dist - 8) / 14)
+  // Combien de socles paient, pour savoir a quel rythme chacun peut le faire.
+  let occupes = 0
+  for (const c of p.items) if (c !== VIDE) occupes += 1
+  if (occupes === 0) return
+  const intervalle = Math.max(GAIN_PERIODE_MS, (occupes / GAIN_DEBIT_MAX) * 1000)
+
   for (let k = 0; k < p.items.length; k++) {
     const code = p.items[k]
     if (code === undefined || code === VIDE) continue
@@ -757,9 +800,6 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
     if (ent === undefined) continue
     const socle = Transform.getOrNull(ent)
     if (socle === null || socle.scale.x <= 0) continue
-    // L'etage ou l'on se tient. Les socles sont locaux a une racine posee au sol, donc leur
-    // y local est deja leur hauteur reelle.
-    if (Math.abs(socle.position.y - me.position.y) > FLOOR_HEIGHT) continue
     /*
       Chaque socle sur son propre minuteur, decale de ses voisins.
 
@@ -785,7 +825,7 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
         exactement la propriete qu'on cherche ici.
       */
       const phase = (k * 0.6180339887) % 1
-      rythmeSocle.set(cle, now + Math.round(phase * GAIN_PERIODE_MS))
+      rythmeSocle.set(cle, now + Math.round(phase * intervalle))
       continue
     }
     if (now < du) continue
@@ -798,7 +838,7 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
       "humanisation" d'un sequenceur, qui existe pour la meme raison: une quantification
       parfaite s'entend comme une machine.
     */
-    rythmeSocle.set(cle, now + Math.round(GAIN_PERIODE_MS * (0.72 + Math.random() * 0.56)))
+    rythmeSocle.set(cle, now + Math.round(intervalle * (0.72 + Math.random() * 0.56)))
     // Monde: la racine ne porte qu'une rotation autour de Y et aucune echelle. On passe par
     // `orientToBase`, la meme fonction que tout le reste du depot, plutot que de reecrire le
     // demi-tour a la main: deux calculs du meme changement de repere finissent toujours par
@@ -817,7 +857,7 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
       rt.position.x + o.dx,
       socle.position.y + socle.scale.y * 0.5 + 0.12,
       rt.position.z + o.dz
-    ), rarityOf(code))
+    ), rarityOf(code), grossir)
   }
 }
 

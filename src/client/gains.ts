@@ -84,7 +84,7 @@ function creer(): void {
  * d'une etagere seraient a dechiffrer un par un, la ou une piece se reconnait d'un coup et
  * supporte de se repeter, ce qui est exactement ce qu'on lui demande.
  */
-export function emettreGain(ou: Vector3, rarete: number): void {
+export function emettreGain(ou: Vector3, rarete: number, grossir = 1): void {
   creer()
   let slot: Slot | null = null
   for (let i = 0; i < POOL; i++) {
@@ -99,7 +99,7 @@ export function emettreGain(ou: Vector3, rarete: number): void {
   if (t === null) return
   // Un quart plus petite qu'au premier essai (proprietaire, 7 Sep): elle doit se remarquer
   // au-dessus de sa piece, pas la concurrencer. 12 cm pour un Common, 23 pour un Secret.
-  const taille = 0.12 + Math.max(0, Math.min(6, rarete)) * 0.019
+  const taille = (0.12 + Math.max(0, Math.min(6, rarete)) * 0.019) * grossir
   t.position = Vector3.create(ou.x, ou.y, ou.z)
   t.scale = Vector3.create(taille, taille * EPAISSEUR, taille)
   t.rotation = Quaternion.fromEulerDegrees(90, 0, 0)
