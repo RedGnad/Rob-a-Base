@@ -506,6 +506,41 @@ function depouillerEtage(f: Floor): void {
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
+/** Combien de temps une base met a rentrer sous terre, et les vues en train de le faire. */
+const RETRAIT_MS = 450
+const mourantes: Array<{ v: View; depuis: number }> = []
+
+/**
+ * Les bases en cours de retrait: elles retrecissent, puis elles sont demontees.
+ *
+ * L'echelle est appliquee a la racine, dont la Transform n'est ecrite par personne d'autre
+ * (elle est posee une fois a la creation et seulement lue ensuite), donc rien ne se dispute
+ * l'entite. Tout le batiment lui est parente, il rentre donc entier dans son socle.
+ *
+ * Le carre du temps ecoule et pas le temps lui-meme: le batiment part lentement puis file, ce
+ * qui se lit comme un objet qu'on range et pas comme un fondu. Le passage a zero est un
+ * plancher a un centieme, parce qu'une echelle nulle est un cas limite de moteur qu'on n'a
+ * aucune raison de tester ici, et l'entite est retiree l'image d'apres de toute facon.
+ */
+function retirerLesMourantes(): void {
+  if (mourantes.length === 0) return
+  const now = Date.now()
+  for (let i = mourantes.length - 1; i >= 0; i--) {
+    const m = mourantes[i]
+    const k = (now - m.depuis) / RETRAIT_MS
+    const t = Transform.getMutableOrNull(m.v.racine)
+    // Passe l'echeance, ou la racine deja partie: on demonte. La borne dure existe pour qu'un
+    // defaut de cette boucle ne puisse jamais laisser un batiment entier derriere lui.
+    if (k >= 1 || t === null) {
+      destroyView(m.v)
+      mourantes.splice(i, 1)
+      continue
+    }
+    const e = Math.max(0.01, 1 - k * k)
+    t.scale = Vector3.create(e, e, e)
+  }
+}
+
 /** The lintel, posts and ramp: the owner's accent, or the mutation skin their collection unlocked. */
 function accentPour(p: { ownerId: string; skin: number }): string {
   return p.skin > 0 ? mutation(p.skin).color : accentDe(p.ownerId)
@@ -1452,6 +1487,9 @@ export function setupPlots(): void {
   })
 
   engine.addSystem(() => {
+    // En premier, et avant tout retour anticipe plus bas: une base qui rentre sous terre doit
+    // finir de rentrer meme les images ou la position du joueur n'est pas encore lisible.
+    retirerLesMourantes()
     const vivantes = new Set<number>()
 
     /*
@@ -1999,7 +2037,18 @@ export function setupPlots(): void {
 
     for (const [id, v] of views) {
       if (vivantes.has(id)) continue
-      destroyView(v)
+      /*
+        Une base qui s'en va RETRECIT, elle ne s'evanouit pas.
+
+        Le serveur retire la base de l'absent vu il y a le plus longtemps quand la place vient
+        a manquer, et ici tout partait dans la meme image: un batiment entier disparaissait
+        d'un coup sous les yeux de qui le regardait, ce qui se lit comme un defaut d'affichage
+        et pas comme un evenement du jeu.
+        On la retire de `views` TOUT DE SUITE pour que son identifiant soit libre, parce que le
+        moteur recycle les numeros d'entite et qu'une vue mourante encore joignable serait
+        retrouvee par la base suivante qui heriterait du meme numero.
+      */
+      mourantes.push({ v, depuis: Date.now() })
       views.delete(id)
     }
   })
