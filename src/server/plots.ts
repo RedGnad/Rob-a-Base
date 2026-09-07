@@ -1910,13 +1910,41 @@ export function cashOfflineEarnings(address: string): { gain: number; seconds: n
   // `perSecond` already carries the offline rate; dividing it out gives the full production
   // the cap is expressed in, so the cap reads as "N seconds of what this base makes online".
   const cap = (perSecond / OFFLINE_RATE) * offlineCapProductionS(p.silos ?? 0)
-  const gain = Math.floor(Math.min(raw, cap))
+  /*
+    LA CAGNOTTE LAISSEE DERRIERE SOI PART AVEC LA SOMME HORS LIGNE, ET NE SE RECOLTE PLUS.
+
+    Ce qu'on mesurait avant ce correctif: deux poches, deux regles, servies dans la meme seconde.
+    La somme hors ligne allait DIRECTEMENT au solde (`p.coins += gain`), pendant que la cagnotte
+    de la session precedente restait intacte, generalement a son plafond, avec le bouton
+    contextuel sur COLLECT. Le joueur lisait donc "WELCOME BACK, +X gagnes" et voyait au meme
+    instant une cagnotte pleine a ramasser: rien a l'ecran ne disait que les deux n'ont aucun
+    rapport, donc le X paraissait etre ce qu'il fallait aller chercher (proprietaire, 7 Sep).
+
+    Pourquoi fondre plutot que d'automatiser la recolte en general. Les deux mecaniques ont des
+    roles distincts dans le genre et la litterature les separe exprès: le gain HORS LIGNE
+    recompense le RETOUR, il est donc verse a taux reduit et sans geste, sinon la recompense de
+    revenir est conditionnee a comprendre une mecanique. La cagnotte a taper recompense la
+    PRESENCE, c'est la boucle de recolte (Clash of Clans, Hay Day, les pads de tycoon), et elle
+    doit rester manuelle: c'est meme l'etat de base du bouton contextuel, retabli hier.
+
+    Or la cagnotte trouvee a l'arrivee ne sert NI l'un NI l'autre role: elle a ete produite dans
+    une session passee, le joueur n'a rien neglige qu'il aurait pu faire, et la periode est deja
+    couverte par la poche hors ligne. C'est un residu, pas une regle. Fondue ici, elle laisse une
+    seule phrase que le joueur peut enoncer: quand tu es absent la base met de cote pour toi,
+    quand tu es la tu ramasses.
+
+    Le seuil est celui de l'annonce, trente secondes: en dessous c'est une reconnexion et non un
+    retour, et la cagnotte reste ou elle est, ce qui est le bon comportement.
+  */
+  const reste = Math.floor(p.pending ?? 0)
+  const gain = Math.floor(Math.min(raw, cap)) + reste
   if (gain <= 0) return null
+  p.pending = 0
   p.coins += gain
   p.vuA = Date.now()
   p.annonceHL = { gain, seconds: Math.floor(elapsed / 1000), at: Date.now(), capped: raw > cap }
   dirtyProfiles.add(address)
-  log(`${nameOf(address)} cashed ${gain} offline (${Math.round(elapsed / 60000)} min at ${Math.round(OFFLINE_RATE * 100)}%)`)
+  log(`${nameOf(address)} cashed ${gain} on return (${Math.round(elapsed / 60000)} min at ${Math.round(OFFLINE_RATE * 100)}%, incl. ${reste} left in the pot)`)
   return { gain, seconds: Math.floor(elapsed / 1000), capped: raw > cap }
 }
 

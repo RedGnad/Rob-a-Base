@@ -286,7 +286,10 @@ export function setupTheft(): void {
       // A full silo is the only part of this the player can act on, so it is the part that is
       // said: the genre's cap works by being READ, otherwise being capped is just a small number.
       const plein = d.offlineCapped ? '  ·  silo full, build another' : ''
-      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} coins earned in ${min} min away${plein}`, '#ffd166', TOAST.event)
+      // "banked" et non "earned": depuis le 7 Sep cette somme porte AUSSI la cagnotte laissee a
+      // la deconnexion, donc elle couvre la fin de la session precedente autant que l'absence.
+      // Un mot qui decrit ou l'argent etait, pas quand il a ete produit, est vrai des deux.
+      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} banked in ${min} min away${plein}`, '#ffd166', TOAST.event)
     }
   })
 
