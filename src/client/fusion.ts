@@ -4,6 +4,7 @@ import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE } from '../shared/sche
 import { room } from '../shared/messages'
 import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/loot-table'
 import { plasticDe, plastic, vif, TOY } from './toy'
+import { place3DText, LISIBLE_3D } from './texte3d'
 import { carryView } from './carry'
 import { pushToFeed } from './theft'
 import { revealItem } from './box'
@@ -96,7 +97,7 @@ export function setupFuser(): void {
   Material.setPbrMaterial(tambour, plastic(TOY.belt))
   PointerEvents.create(tambour, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: `Fuser  ·  ${FUSION_NEEDS} of a kind become one better` } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: `Fuse  ·  ${FUSION_NEEDS} of a kind become one better` } }
     ]
   })
 
@@ -154,11 +155,35 @@ export function setupFuser(): void {
   const titre = engine.addEntity()
   Transform.create(titre, { parent: racine, position: Vector3.create(0, 4.4, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(titre, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(titre, { text: 'FUSER', fontSize: 5, textColor: Color4.fromHexString(TOY.beltRail + 'ff'), outlineWidth: 0.22, outlineColor: NOIR })
+  /*
+    FUSER est ecrit dans la police du JEU, comme tout ce que le monde dit de lui-meme.
+
+    Le monde parle deja d'une seule voix a deux endroits, la plaque d'une base et `BUILD HERE`:
+    les deux passent par `place3DText`. Ce titre restait en police plateforme, a cote de plaques
+    de base qui n'y sont pas, ce qui le faisait lire comme un element du client plutot que comme
+    un lieu du jeu. C'est le repere que les testeurs ignoraient.
+
+    Le prix est connu et tenu: le client mobile compte UN materiau unique par plan de glyphe
+    (`plots.ts`, budget mesure a 323 sur 380 avec seize bases). Cinq lettres, statiques, une
+    seule instance dans toute la scene. La ligne d'explication en dessous reste en police
+    plateforme: c'est une phrase, et un atlas de capitales est precisement ce qu'il ne faut pas
+    pour de la prose.
+
+    Conversion de taille prise sur le cas deja fait, pas devinee: `BUILD HERE` valait `fontSize`
+    4,2 et vaut `taille` 0,42 dans le meme repere, donc taille = fontSize / 10.
+
+    ET IL DIT LE VERBE, PAS LE NOM DE LA MACHINE (proprietaire, 7 Sep). Une enseigne posee sur
+    une station sert a dire ce qu'on peut y FAIRE, pas comment l'objet s'appelle: c'est la
+    distinction de Norman entre l'affordance et le signifiant, et c'est deja ce que fait l'autre
+    enseigne du monde, `BUILD HERE`. Le pad porte le meme verbe (`fuse`, avec son propre son), et
+    la ligne en dessous dit "tap it to fuse from your base". L'infobulle du tambour passe de
+    "Fuser" a "Fuse" avec: la station parle d'un seul mot, ou elle n'en parle d'aucun.
+  */
+  place3DText(titre, [{ texte: 'FUSE', role: 'money', taille: 0.5 }], false)
   const ligne = engine.addEntity()
   Transform.create(ligne, { parent: racine, position: Vector3.create(0, 3.95, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(ligne, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(ligne, { text: `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`, fontSize: 2.4, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.create(ligne, { text: `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`, fontSize: 2.4, textColor: Color4.White(), ...LISIBLE_3D })
 
   room.onMessage('fusionState', (d) => {
     fuserView.codes = [...d.codes]

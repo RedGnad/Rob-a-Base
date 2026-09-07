@@ -18,6 +18,7 @@ import { flashDamage, floatAmount, playHurt } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 import { TOAST } from './theme'
 import { puff } from './impact'
+import { LISIBLE_3D } from './texte3d'
 
 /**
  * The pistol, client side.
@@ -1122,7 +1123,13 @@ function pileSystem(): void {
     const label = engine.addEntity()
     Transform.create(label, { parent: chute, position: Vector3.create(0, COIN_DIAMETER + 0.55, 0), scale: Vector3.create(0.6, 0.6, 0.6) })
     Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
-    TextShape.create(label, { text: formatIncome(c.amount), fontSize: 3, textColor: OR })
+    /*
+      L'autre etiquette sans contour: un montant EN OR, pose nu au-dessus d'un tas de pieces.
+
+      L'or sur un ciel ensoleille est le pire cas possible d'une couleur sans bord. Traitement
+      commun (voir `LISIBLE_3D`).
+    */
+    TextShape.create(label, { text: formatIncome(c.amount), fontSize: 3, textColor: OR, ...LISIBLE_3D })
     piles.set(id, { chute, pivot, body, label, sec: -1 })
   }
   for (const [id, v] of [...piles]) {

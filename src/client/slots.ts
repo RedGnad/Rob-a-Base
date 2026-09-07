@@ -1,5 +1,5 @@
 import { TOY, plasticDe } from './toy'
-import { place3DText } from './texte3d'
+import { place3DText, LISIBLE_3D } from './texte3d'
 import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
@@ -68,9 +68,9 @@ export function setupSlots(): void {
     reads before they own anything.
   */
   TextShape.create(label, {
-    text: '', fontSize: 4.2, textColor: Color4.White(),
-    outlineWidth: 0.28, outlineColor: Color3.fromHexString('#0b1018'),
-    shadowBlur: 0.5, shadowColor: Color3.fromHexString('#0b1018')
+    // Ces valeurs vivent maintenant dans `LISIBLE_3D`: elles ont ete reglees ici, sur une
+    // plainte reelle, et tout le monde les porte depuis (voir la note du 7 Sep dans texte3d.ts).
+    text: '', fontSize: 4.2, textColor: Color4.White(), ...LISIBLE_3D
   })
 
   room.onMessage('basePositions', (d) => {

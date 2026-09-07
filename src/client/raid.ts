@@ -10,6 +10,7 @@ import { formatIncome, crate } from '../shared/loot-table'
 import { plastic, plasticDe } from './toy'
 import { alerter, pushToFeed } from './theft'
 import { TOAST } from './theme'
+import { LISIBLE_3D } from './texte3d'
 
 /**
  * The raid boss, client side: a big hostile toy that walks a circle on the plaza, a life bar
@@ -95,7 +96,7 @@ export function setupRaid(): void {
   const titre = engine.addEntity()
   Transform.create(titre, { parent: racine, position: Vector3.create(0, 2.6, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(titre, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(titre, { text: 'RAID BOSS', fontSize: 5, textColor: Color4.fromHexString('#ff6b6bff'), outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.create(titre, { text: 'RAID BOSS', fontSize: 5, textColor: Color4.fromHexString('#ff6b6bff'), ...LISIBLE_3D })
   /*
     The life bar is a BAR: a dark track and a red fill that shortens, over the head, turned
     to face whoever looks. It was a line of hash marks in a text shape, which reads as a
@@ -116,7 +117,7 @@ export function setupRaid(): void {
   const barre = engine.addEntity()
   Transform.create(barre, { parent: racine, position: Vector3.create(0, 1.85, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(barre, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(barre, { text: '', fontSize: 2.6, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.create(barre, { text: '', fontSize: 2.6, textColor: Color4.White(), ...LISIBLE_3D })
 
   const son = engine.addEntity()
   Transform.create(son, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })

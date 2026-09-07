@@ -6,7 +6,7 @@ import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, STEAL_RANGE, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
-import { place3DText, largeur3D, Segment3D } from './texte3d'
+import { place3DText, largeur3D, Segment3D, LISIBLE_3D } from './texte3d'
 import { emettreGain } from './gains'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
@@ -646,7 +646,7 @@ function tenirLePave(racine: Entity, lockedUntil: number, hex: string, skin: num
     lockLine = engine.addEntity()
     Transform.create(lockLine, { parent: racine, position: Vector3.create(dx, y + 2.05, dz), scale: Vector3.create(0.5, 0.5, 0.5) })
     Billboard.create(lockLine, { billboardMode: BillboardMode.BM_Y })
-    TextShape.create(lockLine, { text: '', fontSize: 2.6, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: Color3.create(0, 0, 0) })
+    TextShape.create(lockLine, { text: '', fontSize: 2.6, textColor: Color4.White(), ...LISIBLE_3D })
     // The tap lands on a tall invisible box around the whole post, easier to hit than a plane.
     lockTap = engine.addEntity()
     Transform.create(lockTap, { parent: racine, position: Vector3.create(dx, y + 1.2, dz), scale: Vector3.create(1.0, 2.4, 1.0) })
@@ -919,7 +919,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
   // Whose base, and its state, readable from the street in both detail levels: a text costs the
   // phone no material, so the owner's name is the cheapest legibility there is (owner, 5 Sep).
-  TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White(), ...LISIBLE_3D })
 
   /*
     The reference writes the owner on the building itself: a sign over the entrance, facing
@@ -988,7 +988,7 @@ function garnirBase(v: View): void {
   */
   GltfContainer.create(v.door, { src: 'assets/Models/shield.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   MeshCollider.setBox(v.door)
-  TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, ...LISIBLE_3D })
   MeshRenderer.setPlane(v.enseigne)
   // Alpha TEST, not blend: a tested cutout writes depth and wins every angle against the glazing (1 Sep).
   Material.setPbrMaterial(v.enseigne, {

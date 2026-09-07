@@ -18,6 +18,38 @@ import { ATLAS, ADVANCE, FONT_FILES } from './font-metrics'
   that the sign's own backing plate hides.
 */
 
+/**
+ * Le traitement de lisibilite de TOUT texte plateforme pose dans le monde.
+ *
+ * Un texte en espace-monde n'a pas de plaque sous lui: il tombe sur l'herbe, sur le ciel, sur
+ * une facade claire ou sur de la lave, et une seule couleur ne survit pas aux quatre. La reponse
+ * de la plateforme est le contour, qui dessine le bord du glyphe lui-meme, et la documentation
+ * la prefere explicitement a l'ombre pour la lisibilite.
+ *
+ * Ces valeurs ne sont pas choisies ici: ce sont celles qui ont deja corrige une plainte reelle,
+ * `BUILD HERE` illisible sur un champ vert clair (proprietaire, 5 Sep). Elles etaient sur CE
+ * texte et sur aucun autre.
+ *
+ * L'audit du 7 Sep a trouve, sur seize textes du monde, CINQ valeurs de contour differentes
+ * (0,12 / 0,2 / 0,22 / 0,28 / 0,3) et surtout DEUX A ZERO: l'etiquette d'enchere au-dessus d'un
+ * convoi, et le montant en or au-dessus d'un tas de pieces au sol. Ce sont exactement les deux
+ * que le proprietaire signale comme peu visibles. Il n'y avait pas de regle, donc chaque site
+ * en avait invente une, et deux n'en avaient inventee aucune.
+ *
+ * Une constante partagee plutot qu'une consigne: c'est la meme solution que `plastic()` pour les
+ * materiaux, un traitement, un proprietaire. Un texte pose sans elle se voit en relecture.
+ *
+ * EXCEPTION ASSUMEE: le tableau des records garde son 0,12. C'est le seul texte du monde qui ait
+ * deja une plaque sombre derriere lui, et ses lignes sont serrees: un contour epais y fermerait
+ * les contre-formes des petites lettres au lieu de les detacher.
+ */
+export const LISIBLE_3D = {
+  outlineWidth: 0.28,
+  outlineColor: Color3.fromHexString('#0b1018'),
+  shadowBlur: 0.5,
+  shadowColor: Color3.fromHexString('#0b1018')
+} as const
+
 const CELL = 1 / ATLAS.cols
 const ROW = 1 / ATLAS.rows
 const TRACKING = 0.02

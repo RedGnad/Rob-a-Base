@@ -13,6 +13,7 @@ import { TOAST } from './theme'
 import { preparerRevealToy, ouvrirRevealToy, fermerRevealToy, revealToyView } from './reveal-toy'
 import { clicMonde } from './monde'
 import { puff } from './impact'
+import { LISIBLE_3D } from './texte3d'
 
 let monAdresse = ''
 
@@ -179,8 +180,7 @@ export function setupBox(): void {
   Transform.create(crateCount, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0.55, 0.55, 0.55) })
   Billboard.create(crateCount, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(crateCount, {
-    text: '', fontSize: 4, textColor: Color4.fromHexString('#ffd166ff'),
-    outlineWidth: 0.3, outlineColor: Color4.fromHexString('#0b1018ff')
+    text: '', fontSize: 4, textColor: Color4.fromHexString('#ffd166ff'), ...LISIBLE_3D
   })
   /*
     La caisse se frappe, elle ne se heurte pas.

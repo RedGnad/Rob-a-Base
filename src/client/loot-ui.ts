@@ -3,6 +3,7 @@ import { engine, Transform, Entity, Billboard, BillboardMode, TextShape } from '
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { DroppedItem } from '../shared/schemas'
 import { itemColor, rarityOf, mutationDe, nomDuCode, tailleAuSol, assiseAuSol } from '../shared/loot-table'
+import { LISIBLE_3D } from './texte3d'
 
 /**
  * Loot lying on the ground, drawn from what the server publishes and nothing else.
@@ -75,8 +76,7 @@ export function setupLootUi(): void {
       Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })
       TextShape.create(etiquette, {
         text: `${nomDuCode(d.code)}\nGRAB IT`,
-        fontSize: 3, textColor: teinte,
-        outlineWidth: 0.2, outlineColor: Color3.create(0, 0, 0)
+        fontSize: 3, textColor: teinte, ...LISIBLE_3D
       })
 
       vues.set(id, { corps, etiquette })

@@ -11,6 +11,7 @@ import { alerter, myClientAddress } from './theft'
 import { TOAST } from './theme'
 import { cue } from './ui-kit'
 import { clicMonde } from './monde'
+import { LISIBLE_3D } from './texte3d'
 
 type View = { body: Entity; label: Entity; texte: string }
 const views = new Map<number, View>()
@@ -76,7 +77,14 @@ export function setupConvoy(): void {
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(0, -5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White() })
+        /*
+          Cette etiquette n'avait AUCUN contour, et c'est l'une des deux du jeu dans ce cas.
+
+          Du blanc, puis la couleur de la caisse, poses nus au-dessus d'une caisse qui traverse
+          la place: sur le ciel clair ou sur la rue pale, il ne restait rien a lire. Le
+          proprietaire l'a signalee nommement (7 Sep). Elle prend le traitement commun.
+        */
+        TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White(), ...LISIBLE_3D })
         v = { body, label, texte: '' }
         views.set(c.convoyId, v)
       }

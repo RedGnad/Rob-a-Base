@@ -8,6 +8,7 @@ import { clicMonde } from './monde'
 import { room } from '../shared/messages'
 import { crate, formatIncome, crateSummary } from '../shared/loot-table'
 import { HUE, lisible } from './theme'
+import { LISIBLE_3D } from './texte3d'
 
 export const beltView = {
   annonce: '',
@@ -158,17 +159,17 @@ export function setupBelt(): void {
         const label = engine.addEntity()
         Transform.create(label, { parent: racine, position: Vector3.create(0, haut + 0.92, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(label, { text: formatIncome(b.price), fontSize: 4.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
+        TextShape.create(label, { text: formatIncome(b.price), fontSize: 4.2, textColor: VERT, ...LISIBLE_3D })
 
         const nom = engine.addEntity()
         Transform.create(nom, { parent: racine, position: Vector3.create(0, haut + 0.56, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(nom, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(nom, { text: r.name, fontSize: 3, textColor: Color4.fromHexString(lisible(r.color) + 'ff'), outlineWidth: 0.22, outlineColor: NOIR })
+        TextShape.create(nom, { text: r.name, fontSize: 3, textColor: Color4.fromHexString(lisible(r.color) + 'ff'), ...LISIBLE_3D })
 
         const rendement = engine.addEntity()
         Transform.create(rendement, { parent: racine, position: Vector3.create(0, haut + 0.28, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(rendement, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(rendement, { text: crateSummary(b.crateTier), fontSize: 2.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
+        TextShape.create(rendement, { text: crateSummary(b.crateTier), fontSize: 2.2, textColor: VERT, ...LISIBLE_3D })
 
         v = { racine, item, label, nom, rendement, progres: b.progres, vu: b.progres, tombe: false }
         views.set(b.articleId, v)

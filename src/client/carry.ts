@@ -14,6 +14,7 @@ import { refuseWithSound } from './box'
 import { verb } from './verb'
 import { rarityShape, handShape, clearShape, demonter, remonter, plasticDe, PEDESTAL_THICKNESS } from './toy'
 import { TOAST } from './theme'
+import { LISIBLE_3D } from './texte3d'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -167,8 +168,7 @@ export function setupCarry(): void {
         Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(etiquette, {
           text: nomDuCode(c.code),
-          fontSize: 3, textColor: teinte,
-          outlineWidth: 0.22, outlineColor: Color3.create(0, 0, 0)
+          fontSize: 3, textColor: teinte, ...LISIBLE_3D
         })
 
         /*
