@@ -30,6 +30,8 @@ export const questsView = {
   pris: [] as number[],
   log: 1,
   dayClaimed: false,
+  /** Les jours de la semaine deja encaisses. Un ENSEMBLE, pas un compteur: voir le serveur. */
+  joursPris: [] as number[],
   dailyDispo: false,
   prochainJour: 1
 }
@@ -42,6 +44,7 @@ export function setupQuests(): void {
     questsView.pris = [...d.pris]
     questsView.log = d.log
     questsView.dayClaimed = d.dayClaimed
+    questsView.joursPris = [...d.joursPris]
     questsView.dailyDispo = d.dailyDispo
     questsView.prochainJour = d.prochainJour
   })
@@ -68,7 +71,7 @@ function allQuestsDone(): boolean {
   return true
 }
 
-function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
+function QuestRow(props: { i: number; key?: string }): ReactEcs.JSX.Element {
   const i = props.i
   const q = QUESTS[questsView.ids[i]]
   const fait = questsView.progres[i] ?? 0
@@ -157,7 +160,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
 
 
     <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
-      {questsView.ids.map((_, i) => <QuestRow i={i} />)}
+      {questsView.ids.map((_, i) => <QuestRow key={`quete${i}`} i={i} />)}
 
     <UiEntity
         uiTransform={{ width: '100%', height: ROW, flexDirection: 'row', alignItems: 'center', margin: { top: 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card }}
@@ -200,12 +203,20 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
       >
         {DAILY_REWARDS.map((t, j) => {
           const dayN = j + 1
-          const passe = dayN < questsView.log || (dayN === questsView.log && questsView.dayClaimed)
+          /*
+            Vert si CE coffre a ete pris, et rien d'autre.
+
+            La condition lisait un compteur, donc elle ne pouvait colorer qu'un prefixe: tous
+            les jours en-dessous de la serie, qu'ils aient ete encaisses ou non (proprietaire,
+            7 Sep, "ca rend vert toutes les cases"). Le serveur envoie desormais la LISTE de ce
+            qui a ete pris, et une liste dit ce qu'un nombre ne pouvait pas dire.
+          */
+          const passe = questsView.joursPris.includes(dayN)
           // The day to claim is the next in the streak, offered only when today's chest is waiting.
           const aReclamer = questsView.dailyDispo && dayN === questsView.prochainJour
           const actuel = dayN === questsView.log && !aReclamer
           return (
-            <UiEntity
+            <UiEntity key={`jour${dayN}`}
               uiTransform={{
                 width: '12.4%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',

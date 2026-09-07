@@ -1526,7 +1526,9 @@ export function setupPlots(): void {
             segs.push({ image: 'ui-prestige.png', taille: 0.66 })
             segs.push({ texte: `${p.rebirths + 1}`, role: 'money', taille: 0.78 })
           }
-          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : place3DText(v.plaque, segs, !p.ownerPresent)
+          // 4,7 contre une enseigne de 5,1: une marge d'un bout et de l'autre, dans le repere
+          // local de la plaque, celui-la meme ou les glyphes sont poses.
+          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : place3DText(v.plaque, segs, !p.ownerPresent, 4.7)
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
           if (rp !== null) {

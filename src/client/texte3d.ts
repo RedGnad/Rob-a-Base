@@ -64,12 +64,22 @@ function largeurDe(seg: Segment3D): number {
  * returns that root so the caller can retire the whole line with one call. `estompe`
  * greys the letters the way the plate greys an absent owner.
  */
-export function place3DText(parent: Entity, segments: Segment3D[], estompe: boolean): Entity {
+export function place3DText(parent: Entity, segments: Segment3D[], estompe: boolean, largeurMax = 0): Entity {
   const racine = engine.addEntity()
-  Transform.create(racine, { parent })
 
   const propres: Segment3D[] = segments.map((s) => ('image' in s ? s : { ...s, texte: s.texte.toUpperCase() }))
   const total = propres.reduce((w, s) => w + largeurDe(s), 0)
+  /*
+    La ligne se REDUIT pour tenir dans sa plaque, au lieu d'en sortir.
+
+    La largeur d'un nom est libre et celle d'une plaque est fixe: sans contrainte, un nom long
+    suivi de son etoile de prestige poussait le badge hors du panneau (proprietaire, 7 Sep,
+    "NEO FROSTBORN" et son x2 dans le vide). Couper plus court aurait mutile des noms qui
+    tiennent tres bien; la mise a l'echelle garde la ligne entiere et lisible, et elle ne
+    s'applique qu'au cas ou elle deborde, donc les noms courts ne retrecissent jamais.
+  */
+  const k = largeurMax > 0 && total > largeurMax ? largeurMax / total : 1
+  Transform.create(racine, { parent, scale: Vector3.create(k, k, 1) })
   let curseur = -total / 2
 
   for (const seg of propres) {

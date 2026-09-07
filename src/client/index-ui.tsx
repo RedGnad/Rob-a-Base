@@ -69,7 +69,15 @@ export const IndexContent = () => {
         Secret twice (1 Sep). Leaving the first column bare says what it is, and the coloured
         dots then unmistakably belong to the mutations that own them.
       */}
-      <UiEntity uiTransform={{ width: '100%', height: DOTS_H, flexDirection: 'row', alignItems: 'center' }}>
+      {/*
+        La grille est CENTREE, elle ne colle plus au bord gauche.
+
+        Le bloc fait 184 + 14 x 29 = 590 de large dans un corps de menu qui en fait plus de
+        mille: sans consigne, une rangee commence a gauche et laisse tout le vide a droite, ce
+        que la capture montrait sans ambiguite (proprietaire, 7 Sep). Chaque rangee porte la
+        meme consigne et la meme largeur totale, donc elles restent alignees entre elles.
+      */}
+      <UiEntity uiTransform={{ width: '100%', height: DOTS_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
         <UiEntity uiTransform={{ width: LABEL_W, height: DOTS_H }} />
         {MUTATIONS.map((m) => (
           <UiEntity key={`h${m.id}`}
@@ -78,7 +86,7 @@ export const IndexContent = () => {
         ))}
       </UiEntity>
       {RARITIES.map((r) => (
-        <UiEntity key={r.id} uiTransform={{ height: CASE + GAP, flexDirection: 'row', alignItems: 'center' }}>
+        <UiEntity key={r.id} uiTransform={{ width: '100%', height: CASE + GAP, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
           <Label
             value={r.name}
             fontSize={TYPE.caption}

@@ -38,7 +38,7 @@ import { verb } from './client/verb'
 import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue, stepVerb } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
-import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente, crate } from './shared/loot-table'
+import { RARITIES, itemName, itemColor, mutation, formatIncome, formatSolde, prixDeRevente, crate } from './shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
@@ -1897,7 +1897,7 @@ const uiComponent = () => {
       */}
       <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
-          value={formatIncome(compteurAffiche())}
+          value={formatSolde(compteurAffiche())}
           size={Math.round(TYPE.hero * (1 + poussee() * 0.09))} role="money" align="center" box={strip(760).width} />
         {gainRecent() !== '' && (
           <UiEntity uiTransform={{
@@ -2338,7 +2338,7 @@ const uiComponent = () => {
         elle informe, elle ne se presse pas.
     */}
     {hint() !== '' && !combatView.aiming && hud() && (
-      <Centre bottom={row(0) + 18}>
+      <Centre bottom={row(0) + 62}>
         <UiEntity
           uiTransform={{
             height: 60, padding: { left: 26, right: 26 },

@@ -337,6 +337,40 @@ export function crateSummary(crateId: number): string {
   return c.theme < 0 ? base : `${base}  ${Math.round(chanceDuTheme(crateId) * 100)}% ${mutation(c.theme).name}`
 }
 
+/**
+ * Le SOLDE, a la regle de Cookie Clicker, lue dans son code et non de memoire.
+ *
+ * `main.js`, `Beautify` ligne 270 et `formatEveryThirdPower` ligne 217, verifies en executant
+ * la fonction. Deux regles, et nous n'appliquions ni l'une ni l'autre:
+ *
+ *   Sous un million il n'abrege PAS. Il ecrit tous les chiffres avec des separateurs, 999,999
+ *   et jamais 1000K. Nous abregions des mille avec une seule decimale, donc le compteur d'un
+ *   debutant restait fige pendant cent unites de revenu: exactement le moment ou il doit
+ *   bouger, puisque c'est la qu'on apprend que ses pieces rapportent.
+ *
+ *   A partir d'un million il divise par milliers et arrondit a TROIS decimales, zeros de fin
+ *   supprimes (`Math.round(val * 1000) / 1000`), d'ou "1 million" et non "1.000 million". A
+ *   1,2 milliard notre unique decimale ne changeait que tous les cent millions; trois
+ *   decimales, c'est tous les millions, cent fois plus souvent (proprietaire, 7 Sep).
+ *
+ * Les suffixes restent les notres, courts, parce que notre bandeau est etroit la ou le sien
+ * est une page web. C'est la regle des decimales qu'on reprend, pas sa typographie.
+ *
+ * `formatIncome` en dessous ne bouge pas: il sert aux PRIX et aux panneaux, ou "12.34K" serait
+ * du bruit sur une etiquette qui ne change jamais.
+ */
+export function formatSolde(v: number): string {
+  const n = Math.floor(Math.abs(v))
+  const signe = v < 0 ? '-' : ''
+  if (n < 1e6) return signe + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const SUF = ['K', 'M', 'B', 'T', 'Qa', 'Qi']
+  let val = n / 1000
+  let base = 0
+  while (Math.round(val) >= 1000 && base < SUF.length - 1) { val /= 1000; base += 1 }
+  // Trois decimales, zeros de fin retires par le nombre lui-meme: 1.2 et non 1.200.
+  return signe + (Math.round(val * 1000) / 1000).toString() + SUF[base]
+}
+
 export function formatIncome(v: number): string {
   if (v < 10) return v.toFixed(2).replace(/\.?0+$/, '')
   if (v < 1000) return Math.round(v).toString()

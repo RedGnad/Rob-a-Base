@@ -83,6 +83,21 @@ type Profil = {
   pending?: number
   lastDay?: number
   streak?: number
+  /*
+    La semaine de coffres, comme un ENSEMBLE et non comme un compteur.
+
+    Le bandeau etait pilote par `streak`, un seul nombre. Un nombre ne peut dire que "combien
+    d'affilee", donc l'interface ne pouvait colorer qu'un PREFIXE de cases, jamais celles que
+    le joueur avait reellement prises (proprietaire, 7 Sep). Et `Math.min(streak + 1, 7)`
+    SATURE: au septieme jour la valeur ne redescend plus jamais, donc les sept cases restaient
+    vertes pour toujours et la recompense restait figee sur la derniere.
+
+    `semaineDebut` est le jour UTC ou la semaine courante a commence, `semainePris` la liste
+    des jours 1 a 7 deja encaisses. L'ensemble dit exactement ce qui a ete pris, dans
+    n'importe quel ordre, et il se vide quand la semaine tourne.
+  */
+  semaineDebut?: number
+  semainePris?: number[]
   sentries?: number
   sentryFloors?: number[]
   sentryTier?: number
@@ -1107,19 +1122,58 @@ export type QuestState = {
   log: number; streak: number; dayClaimed: boolean
   dailyDispo: boolean
   prochainJour: number
+  joursPris: number[]
+}
+
+/*
+  Le numero de jour UTC, et pourquoi ce n'est pas la cle AAAAMMJJ deja utilisee ailleurs.
+
+  Une semaine se compte en SOUSTRAYANT deux jours. 20260901 et 20260831 different de 70 dans
+  la cle calendaire alors qu'ils se suivent: elle sert a savoir "est-ce le meme jour", jamais
+  "combien de jours entre les deux". Le quotient du temps par vingt-quatre heures, lui, est
+  lineaire par construction.
+*/
+function jourUTC(): number { return Math.floor(Date.now() / 86400_000) }
+const SEMAINE = 7
+
+/**
+ * La semaine courante, ouverte si besoin, et ce qui y a deja ete pris.
+ *
+ * Une semaine dure sept jours a partir de son premier encaissement. Passe ce delai la suivante
+ * commence, les sept coffres a nouveau disponibles.
+ */
+function semaine(p: Profil): { debut: number; pris: number[] } {
+  const j = jourUTC()
+  const debut = p.semaineDebut
+  if (debut === undefined || j >= debut + SEMAINE) {
+    p.semaineDebut = j
+    p.semainePris = []
+    return { debut: j, pris: [] }
+  }
+  return { debut, pris: p.semainePris ?? [] }
 }
 
 /** The day number a claim would land on now: the next in the streak, or day 1 after a gap. */
 export function prochainJourDaily(address: string): number {
   const p = profiles.get(address)
   if (!p) return 1
-  const hier = new Date(Date.now() - 86400_000)
-  const hierCle = hier.getUTCFullYear() * 10000 + (hier.getUTCMonth() + 1) * 100 + hier.getUTCDate()
-  return p.lastDay === hierCle ? Math.min((p.streak ?? 0) + 1, 7) : 1
+  const { pris } = semaine(p)
+  // Le plus petit coffre encore ouvert. Manquer un jour ne le perd donc pas: on le prend plus
+  // tard dans la meme semaine, ce qui est ce qu'un joueur PRESENT merite (proprietaire, 7 Sep).
+  for (let j = 1; j <= SEMAINE; j++) if (!pris.includes(j)) return j
+  return SEMAINE
+}
+/** Les jours de la semaine courante deja encaisses, pour que l'interface colore CEUX-LA. */
+export function joursPrisDaily(address: string): number[] {
+  const p = profiles.get(address)
+  if (!p) return []
+  return [...semaine(p).pris]
 }
 export function dailyDisponible(address: string): boolean {
   const p = profiles.get(address)
-  return p !== undefined && p.lastDay !== todayKey()
+  if (p === undefined) return false
+  // Un coffre par jour, et seulement s'il en reste dans la semaine.
+  return p.lastDay !== todayKey() && semaine(p).pris.length < SEMAINE
 }
 
 export function questStateOf(address: string): QuestState | null {
@@ -1135,8 +1189,9 @@ export function questStateOf(address: string): QuestState | null {
     log: p.streak ?? 1,
     streak: p.streak ?? 1,
     dayClaimed: p.lastDay === todayKey(),
-    dailyDispo: dispo,
-    prochainJour: prochainJourDaily(address)
+    dailyDispo: dispo && semaine(p).pris.length < SEMAINE,
+    prochainJour: prochainJourDaily(address),
+    joursPris: joursPrisDaily(address)
   }
 }
 
@@ -1170,7 +1225,8 @@ export function pushQuests(address: string): void {
   if (q === null) return
   void room.send('quests', {
     ids: q.ids, progres: q.progres, cibles: q.cibles, pris: q.pris,
-    log: q.log, dayClaimed: q.dayClaimed, dailyDispo: q.dailyDispo, prochainJour: q.prochainJour
+    log: q.log, dayClaimed: q.dayClaimed, dailyDispo: q.dailyDispo, prochainJour: q.prochainJour,
+    joursPris: q.joursPris
   }, { to: [address] })
 }
 
@@ -1988,16 +2044,29 @@ export function reclamerQuotidienne(address: string): { log: number; crate: numb
   const dayKey = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate()
   if (p.lastDay === dayKey) return null      // deja pris aujourd'hui
 
-  const hier = new Date(Date.now() - 86400_000)
-  const hierCle = hier.getUTCFullYear() * 10000 + (hier.getUTCMonth() + 1) * 100 + hier.getUTCDate()
-  p.streak = p.lastDay === hierCle ? Math.min((p.streak ?? 0) + 1, 7) : 1
+  /*
+    On prend le plus petit coffre encore ouvert de la semaine, pas "le suivant d'une serie".
+
+    L'ancienne regle avancait un compteur borne par `Math.min(streak + 1, 7)`, qui SATURE:
+    arrive a sept il n'en bougeait plus, la recompense restait la derniere et le bandeau
+    affichait sept cases vertes pour toujours. Et une journee manquee remettait tout a un,
+    ce qui punissait un joueur present qui avait seulement oublie d'ouvrir le menu.
+  */
+  const sem = semaine(p)
+  if (sem.pris.length >= SEMAINE) return null
+  let jour = SEMAINE
+  for (let j = 1; j <= SEMAINE; j++) if (!sem.pris.includes(j)) { jour = j; break }
+  p.semainePris = [...sem.pris, jour]
+  // `streak` reste ecrit: c'est ce que la semaine a rendu jusqu'ici, et d'autres lectures s'en
+  // servent encore. Il n'est plus ce qui DECIDE de quoi que ce soit.
+  p.streak = p.semainePris.length
   p.lastDay = dayKey
 
-  const crate = DAILY_REWARDS[p.streak - 1] ?? 0
+  const crate = DAILY_REWARDS[jour - 1] ?? 0
   p.crates = [...(p.crates ?? []), crate]
   dirtyProfiles.add(address)
-  log(`${nameOf(address)} claimed day ${p.streak} reward: crate ${crate}`)
-  return { log: p.streak, crate }
+  log(`${nameOf(address)} claimed day ${jour} of the week: crate ${crate}`)
+  return { log: jour, crate }
 }
 
 export function startPlots(): void {
