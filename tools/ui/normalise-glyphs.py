@@ -52,7 +52,16 @@ DENSE_COVER = 0.62
 # Material's grid makes between a circle keyline and a square one, applied by hand where the
 # coverage rule does not catch it: the bars cover 56 percent of their box, just under the
 # threshold that would have taken them down automatically.
-SUR_MESURE = {'icon-menu': 0.85}
+SUR_MESURE = {'icon-menu': 0.85,
+              # DROP is smaller, and it is the only entry in this table that does not correct an
+              # optical illusion: it states a DANGER. Dropping what you carry is one of the most
+              # expensive acts in the game and one of the few that cannot be undone, and the new
+              # arrow, wide and solid, called the thumb as loudly as PICK UP (owner, 7 Sep: "ca
+              # appelle au clic alors que c'est une des pires actions"). A command's visual weight
+              # should say how freely it can be pressed; a destructive action is DE-emphasised,
+              # which is the practice everywhere an interface offers to destroy something. Eighty
+              # percent of the family's extent: still legible, never again the pad's largest glyph.
+              'icon-drop': 0.80, 'encre-drop': 0.80}
 # Below this much correction, the file is already right and is not touched.
 TOLERANCE = 0.02
 # And below this much offset, in pixels, the glyph already sits in the middle.
