@@ -11,7 +11,7 @@ import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference, zoneRenderer } from './client/layout'
-import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
+import { forceDuTir, GEARS, CARRY_STOLEN_SHARE, PENDING_CAP_S } from './shared/schemas'
 import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
@@ -20,7 +20,7 @@ import { toyImage } from './client/toy'
 import { noterEvenement, signalerMenu } from './client/clics'
 import { loadingView } from './client/loading'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, cancelSteal, filVisible, alertesVisibles } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
 import { bannerLine, nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
@@ -534,23 +534,18 @@ let compteurVu = -1
 let gainA = 0
 let gainMontant = 0
 /*
-  Le total deja verse par le revenu, la derniere fois qu'on a regarde.
+  Le solde ne bouge que sur des EVENEMENTS, donc chaque hausse merite son nombre flottant.
 
-  Depuis que le revenu tombe seul dans le solde (7 Sep), le compteur monte en permanence. Un
-  "+X" qui part a chaque seconde n'est plus un signal, c'est du decor: on cesse de le voir, et
-  il ne reste que son cout. Le flottant est reserve aux gains PONCTUELS, qui sont ceux qu'on
-  doit remarquer: une vente, un vol, un ramassage, une reclamation hors ligne. La part du
-  filet est retranchee exactement, avec le cumul que le serveur envoie, sans tolerance ni
-  devinette. Le compteur, lui, continue de monter tout seul: le revenu s'y voit, sans crier.
+  La production va dans la cagnotte et non dans le solde, si bien que ce compteur ne monte que
+  sur un encaissement, une vente, un vol, un ramassage ou une reclamation hors ligne. La
+  soustraction du filet, qui existait le temps ou le revenu tombait en continu, n'a donc plus
+  d'objet: elle est retiree plutot que gardee au cas ou, un calcul qui ne corrige plus rien
+  finissant toujours par corriger quelque chose par erreur.
 */
-let gagneVu = -1
 function compteurAffiche(): number {
   const vrai = theftView.coins
-  const filet = gagneVu < 0 ? 0 : Math.max(0, theftView.earned - gagneVu)
-  gagneVu = theftView.earned
   if (compteurVu < 0 || Math.abs(vrai - compteurVu) > Math.max(1000, vrai * 0.5)) { compteurVu = vrai; return vrai }
-  const evenement = (vrai - compteurVu) - filet
-  if (vrai > compteurVu && evenement > 0) { gainMontant = gainMontant > 0 && Date.now() - gainA < 700 ? gainMontant + evenement : evenement; gainA = Date.now() }
+  if (vrai > compteurVu) { gainMontant = gainMontant > 0 && Date.now() - gainA < 700 ? gainMontant + (vrai - compteurVu) : vrai - compteurVu; gainA = Date.now() }
   compteurVu = compteurVu + (vrai - compteurVu) * 0.16
   if (Math.abs(vrai - compteurVu) < Math.max(2, vrai * 0.0002)) compteurVu = vrai
   return Math.round(compteurVu)
@@ -1006,20 +1001,32 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     purchases live in the shop tab, which is a room you go to.
   */
   /*
-    Il n'y a plus rien a encaisser, et c'est le correctif.
+    Encaisser, et c'est l'etat de base du bouton.
 
-    Le revenu s'accumulait dans un pool que seul un bouton COLLECT vidait, place en DERNIER
-    dans cette liste, donc offert seulement quand rien d'autre ne l'etait: un residu, pas un
-    signal. Aucun testeur ne l'a trouve, plusieurs n'ont donc jamais compris que leurs pieces
-    rapportaient, et le plafond de dix minutes arretait leur production en silence (test
-    mobile, 6 Sep). Le revenu tombe maintenant seul dans le solde.
+    Ce verbe a ete retire le 7 Sep puis remis le meme jour, par decision du proprietaire apres
+    que je lui aie expose les trois defauts mesures qu'il ramene. Ce qui l'avait fait retirer:
+    aucun testeur ne le trouvait, le plafond de dix minutes arretait la production en silence,
+    et l'incitation etait inversee (un tir prend dans le SOLDE, jamais dans la cagnotte, donc
+    ne pas encaisser etait le geste sur). Ce qui l'a fait revenir: sans lui, le bouton le plus
+    atteignable du telephone n'a plus rien a offrir la majorite du temps, et un bouton
+    desactive muet est un defaut plus visible qu'une incitation mal orientee.
 
-    Le pave physique du tycoon Roblox et la bulle de Clash of Clans etaient les deux autres
-    reponses. Elles supposent un joueur qui VIT dans sa parcelle; ici la boucle l'en arrache
-    (le tapis, la base du voisin), et rentrer toutes les dix minutes se serait battu contre
-    elle. Le vol finit deja obligatoirement sur ses propres etageres: la raison de rentrer
-    existe, et elle est meilleure.
+    Il reste EN DERNIER dans la chaine, ce qui est sa place: la cagnotte est presque toujours
+    pleine de quelque chose, donc plus haut il cacherait tous les autres verbes derriere lui.
+
+    Deux choses changent avec son retour, et elles repondent au defaut qui l'avait condamne.
+    Le bouton porte le MONTANT, donc il ne dit plus seulement "encaisse", il dit combien: un
+    signifiant chiffre a la place d'un verbe nu. Et la cagnotte est lisible en permanence sous
+    le compteur, donc elle cesse d'etre un nombre que seul le serveur connaissait.
   */
+  if (theftView.pending >= 1) {
+    return {
+      id: 'encaisser',
+      label: `COLLECT ${formatIncome(theftView.pending)}`,
+      icon: ico('collect'),
+      action: collectPending
+    }
+  }
   return null
 }
 
@@ -1128,8 +1135,24 @@ function barre(): string {
  * in the top right corner and what the action button says under their thumb, with an icon, at
  * that very moment: the same instruction three times over, which is worse than not saying it.
  */
+/**
+ * La cagnotte est-elle a son plafond, c'est a dire la production arretee.
+ *
+ * Le plafond est un multiple du TAUX, donc il monte avec la base: on le recalcule ici plutot
+ * que de faire voyager un second nombre que le client n'aurait aucun moyen de verifier. La
+ * marge de un pour cent absorbe le decalage entre la derniere poussee du serveur et l'image
+ * en cours, sinon le mot FULL clignoterait a chaque seconde entiere.
+ */
+function cagnottePleine(): boolean {
+  const plafond = theftView.income * PENDING_CAP_S
+  return plafond > 0 && theftView.pending >= plafond * 0.99
+}
+
 function hint(): string {
   if (slotView.active && !slotView.valid) return slotView.reason
+  // Une production arretee est la chose la plus actionnable qui soit, et l'ancienne version
+  // ne la disait nulle part: c'est ce silence qui l'a fait retirer, pas la borne elle-meme.
+  if (cagnottePleine()) return 'your pot is full, collect it'
   // Actionable: it says go home, and the crates are not doing anything until you do.
   if (boxView.stock.length > 0 && !peutOuvrirIci()) {
     return `${boxView.stock.length} box${boxView.stock.length > 1 ? 'es' : ''} waiting at your base`
@@ -1955,6 +1978,32 @@ const uiComponent = () => {
               + (theftView.multiplier > 1 ? `   x${theftView.multiplier} PRESTIGE` : '')
               + (theftView.prime > 0 ? `   +${Math.round(theftView.prime * 100)}% CROWD` : '')
           } />
+        {/*
+          La cagnotte, ecrite en permanence sous le taux.
+
+          C'est le correctif de ce qui avait condamne l'encaissement: le montant en attente
+          n'existait NULLE PART a l'ecran, seul le serveur le connaissait, et un ancien
+          commentaire justifiait ce silence en disant qu'il "voyageait deja sur le bouton
+          COLLECT" alors que ce bouton ne portait qu'un verbe nu. Trois testeurs n'ont jamais
+          compris que leurs pieces rapportaient; il n'y avait rien a comprendre, rien ne le
+          montrait.
+
+          Elle est dans la couleur de l'argent, sous le taux qui l'alimente, donc les deux se
+          lisent comme une cause et son effet. Et quand elle atteint son plafond, elle le DIT:
+          c'est le defaut exact de l'ancienne version, une production qui s'arretait sans un
+          mot. Un joueur prevenu peut agir, un joueur qui ne l'est pas croit que le jeu est
+          casse.
+        */}
+        {hud() && theftView.pending >= 1 && (
+          <Label
+            uiTransform={{ width: '100%', height: 30 }}
+            textAlign="middle-center" textWrap="nowrap"
+            fontSize={TYPE.caption}
+            color={cagnottePleine() ? C.bonus : Color4.fromHexString('#ffd166ff')}
+            value={cagnottePleine()
+              ? `${formatIncome(theftView.pending)} WAITING  ·  FULL, COLLECT IT`
+              : `${formatIncome(theftView.pending)} WAITING`} />
+        )}
       </UiEntity>
       {!view.serverAlive && <WaitBar />}
     </UiEntity>

@@ -19,7 +19,7 @@ import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, declarerVolEnCours
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending, declarerVolEnCours
 } from './plots'
 
 /*
@@ -347,6 +347,22 @@ export function startTheft(): void {
       log(`${nomV} starts taking a ${itemName(rarityOf(code), mutationDe(code))} from ${c.name} (${Math.round(duree / 1000)}s)`)
       return
     }
+  })
+
+  /*
+    Encaisser la cagnotte.
+
+    Volontairement SANS condition de distance: le tutoriel avait un jour promis "tap COLLECT at
+    your base" alors que le code n'en demandait aucune, et c'est le texte qui avait tort. La
+    cagnotte est un compte, pas un tas pose quelque part; l'attacher a un lieu serait une regle
+    de plus a apprendre pour rien.
+  */
+  room.onMessage('collect', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const gain = collectPending(a)
+    if (gain <= 0) { refus(a, 'collect', 'nothing to collect'); return }
+    void room.send('collected', { gain }, { to: [a] })
   })
 
   room.onMessage('cancelSteal', (_d, ctx) => {

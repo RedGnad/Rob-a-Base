@@ -40,8 +40,8 @@ export const theftView = {
   canRecover: false,
   floorPrice: 0,
   rechargeSec: 0,
-  /** Total verse par le revenu, cumule: sert a distinguer le filet d'un gain ponctuel. */
-  earned: 0,
+  /** La cagnotte: ce que les etageres ont produit et qui attend d'etre ramasse. */
+  pending: 0,
   alert: '',
   alertColor: '#ffffff',
   alerteJusqua: 0,
@@ -271,16 +271,7 @@ export function setupTheft(): void {
     theftView.canRecover = d.canRecover
     theftView.floorPrice = d.floorPrice
     theftView.rechargeSec = d.rechargeSec
-    /*
-      Ce que le revenu a verse en tout, pour pouvoir NE PAS le faire flotter.
-
-      Le compteur fait monter un "+X" des qu'il augmente. Avec le revenu verse en continu,
-      ce "+X" partirait chaque seconde et deviendrait du bruit permanent, la ou il doit
-      signaler un evenement: une vente, un vol, un ramassage. Le serveur envoie donc son
-      total; le client soustrait, et ce qui reste est ponctuel par construction. Exact, pas
-      d'heuristique de tolerance.
-    */
-    theftView.earned = d.earned
+    theftView.pending = d.pending
     theftView.luckSec = d.luckSec
     theftView.luckPrice = d.luckPrice
     theftView.prestigeEats = d.prestigeEats
@@ -328,6 +319,18 @@ export function setupTheft(): void {
 
   // The join-time message can arrive before this handler exists; the wallet tick carries the
   // same fact until it is shown, so this only logs.
+  room.onMessage('collected', (d) => {
+    /*
+      Le nombre et la piece le disent; la phrase le disait une troisieme fois.
+
+      "+1.2K coins collected" portait exactement ce que le nombre flottant porte, sur le geste
+      le plus repete du jeu (proprietaire, 3 Sep). La grille met la quantite sur le nombre,
+      donc le toast part.
+    */
+    floatAmount(d.gain, false)
+    playCash()
+  })
+
   room.onMessage('offlineEarnings', (d) => {
     console.log(`[CLIENT] offline: +${d.gain} over ${Math.round(d.seconds / 60)} min`)
   })
@@ -388,6 +391,7 @@ export function setupTheft(): void {
   })
 }
 
+export function collectPending(): void { sendOrHold(() => { void room.send('collect', {}) }) }
 export function cancelSteal(): void { theftView.stealing = false; void room.send('cancelSteal', {}) }
 
 export function steal(ownerId = '', slot = -1): void {

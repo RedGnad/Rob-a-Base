@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, offlineCapProductionS, siloCost, SILO_MAX, AFK_PRODUCTION_MS, AFK_MOVE_M, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, offlineCapProductionS, siloCost, SILO_MAX, AFK_PRODUCTION_MS, AFK_MOVE_M, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -66,20 +66,16 @@ type Profil = {
   /** When the last lock the owner PRESSED for ends: the button's recharge counts from here and from nothing else. */
   lockUsedUntil?: number
   vuA?: number
-  /*
-    Ce que la seconde ecoulee a produit et qui n'atteint pas encore une piece entiere.
-
-    Le revenu tombe directement dans le solde, et un solde est un entier. Une base a
-    0.4/s creditee au sol chaque seconde ne rapporterait jamais rien du tout. La fraction
-    est donc reportee d'une seconde a l'autre et versee des qu'elle fait une unite: rien
-    n'est perdu a l'arrondi, quel que soit le revenu.
-  */
-  reste?: number
-  /** Total verse par le revenu depuis toujours. Le client soustrait: ce qui reste est ponctuel. */
-  gagne?: number
   /** Dernier signe de vie: un deplacement ou une depense. Voir `AFK_PRODUCTION_MS`. */
   agiA?: number
-  /** Ancien pool d'encaissement manuel. Ne sert plus qu'a etre reverse au chargement. */
+  /*
+    La cagnotte: ce que les etageres ont produit et que le joueur n'a pas encore ramasse.
+
+    Retiree le 7 Sep au petit matin, remise le meme jour par decision du proprietaire, qui
+    voulait garder au bouton contextuel un etat de base. Voir `PENDING_CAP_S` pour ce qui a
+    change avec son retour: elle est bornee comme avant, mais elle ne se remplit plus en
+    silence.
+  */
   pending?: number
   lastDay?: number
   streak?: number
@@ -719,7 +715,6 @@ export async function welcome(address: string): Promise<void> {
   // Arriver, c'est agir: la production part tout de suite, la regle anti-AFK compte depuis ici.
   profile.agiA = Date.now()
   profiles.set(address, profile)
-  reverserAncienPool(address, profile)
   dirtyProfiles.add(address)
 
   const name = nameOf(address)
@@ -1954,19 +1949,19 @@ export function nextSiloPrice(address: string): number {
 }
 
 /**
- * Reverse au solde ce qu'un profil stocke portait encore dans l'ancien pool manuel.
+ * Encaisser la cagnotte. Rend ce qu'elle valait, ou zero.
  *
- * L'encaissement a disparu (7 Sep): personne ne doit perdre ce qu'il avait accumule sous
- * l'ancienne regle sans jamais avoir trouve le bouton, ce qui etait precisement le probleme.
- * Appele une fois, au chargement du profil.
+ * Le seul chemin qui la vide, et le seul endroit ou son montant rejoint le solde.
  */
-function reverserAncienPool(address: string, p: Profil): void {
+export function collectPending(address: string): number {
+  const p = profiles.get(address)
+  if (!p) return 0
   const r = Math.floor(p.pending ?? 0)
-  p.pending = undefined
-  if (r <= 0) return
+  if (r <= 0) return 0
   p.coins += r
+  p.pending = 0
   dirtyProfiles.add(address)
-  log(`${nameOf(address)} recupere ${r} de l'ancien pool d'encaissement`)
+  return r
 }
 
 /**
@@ -2031,10 +2026,9 @@ export function avancerTuto(address: string): void {
   dirtyProfiles.add(address)
 }
 
-/** Ce que le revenu a verse en tout a ce joueur: le client s'en sert pour ne PAS faire
- *  flotter le filet, et ne faire flotter que les gains ponctuels. */
-export function earnedOf(address: string): number {
-  return Math.floor(profiles.get(address)?.gagne ?? 0)
+/** Ce que la cagnotte contient a cet instant, arrondi a la piece. */
+export function pendingOf(address: string): number {
+  return Math.floor(profiles.get(address)?.pending ?? 0)
 }
 
 export function reclamerQuotidienne(address: string): { log: number; crate: number } | null {
@@ -2114,24 +2108,19 @@ export function startPlots(): void {
 
       const perSecond = gain * incomeMultiplier(profile.rebirths ?? 0) * (1 + crowdBonus(ici.size))
       /*
-        Verse directement, avec report de la fraction.
+        La production va dans la CAGNOTTE, pas dans le solde.
 
-        Il n'y a plus de pool a encaisser: personne ne trouvait le bouton, et son plafond de
-        dix minutes arretait la production en silence (proprietaire et testeurs, 7 Sep). Le
-        rituel de reclamation reste la ou il a du sens, au retour hors ligne.
+        Le report de la fraction reste, et il n'etait pas la avant: une base a 0,4 par seconde
+        ne rapportait rien du tout tant qu'on tronquait chaque seconde. La cagnotte est donc
+        un nombre reel, et c'est l'encaissement qui arrondit.
       */
-      profile.reste = (profile.reste ?? 0) + perSecond * seconds
-      const entier = Math.floor(profile.reste)
-      if (entier > 0) {
-        profile.reste -= entier
-        profile.coins += entier
-        profile.gagne = (profile.gagne ?? 0) + entier
-        // La quete du jour dit noir sur blanc d'ou vient l'argent, ce qu'aucun testeur
-        // n'avait compris. Pas de `pushQuests` ici: une poussee par seconde et par joueur
-        // pour un compteur qui monte tout seul serait du trafic pour rien.
-        advanceQuest(address, 'gagner', entier)
-        dirtyProfiles.add(address)
-      }
+      const cagnotte = profile.pending ?? 0
+      profile.pending = Math.min(cagnotte + perSecond * seconds, perSecond * PENDING_CAP_S)
+      const entier = Math.floor(profile.pending) - Math.floor(cagnotte)
+      // La quete du jour dit noir sur blanc d'ou vient l'argent, ce qu'aucun testeur n'avait
+      // compris. Pas de `pushQuests` ici: une poussee par seconde et par joueur serait du
+      // trafic pour rien, la prochaine poussee naturelle portera le compte.
+      if (entier > 0) advanceQuest(address, 'gagner', entier)
       profile.vuA = Date.now()
       // Not dirtied here: this ran every second for every present player, so every profile was
       // written every five seconds for nothing. Collect, departure and the checkpoint below persist it.
@@ -2158,7 +2147,7 @@ export function startPlots(): void {
         silos: p.silos ?? 0,
         siloPrice: nextSiloPrice(address),
         offlineCapS: offlineCapProductionS(p.silos ?? 0),
-        earned: earnedOf(address),
+        pending: pendingOf(address),
         rechargeSec: Math.ceil(lockCooldown(address) / 1000),
         canRecover: hasSomethingToRecover(address),
         coins: Math.floor(Number.isFinite(p.coins) ? p.coins : 0),

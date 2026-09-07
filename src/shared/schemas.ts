@@ -981,6 +981,20 @@ export { OFFLINE_CAP_PRODUCTION_S, SILO_STEP_S, SILO_MAX, SILO_BASE_PRICE, siloC
   ejecter quelqu'un (verifie dans `apis.d.ts` du SDK installe, 7 Sep).
 */
 export const AFK_PRODUCTION_MS = 600_000
+/*
+  La cagnotte se remplit jusqu'a dix minutes de production, et elle le DIT.
+
+  Ce plafond a existe, a ete retire, et revient par decision du proprietaire le 7 Sep apres
+  que je lui aie signale les trois defauts mesures qu'il ramene. Ce qui change, c'est qu'il
+  n'est plus silencieux: le defaut n'etait pas la borne, c'etait qu'un joueur voyait sa
+  production s'arreter sans qu'un seul element d'interface le mentionne. La cagnotte est
+  desormais lisible en permanence et la ligne d'attente previent quand elle est pleine.
+
+  Dix minutes: assez pour qu'on ne soit pas rappele sans cesse, assez court pour qu'oublier
+  d'encaisser coute quelque chose, ce qui est la seule chose qui fait d'un ramassage une
+  decision plutot qu'une corvee.
+*/
+export const PENDING_CAP_S = 600
 /** Deplacement au-dela duquel on considere que le joueur joue, entre deux secondes. */
 export const AFK_MOVE_M = 0.4
 
