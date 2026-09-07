@@ -10,7 +10,7 @@
   "owner": "Red.G",
   "contact": {
     "name": "Red.G",
-    "email": ""
+    "email": "mookipstore@hotmail.com"
   },
   "main": "bin/index.js",
   "logsPermissions": [
@@ -204,7 +204,7 @@
     "nearbyVoiceChat": "enabled"
   },
   "authoritativeMultiplayer": true,
-  "creator": "",
+  "creator": "0x981F6E0Ea94f45fDB8ee7680DC862212E3C720e0",
   "skyboxConfig": {},
   "landscapeTerrain": true,
   "source": {
@@ -215,7 +215,7 @@
     "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE",
     "ALLOW_TO_TRIGGER_AVATAR_EMOTE"
   ],
-  "rating": "T",
+  "rating": "A",
   "worldConfiguration": {
     "name": "basewar.dcl.eth",
     "skyboxConfig": {
