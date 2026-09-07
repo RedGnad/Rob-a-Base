@@ -789,7 +789,16 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
       continue
     }
     if (now < du) continue
-    rythmeSocle.set(cle, now + GAIN_PERIODE_MS)
+    /*
+      L'intervalle est TIRE, il n'est pas une periode.
+
+      Le decalage entre socles ne suffit pas: six emissions parfaitement regulieres restent un
+      metronome, chaque socle battant sa mesure a la seconde pres. Un tiers de variation casse
+      la mesure sans rendre l'attente imprevisible, et c'est la meme correction que la
+      "humanisation" d'un sequenceur, qui existe pour la meme raison: une quantification
+      parfaite s'entend comme une machine.
+    */
+    rythmeSocle.set(cle, now + Math.round(GAIN_PERIODE_MS * (0.72 + Math.random() * 0.56)))
     // Monde: la racine ne porte qu'une rotation autour de Y et aucune echelle. On passe par
     // `orientToBase`, la meme fonction que tout le reste du depot, plutot que de reecrire le
     // demi-tour a la main: deux calculs du meme changement de repere finissent toujours par
@@ -809,77 +818,6 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
       socle.position.y + socle.scale.y * 0.5 + 0.12,
       rt.position.z + o.dz
     ), rarityOf(code))
-  }
-}
-
-/*
-  Le seul objet de son espece dans le monde: la colonne qui dit "ici, c'est chez toi".
-
-  Le probleme mesure: vu de la place, RIEN ne distingue sa base d'une autre a part du texte,
-  et beaucoup de joueurs Decentraland arrivent avec un avatar par defaut dont ils ne
-  reconnaissent pas le nom (proprietaire, 7 Sep). Or lire un nom est un traitement SERIEL: le
-  cout monte avec le nombre de bases, donc un nom ne pourra jamais marcher "du premier coup
-  d'oeil", quel que soit le joueur. Seuls la couleur, le mouvement, la taille et l'orientation
-  sont preattentifs (Treisman et Gelade, 1980; Ware pour la mise en pratique).
-
-  La couleur est indisponible: les huit accents sont TIRES D'UN HACHAGE DE L'ADRESSE
-  (`indexAccent` dans toy.ts), donc un voisin peut porter exactement la sienne, et les treize
-  skins prennent le reste de la roue. Le repere ne peut donc pas etre une teinte reservee: il
-  est unique par sa FORME. Aucune autre base n'a de colonne, et comme elle est dessinee par le
-  client du proprietaire seul, il en existe exactement une dans le monde de chaque joueur.
-  C'est la singularite au sens de Lynch (`The Image of the City`, 1960): un repere fonctionne
-  parce qu'il tranche sur son contexte, pas parce qu'il varie dedans.
-
-  Elle part du SOL, pas du toit. Une balise posee sur le toit s'eloigne du regard a mesure que
-  le joueur progresse (douze etages, 48 m), donc elle s'affaiblit exactement quand elle devrait
-  se renforcer. Une colonne qui monte depuis le seuil est lisible a hauteur d'oeil quand on est
-  devant, et depasse la ligne des toits quand on est loin: les deux cas avec un seul objet.
-  Elle se retire quand on est chez soi, ou elle n'apprend plus rien et gene la vue.
-*/
-const BALISE_H = 60
-const BALISE_PRES = 18
-let balise: Entity | null = null
-let baliseVisible = true
-let baliseXZ: { x: number; z: number } | null = null
-
-/*
-  En coordonnees MONDE, sans parent, et c'est deliberé.
-
-  Accrochee a la racine de la base, elle disparaissait avec elle le jour ou le client recycle
-  cette vue, et la variable `balise` restant non nulle, plus rien ne l'aurait recreee: le
-  repere se serait eteint sans un mot. Sans parent, sa duree de vie ne depend de personne, et
-  une colonne verticale n'a de toute facon aucun besoin de l'orientation de la base.
-*/
-function tenirLaBalise(moi: Vector3 | null, centre: Vector3): void {
-  if (balise !== null && Transform.getOrNull(balise) === null) balise = null
-  if (balise === null) {
-    balise = engine.addEntity()
-    Transform.create(balise, {
-      position: Vector3.create(centre.x, BALISE_H / 2, centre.z),
-      scale: Vector3.create(0.55, BALISE_H, 0.55)
-    })
-    MeshRenderer.setCylinder(balise, 1, 1)
-    Material.setPbrMaterial(balise, {
-      albedoColor: Color4.create(1, 0.82, 0.4, 0.26),
-      emissiveColor: Color3.fromHexString('#ffd166'),
-      emissiveIntensity: 1.6,
-      metallic: 0, roughness: 1, castShadows: false
-    })
-    baliseXZ = { x: centre.x, z: centre.z }
-  }
-  const t0 = Transform.getMutableOrNull(balise)
-  if (t0 === null) return
-  // Une base peut demenager: on suit, mais on n'ecrit que si elle a bouge.
-  if (baliseXZ === null || baliseXZ.x !== centre.x || baliseXZ.z !== centre.z) {
-    baliseXZ = { x: centre.x, z: centre.z }
-    t0.position = Vector3.create(centre.x, BALISE_H / 2, centre.z)
-  }
-  const loinDeChezSoi = moi === null
-    || Math.abs(moi.x - centre.x) + Math.abs(moi.z - centre.z) > BALISE_PRES
-  // Ecrire seulement au changement d'etat: une comparaison par image, pas une ecriture.
-  if (loinDeChezSoi !== baliseVisible) {
-    baliseVisible = loinDeChezSoi
-    t0.scale = loinDeChezSoi ? Vector3.create(0.55, BALISE_H, 0.55) : Vector3.Zero()
   }
 }
 
@@ -1700,12 +1638,16 @@ export function setupPlots(): void {
       }
 
       // The lock pad: the one control of the base that is a thing on its floor.
-      if (monBase) {
-        tenirLePave(v.racine, p.lockedUntil, accentPour(p), p.skin)
-        const me = Transform.getOrNull(engine.PlayerEntity)
-        const rb = Transform.getOrNull(v.racine)
-        if (rb !== null) tenirLaBalise(me === null ? null : me.position, rb.position)
-      }
+      /*
+        Plus de colonne au-dessus de sa base.
+
+        Elle repondait a "comment reconnait-on la sienne", et la reponse est venue d'ailleurs:
+        depuis que chaque piece posee lache sa monnaie, une base qui CRACHE DES PIECES est la
+        sienne, puisque c'est la seule qui le fasse pour ce joueur (proprietaire, 7 Sep). Le
+        repere est donc porte par la mecanique elle-meme au lieu d'un objet ajoute par-dessus:
+        un signal de moins a dessiner, a expliquer et a entretenir.
+      */
+      if (monBase) tenirLePave(v.racine, p.lockedUntil, accentPour(p), p.skin)
 
       // The signature only carries STRUCTURAL state. A value that ticks every second
       // (a countdown, a gauge) belongs on its own element: inside a cache key it forces

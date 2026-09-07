@@ -34,7 +34,29 @@ const TOURS = 1.35
 const EPAISSEUR = 0.14
 const OR = Color3.fromHexString('#ffcf4d')
 
-type Slot = { e: Entity; depuis: number; y0: number; taille: number; vivant: boolean }
+/*
+  Aucune piece n'est la copie d'une autre, et c'est une regle, pas un ornement.
+
+  Six socles emettaient des clones parfaitement identiques a intervalle parfaitement regulier:
+  meme taille, meme hauteur, meme duree, meme rotation. Meme decalees les unes des autres, elles
+  lisaient comme une machine (proprietaire, 7 Sep: "on veut un effet organique"). Le defaut a un
+  nom en son et en effets de jeu, le MACHINE-GUN EFFECT: un meme actif repete a cadence reguliere
+  cesse d'etre lu comme un evenement et devient un mecanisme. Jonasson et Purho ne procedent
+  jamais autrement dans leur demonstration, ils tirent au hasard la taille, la vitesse et l'angle
+  de chaque particule.
+
+  Chaque piece tire donc les siens: sa montee, sa duree, son nombre de tours et un leger ecart
+  lateral pour qu'elles ne s'elevent pas toutes sur la meme verticale. Les bornes sont serrees,
+  un quart de variation au plus: assez pour qu'aucune paire ne soit identique, trop peu pour
+  qu'une piece paraisse anormale.
+*/
+const VARIE = 0.25
+function autour(v: number): number { return v * (1 - VARIE + Math.random() * 2 * VARIE) }
+
+type Slot = {
+  e: Entity; depuis: number; y0: number; taille: number; vivant: boolean
+  montee: number; vie: number; tours: number
+}
 const pool: Slot[] = []
 let prochain = 0
 
@@ -50,7 +72,7 @@ function creer(): void {
       emissiveIntensity: 0.9,
       metallic: 0.9, roughness: 0.25, castShadows: false
     })
-    pool.push({ e, depuis: 0, y0: 0, taille: 0.2, vivant: false })
+    pool.push({ e, depuis: 0, y0: 0, taille: 0.2, vivant: false, montee: MONTEE, vie: VIE_MS, tours: TOURS })
   }
 }
 
@@ -84,7 +106,13 @@ export function emettreGain(ou: Vector3, rarete: number): void {
   slot.depuis = Date.now()
   slot.y0 = ou.y
   slot.taille = taille
+  slot.montee = autour(MONTEE)
+  slot.vie = autour(VIE_MS)
+  slot.tours = autour(TOURS)
   slot.vivant = true
+  // Un ecart lateral, tire lui aussi: sans lui, six pieces montent sur six verticales exactes
+  // et l'oeil retrouve la grille des socles au lieu de voir de la monnaie.
+  t.position = Vector3.create(ou.x + (Math.random() - 0.5) * 0.14, ou.y, ou.z + (Math.random() - 0.5) * 0.14)
 }
 
 /**
@@ -98,7 +126,7 @@ export function setupGains(): void {
     const now = Date.now()
     for (const s of pool) {
       if (!s.vivant) continue
-      const k = (now - s.depuis) / VIE_MS
+      const k = (now - s.depuis) / s.vie
       const t = Transform.getMutableOrNull(s.e)
       if (k >= 1 || t === null) {
         s.vivant = false
@@ -107,11 +135,11 @@ export function setupGains(): void {
       }
       // Vite au depart puis de plus en plus lentement, et la piece se retire sur le dernier
       // tiers: elle est lue dans le premier, elle s'en va pendant le reste.
-      t.position = Vector3.create(t.position.x, s.y0 + MONTEE * (1 - (1 - k) * (1 - k)), t.position.z)
+      t.position = Vector3.create(t.position.x, s.y0 + s.montee * (1 - (1 - k) * (1 - k)), t.position.z)
       // Couchee sur le dos (90 sur X) et tournee autour de la verticale du MONDE, l'ordre des
       // deux comptant: l'inverse la ferait rouler comme une roue au lieu de tourner sur place.
       t.rotation = Quaternion.multiply(
-        Quaternion.fromEulerDegrees(0, k * 360 * TOURS, 0),
+        Quaternion.fromEulerDegrees(0, k * 360 * s.tours, 0),
         Quaternion.fromEulerDegrees(90, 0, 0)
       )
       const p = k < 0.62 ? 1 : 1 - (k - 0.62) / 0.38
