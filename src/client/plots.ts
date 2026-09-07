@@ -778,7 +778,20 @@ const GAIN_PERIODE_MS = 3000
   (proprietaire, 7 Sep). Une tour qui paie sur toute sa hauteur se reconnait de loin, et c'est
   precisement ce qu'on lui demande.
 */
-const GAIN_PORTEE_M = 45
+/*
+  Soixante-dix metres, et c'est la limite OPTIQUE, pas budgetaire.
+
+  Le cout d'un elargissement est NUL: `gains.ts` tient un pool de huit entites fixes, creees une
+  fois et garees sous le sol entre deux apparitions, et le debit de la base est deja borne a
+  trois pieces par seconde. Zero materiau, zero draw, zero entite en plus quelle que soit la
+  portee. Ce qui plafonne est la taille apparente: une piece Legendary de 0,196 m, portee a
+  1,8 fois au maximum, fait 0,35 m; a 45 m elle couvre 0,45 degre soit ~5 pixels sur un ecran de
+  720, a 70 m 0,29 degre soit ~3,5 pixels, a 100 m deux pixels. A soixante-dix metres c'est
+  encore un point dore qui BOUGE, et le mouvement se voit meme a trois pixels; au-dela on
+  paierait en credibilite ce qu'on ne gagnerait plus en information. Le terrain fait 192 m de
+  cote, donc soixante-dix couvrent la moitie du chemin depuis le tapis central.
+*/
+const GAIN_PORTEE_M = 70
 /*
   Le DEBIT de la base est borne, et c'est ce qui rend l'elargissement possible.
 

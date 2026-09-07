@@ -45,7 +45,26 @@ function prochainCreneau(apres: number): number {
   return base + 3_600_000 + RAID_MINUTES[0] * 60_000
 }
 let targetAddr: string | null = null
-let dernierBalai = 0
+/*
+  LE DELAI EST PAR JOUEUR, ET IL ETAIT GLOBAL.
+
+  Ce que le testeur ne "sentait" pas, et que le proprietaire a diagnostique en jouant (7 Sep):
+  on entrait dans le boss et IL NE SE PASSAIT RIEN, puis on perdait de l'argent cinq secondes
+  plus tard sans avoir rien fait entre-temps. La cause etait un metronome unique, `dernierBalai`,
+  demarre au debut du raid et partage par tout le monde: le boss tirait toutes les cinq secondes
+  et frappait qui se trouvait la A CET INSTANT PRECIS. Le contact ne declenchait rien.
+
+  Consequences observees, toutes expliquees par cette seule ligne: on pouvait entrer dans le
+  boss, le frapper et ressortir sans jamais rien prendre; on pouvait aussi prendre un coup en
+  arrivant, sans avoir eu le temps de faire quoi que ce soit. Le dégât n'avait aucun lien de
+  cause avec l'action du joueur, et un dégât sans cause ne se lit pas comme un dégât.
+
+  Le delai devient donc PAR JOUEUR: on entre a portee, on prend le coup TOUT DE SUITE, puis un
+  toutes les cinq secondes tant qu'on reste. C'est la regle du degat de contact partout ou elle
+  existe, et c'est la seule qui rende le "reste ou pars" lisible. Ressortir et revenir apres
+  cinq secondes reprend un coup, ce qui est exactement ce qu'on veut dire.
+*/
+const dernierCoup = new Map<string, number>()
 let spawnX = 0, spawnZ = 0
 
 /**
@@ -152,7 +171,7 @@ function ouvrir(now: number, finMs?: number): void {
   const ici = presents().size
   degats = new Map()
   debut = now
-  dernierBalai = now
+  dernierCoup.clear()
   m.active = true
   m.hpMax = RAID_HP_BASE + RAID_HP_PER_PLAYER * Math.max(1, ici)
   m.hp = m.hpMax
@@ -342,13 +361,22 @@ export function startRaid(): void {
       }
     }
 
-    if (now - dernierBalai < RAID_SWIPE_MS) return
-    dernierBalai = now
-    m.swipeAtMs = now
+    /*
+      L'ONDE DE CHOC NE PART QUE SI QUELQU'UN EST TOUCHE.
+
+      Elle partait sur le metronome, donc toutes les cinq secondes, meme la place vide. Le client
+      la dessine a chaque changement de `swipeAtMs` (`client/raid.ts`), donc le joueur voyait le
+      boss balayer dans le vide en boucle et apprenait qu'elle ne voulait rien dire. Une annonce
+      qui se declenche sans consequence detruit la valeur de l'annonce qui en a une.
+    */
+    let frappe = false
     for (const addr of presents()) {
       const p = positionOf(addr)
       if (p === null) continue
       if (Math.hypot(p.x - m.x, p.z - m.z) > RAID_SWIPE_RANGE || Math.abs(p.y - 0) > 3) continue
+      if (now - (dernierCoup.get(addr) ?? 0) < RAID_SWIPE_MS) continue
+      dernierCoup.set(addr, now)
+      frappe = true
       // Full force: whatever they carried is on the floor, like a bomb.
       hitCarrier(addr, 5)
       const perte = Math.floor(Math.min(coinsOf(addr) * RAID_SWIPE_SHARE, incomePerSecond(addr) * RAID_SWIPE_CAP_S + 500))
@@ -360,6 +388,7 @@ export function startRaid(): void {
         void room.send('raidSwipe', { lost: 0 }, { to: [addr] })
       }
     }
+    if (frappe) m.swipeAtMs = now
   })
 
   log('raid ready')
