@@ -59,14 +59,14 @@ TOLERANCE = 0.02
 DRIFT = 1.5
 
 VERBS = [
-    'build', 'crate', 'place', 'give', 'drop', 'recover', 'collect', 'fire',
+    'build', 'smash', 'crate', 'place', 'give', 'drop', 'recover', 'collect', 'fire',
     'pickup', 'steal', 'up', 'fuse', 'outbid', 'buy', 'lock'
 ]
 
 # One entry is one group scaled together. Single files are their own group.
 GROUPS = []
 # A verb with poses: the rest pose first, because the group is centred on it.
-POSED = {'build': ['-raised', '-mid']}
+POSED = {'build': ['-raised', '-mid'], 'smash': ['-raised', '-mid']}
 for verb in VERBS:
     if verb in POSED:
         for family in ('icon', 'encre'):

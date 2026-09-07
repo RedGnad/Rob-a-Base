@@ -752,7 +752,7 @@ const PadControls = () => {
           presseePar={tirDesktop}
           frames={!combatView.aiming && peutConstruireIci(a) ? posesDe(a.icon) : undefined}
           pulse={!combatView.aiming && stepExpects(a.id) && peutConstruireIci(a)}
-          periodMs={SWING_MS} touche={touche('E')} />
+          periodMs={cadenceDe(a.id)} touche={touche('E')} />
       ) : (
         <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros}
           bas={0} droite={0} primaire disabled={!combatView.aiming}
@@ -769,6 +769,19 @@ const PadControls = () => {
 */
 // 800 was noise on the board (owner, 3 Sep); a beat and a fifth is the first value that was not.
 const SWING_MS = 1200
+/*
+  SMASH bat plus vite que BUILD, et ce n'est pas une preference.
+
+  Les deux verbes ne demandent pas le meme geste. Batir est un acte UNIQUE: le balancement y
+  est une invitation, il peut prendre son temps et 1200 ms a ete regle pour ne pas faire du
+  bruit sur le plateau. Casser une boite demande TROIS coups d'affilee, donc le bouton doit
+  donner le tempo de ce qu'on attend du pouce; a la cadence de BUILD il traine derriere le
+  joueur au lieu de l'entrainer (proprietaire, 7 Sep). Le mouvement lui-meme ne change pas, il
+  occupe toujours les 300 dernieres millisecondes de la periode: c'est le REPOS entre deux
+  frappes qui raccourcit.
+*/
+const SWING_SMASH_MS = 750
+function cadenceDe(id: string | undefined): number { return id === 'smash' ? SWING_SMASH_MS : SWING_MS }
 
 /** The desktop canvas is 1080 high against the phone's 720: the same pad, drawn at that ratio. */
 const DESKTOP_PAD_SCALE = 1.5
