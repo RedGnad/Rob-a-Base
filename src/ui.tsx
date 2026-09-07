@@ -10,7 +10,7 @@ import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference, zoneRenderer } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneRenderer } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE, PENDING_CAP_S } from './shared/schemas'
 import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -236,11 +236,13 @@ const COIN_W = 440
  * un plancher pour qu'une ligne de trois mots reste une plaque, et le plafond de 440 qui
  * garde les trois quarts de l'ecran au jeu.
  */
-const COIN_MIN = 210
+const COIN_MIN = 168
 function coinW(...textes: string[]): number {
   let large = 0
   for (const t of textes) large = Math.max(large, largeurTexte(t, TYPE.caption))
-  return Math.round(Math.max(COIN_MIN, Math.min(COIN_W, large + 44)))
+  // 30 d'air en tout, quinze de chaque cote: assez pour que le texte ne touche pas le
+  // bord de la plaque, assez peu pour qu'une ligne courte ne flotte pas dedans.
+  return Math.round(Math.max(COIN_MIN, Math.min(COIN_W, large + 30)))
 }
 /** The rush chip: how long it holds in the middle, then how long its flight to the corner takes. */
 const RUSH_HOLD_MS = 1500
@@ -563,7 +565,10 @@ function compteurAffiche(): number {
   // Toute hausse relance le coup de pouce. Le MONTANT du gain n'est plus retenu: il n'avait
   // qu'un lecteur, le petit "+X", et il est parti avec lui.
   if (vrai > compteurVu) gainA = Date.now()
-  compteurVu = compteurVu + (vrai - compteurVu) * 0.16
+  // Un quart de l'ecart par image plutot qu'un sixieme: le compteur rattrape sa valeur en une
+  // douzaine d'images au lieu d'une vingtaine, donc le chiffre a fini de monter quand le son de
+  // piece finit de sonner, et les deux se repondent au lieu de se suivre.
+  compteurVu = compteurVu + (vrai - compteurVu) * 0.25
   if (Math.abs(vrai - compteurVu) < Math.max(2, vrai * 0.0002)) compteurVu = vrai
   return Math.round(compteurVu)
 }
@@ -575,11 +580,19 @@ function compteurAffiche(): number {
   c'est un de trop: on le lit une fois et on cesse de le voir, et il occupait un coin d'ecran
   au-dessus du nombre le plus regarde du jeu.
 
-  Ce qui reste est le coup de pouce sur le nombre lui-meme, neuf pour cent pendant un quart de
-  seconde: le retour est porte par la chose qui change, ce qui est la regle que ce depot suit
-  partout ailleurs.
+  Ce qui reste est le coup de pouce sur le nombre lui-meme: le retour est porte par la chose
+  qui change, ce qui est la regle que ce depot suit partout ailleurs.
+
+  Il a ete rendu plus VIF (proprietaire, 7 Sep): la bosse monte d'un seul coup et redescend en
+  cent quatre-vingts millisecondes au lieu de deux cent soixante, et elle vaut seize pour cent
+  au lieu de neuf. Le carre de la retombee fait qu'elle quitte son sommet tout de suite puis
+  s'attarde: c'est la forme d'un impact, la ou une decroissance droite lit comme un fondu.
 */
-function poussee(): number { return Math.max(0, 1 - (Date.now() - gainA) / 260) }
+const POUSSEE_MS = 180
+function poussee(): number {
+  const k = Math.max(0, 1 - (Date.now() - gainA) / POUSSEE_MS)
+  return k * k
+}
 
 /*
   The verbs that MOVE, and the two poses each plays. There is exactly one.
@@ -869,7 +882,21 @@ function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }
   96 px in from the edge read as misplaced next to the flush native controls (mobile
   tester, 3 Sep). The desktop keeps the margin for the client's two corner icons.
 */
-function rightCornerMargin(): number { return phone() ? 20 : COIN_HAUT_DROIT }
+/**
+ * Ce que la colonne de droite laisse au bord, demande au CLIENT plutot que decide ici.
+ *
+ * La valeur etait ecrite a la main, 96 sur desktop et 20 sur telephone, tirees d'une
+ * photographie. Or le client PUBLIE ce qu'il se reserve, dans `interactableArea` de
+ * `UiCanvasInformation`, et `clientEdges()` le lit deja pour d'autres calculs. Une constante
+ * ne peut pas suivre un HUD qui change avec l'etat du client, alors que cette valeur, si.
+ *
+ * Le plancher reste, pour deux raisons: un client qui ne publie rien renvoie zero, et une
+ * plaque collee au pixel du bord se lit mal meme quand rien ne la gene.
+ */
+const MARGE_BORD_MIN = 18
+function rightCornerMargin(): number {
+  return Math.max(MARGE_BORD_MIN, Math.round(clientEdges().right))
+}
 
 const PANNEAU = C.plate
 const BTN_H = TAP.height
@@ -1762,12 +1789,29 @@ const uiComponent = () => {
           position: { top: `${34 - f.t * 7 + f.rank * 6}%`, left: 0 },
           justifyContent: 'center', alignItems: 'center'
         }}>
-        <Label value={`${f.loss ? '-' : '+'}${formatIncome(f.amount)}`}
-          fontSize={f.loss ? TYPE.hero : TYPE.title}
-          color={f.loss
-            ? Color4.create(1, 0.36, 0.36, 1 - f.t * f.t)
-            : Color4.create(0.56, 0.88, 0.56, 1 - f.t * f.t)}
-          textWrap="nowrap" />
+        {/*
+          La meme police image que le compteur, et pour la meme raison.
+
+          Ce nombre annonce exactement ce que le gros total vient de gagner ou de perdre; ecrit
+          dans la police du systeme il ressemblait a un message d'interface a cote d'un chiffre
+          de jeu, deux voix pour un seul fait (proprietaire, 7 Sep). Les glyphes portent leur
+          propre ombre, donc il tient aussi sur un ciel clair, ce qu'une etiquette plate ne
+          faisait pas.
+
+          Le fondu ne peut pas passer par la couleur, les glyphes etant des images: il passe par
+          `opacity`, qui se propage aux enfants, et la disparition est donc la meme courbe
+          qu'avant. Le role dit la couleur, `bonus` pour un gain et `danger` pour une perte.
+        */}
+        <UiEntity uiTransform={{
+          width: '100%', height: 64, opacity: 1 - f.t * f.t,
+          justifyContent: 'center', alignItems: 'center'
+        }}>
+          <Glyphs
+            value={`${f.loss ? '-' : '+'}${formatSolde(f.amount)}`}
+            size={f.loss ? TYPE.hero : TYPE.title}
+            role={f.loss ? 'danger' : 'bonus'}
+            align="center" box={strip(760).width} />
+        </UiEntity>
       </UiEntity>
     ))}
 
@@ -1948,7 +1992,7 @@ const uiComponent = () => {
       <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
           value={formatSolde(compteurAffiche())}
-          size={Math.round(TYPE.hero * (1 + poussee() * 0.09))} role="money" align="center" box={strip(760).width} />
+          size={Math.round(TYPE.hero * (1 + poussee() * 0.16))} role="money" align="center" box={strip(760).width} />
       </UiEntity>
       {/*
         The line under it, in the same face for the same reason: no plate, so it has to
