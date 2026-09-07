@@ -2123,7 +2123,16 @@ const uiComponent = () => {
                 rate rather than a sum to be done.
               */
               : `+${formatIncome(theftView.income)}/S`
-              + (theftView.multiplier > 1 ? `   x${theftView.multiplier} PRESTIGE` : '')
+              /*
+                Le multiplicateur de prestige quitte cette ligne (proprietaire, 7 Sep).
+
+                Ce n'est pas une information dont le joueur a besoin TOUT DE SUITE: elle ne
+                change qu'a un prestige, c'est-a-dire quelques fois par partie, et elle est
+                deja lisible dans le panneau qui la vend. La ligne du taux, elle, est relue en
+                permanence et porte deja le revenu, le bonus de foule et la cagnotte. Une ligne
+                de HUD se paie en largeur et en temps de lecture: ce qui n'y change presque
+                jamais n'a pas a y occuper de place.
+              */
               + (theftView.prime > 0 ? `   +${Math.round(theftView.prime * 100)}% CROWD` : '')
               /*
                 La cagnotte est un MORCEAU DE CETTE LIGNE, pas une etiquette posee dessous.

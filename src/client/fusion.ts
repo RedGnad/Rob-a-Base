@@ -1,10 +1,9 @@
-import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, ColliderLayer, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Entity, ColliderLayer, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/loot-table'
 import { plasticDe, plastic, vif, TOY } from './toy'
-import { place3DText, LISIBLE_3D } from './texte3d'
 import { carryView } from './carry'
 import { pushToFeed } from './theft'
 import { revealItem } from './box'
@@ -152,39 +151,20 @@ export function setupFuser(): void {
     prises.push(p)
   }
 
-  const titre = engine.addEntity()
-  Transform.create(titre, { parent: racine, position: Vector3.create(0, 4.4, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
-  Billboard.create(titre, { billboardMode: BillboardMode.BM_Y })
   /*
-    FUSER est ecrit dans la police du JEU, comme tout ce que le monde dit de lui-meme.
+    PLUS AUCUN TEXTE AU-DESSUS DE LA MACHINE.
 
-    Le monde parle deja d'une seule voix a deux endroits, la plaque d'une base et `BUILD HERE`:
-    les deux passent par `place3DText`. Ce titre restait en police plateforme, a cote de plaques
-    de base qui n'y sont pas, ce qui le faisait lire comme un element du client plutot que comme
-    un lieu du jeu. C'est le repere que les testeurs ignoraient.
+    Il y en avait deux: l'enseigne FUSE et la phrase qui explique la regle. La phrase, personne
+    ne la lit: c'est une consigne posee en l'air au-dessus d'un objet, la forme meme du bruit
+    visuel. Et l'enseigne partait avec, sur le meme argument: la machine est deja signifiee par
+    le jeu lui-meme, un tambour rouge avec une boule qui levite et respire au milieu de la
+    place, plus le verbe FUSE sur le bouton contextuel des qu'on s'en approche (proprietaire,
+    7 Sep). Un repere qui se voit n'a pas besoin de se nommer.
 
-    Le prix est connu et tenu: le client mobile compte UN materiau unique par plan de glyphe
-    (`plots.ts`, budget mesure a 323 sur 380 avec seize bases). Cinq lettres, statiques, une
-    seule instance dans toute la scene. La ligne d'explication en dessous reste en police
-    plateforme: c'est une phrase, et un atlas de capitales est precisement ce qu'il ne faut pas
-    pour de la prose.
-
-    Conversion de taille prise sur le cas deja fait, pas devinee: `BUILD HERE` valait `fontSize`
-    4,2 et vaut `taille` 0,42 dans le meme repere, donc taille = fontSize / 10.
-
-    ET IL DIT LE VERBE, PAS LE NOM DE LA MACHINE (proprietaire, 7 Sep). Une enseigne posee sur
-    une station sert a dire ce qu'on peut y FAIRE, pas comment l'objet s'appelle: c'est la
-    distinction de Norman entre l'affordance et le signifiant, et c'est deja ce que fait l'autre
-    enseigne du monde, `BUILD HERE`. Le pad porte le meme verbe (`fuse`, avec son propre son), et
-    la ligne en dessous dit "tap it to fuse from your base". L'infobulle du tambour passe de
-    "Fuser" a "Fuse" avec: la station parle d'un seul mot, ou elle n'en parle d'aucun.
+    Ce que ca rend: quatre plans de glyphe et leurs quatre materiaux, plus deux `TextShape` et
+    leurs deux draws. Petit, mais le compteur de materiaux est le seul qui approche son plafond
+    (366 sur 400 au champ plein, mesure du 7 Sep), et une primitive y compte pour un.
   */
-  place3DText(titre, [{ texte: 'FUSE', role: 'money', taille: 0.5 }], false)
-  const ligne = engine.addEntity()
-  Transform.create(ligne, { parent: racine, position: Vector3.create(0, 3.95, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
-  Billboard.create(ligne, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(ligne, { text: `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`, fontSize: 2.4, textColor: Color4.White(), ...LISIBLE_3D })
-
   room.onMessage('fusionState', (d) => {
     fuserView.codes = [...d.codes]
     if (d.made >= 0) {
@@ -274,14 +254,6 @@ export function setupFuser(): void {
     } else {
       // Rien a ecrire ici: la respiration reprend la main a l'image suivante et pose le repos.
       pulseVu = -1
-    }
-    const t = TextShape.getMutableOrNull(ligne)
-    if (t !== null) {
-      t.text = brille && f !== null
-        ? `${f.lastName} made a ${itemName(rarityOf(f.lastCode), mutationDe(f.lastCode))}`
-        : mienne > 0
-          ? `yours: ${mienne}/${FUSION_NEEDS} ${RARITIES[rareteMienne]?.name ?? ''}`
-          : `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`
     }
   })
 }
