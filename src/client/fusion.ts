@@ -1,6 +1,6 @@
-import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, ColliderLayer, Tween, EasingFunction } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, ColliderLayer, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
-import { Fusion, FUSION_POS, FUSION_NEEDS } from '../shared/schemas'
+import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/loot-table'
 import { plasticDe, plastic, vif, TOY } from './toy'
@@ -32,7 +32,12 @@ function couleur(rarete: number, mut = 0): Color4 {
 
 export function setupFuser(): void {
   const racine = engine.addEntity()
-  Transform.create(racine, { position: Vector3.create(FUSION_POS.x, 0, FUSION_POS.z) })
+  Transform.create(racine, {
+    position: Vector3.create(FUSION_POS.x, 0, FUSION_POS.z),
+    // Un tiers plus grande: tout est enfant de cette racine, donc le socle, le tambour, son
+    // collisionneur et les etiquettes suivent d'un seul nombre.
+    scale: Vector3.create(FUSION_ECHELLE, FUSION_ECHELLE, FUSION_ECHELLE)
+  })
 
   const socle = engine.addEntity()
   Transform.create(socle, { parent: racine, position: Vector3.create(0, 0.15, 0), scale: Vector3.create(2.6, 0.3, 2.6) })
@@ -53,8 +58,32 @@ export function setupFuser(): void {
     ]
   })
 
+  /*
+    La boule LEVITE, et c'est le canal qui manquait.
+
+    Elle est deja rouge, donc la couleur travaille. Ce qui manquait est le MOUVEMENT, et ce
+    n'est pas une preference: la peripherie de la retine voit mal les details et mal les
+    couleurs, mais elle est tres sensible au deplacement. Un objet rouge immobile au bord du
+    champ de vision est donc faible, le meme objet qui bouge est fort. C'est la raison precise
+    pour laquelle les testeurs pouvaient passer a cote sans le voir.
+
+    Le flottement est porte par un PARENT et non par le dome: une entite ne porte qu'un seul
+    tween, et le dome garde le sien, la secousse elastique de la fusion. Composer par le
+    parentage est la meme solution que pour la piece qui tombe en tournant.
+  */
+  const flotteur = engine.addEntity()
+  Transform.create(flotteur, { parent: racine, position: Vector3.create(0, 2.35, 0) })
+  Tween.create(flotteur, {
+    mode: Tween.Mode.Move({ start: Vector3.create(0, 2.35, 0), end: Vector3.create(0, 2.72, 0) }),
+    duration: 2100,
+    easingFunction: EasingFunction.EF_EASESINE
+  })
+  // Une sequence VIDE en va-et-vient fait boucler le tween de base: c'est la forme documentee
+  // pour un mouvement qui respire, et elle ne coute pas une seconde entite.
+  TweenSequence.create(flotteur, { sequence: [], loop: TweenLoop.TL_YOYO })
+
   const dome = engine.addEntity()
-  Transform.create(dome, { parent: racine, position: Vector3.create(0, 2.35, 0), scale: Vector3.create(1.3, 1.3, 1.3) })
+  Transform.create(dome, { parent: flotteur, position: Vector3.Zero(), scale: Vector3.create(1.3, 1.3, 1.3) })
   MeshRenderer.setSphere(dome)
   Material.setPbrMaterial(dome, plastic(TOY.wallCream))
   const lampe = engine.addEntity()

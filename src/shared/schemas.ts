@@ -1376,7 +1376,19 @@ export function poidsDesMutations(crateId: number, eventTheme: number, luck: num
     return w
   })
 }
-export const FUSION_RANGE = 4.5
+/*
+  La machine grandit d'un tiers, et sa portee avec.
+
+  Les testeurs l'ont largement ignoree (proprietaire, 7 Sep). La taille est un attribut
+  preattentif au meme titre que la couleur: un objet plus grand est detecte sans etre cherche,
+  et celui-ci est le seul acte DETERMINISTE du jeu, ce qui vaut d'etre remarque.
+
+  La portee suit la croissance pour que la distance depuis la SURFACE de la machine ne change
+  pas: son socle passe de 1,3 a 1,76 de rayon, donc 4,5 laisserait 2,7 d'approche la ou il y en
+  avait 3,2. Grandir sans ajuster la portee aurait rendu la machine plus dure a utiliser.
+*/
+export const FUSION_ECHELLE = 1.35
+export const FUSION_RANGE = 5.2
 /** Beside the records board, on the side of the belt away from the pit. */
 export const FUSION_POS = { x: CENTER.x - 9, z: CENTER.z - 7 }
 

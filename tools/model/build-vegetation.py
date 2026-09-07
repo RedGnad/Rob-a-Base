@@ -68,6 +68,26 @@ def sur_spawn(x, z):
     return 88 < x < 104 and 116 < z < 128
 
 
+# Le fuser, et le vide qu'il lui faut autour.
+#
+# Il etait colle a un buisson, et ce n'est pas un detail d'esthetique: sa silhouette se fondait
+# dans celle du buisson, ce qui defait exactement ce qui devait le faire remarquer. L'effet
+# d'isolement (von Restorff, 1933) dit qu'un element se retient parce qu'il TRANCHE sur son
+# entourage, et Lynch dit la meme chose des reperes urbains: un repere fonctionne par contraste
+# avec son contexte, pas par ses qualites propres. Une machine posee contre un massif n'a plus
+# de contexte, elle en fait partie.
+#
+# Sept metres: le socle agrandi fait 1,76 de rayon, donc il reste plus de cinq metres d'herbe
+# nue tout autour, assez pour que la machine se decoupe depuis n'importe quel angle.
+FUSER = (87.0, 89.0)
+FUSER_DEGAGEMENT = 7.0
+
+
+def sur_fuser(x, z):
+    """Le rond d'herbe nue autour de la machine a fusion, ou rien ne pousse."""
+    return (x - FUSER[0]) ** 2 + (z - FUSER[1]) ** 2 < FUSER_DEGAGEMENT ** 2
+
+
 def placer_arbres():
     """
     Une lisiere semee, pas une grille: des candidats en surnombre, et une regle d'ecart qui
@@ -103,6 +123,10 @@ def placer_arbres():
     for (x, z, sc, ry) in candidats:
         r = RAYON_ARBRE * sc
         if not degage_de_la_rue(z, r):
+            continue
+        # Le rond de la machine a fusion vaut pour les arbres aussi: une ramure de trois metres
+        # et demi la couvrirait bien plus surement qu'un buisson.
+        if sur_fuser(x, z):
             continue
         if any((x - px) ** 2 + (z - pz) ** 2 < ((r + RAYON_ARBRE * psc) * SERREMENT) ** 2
                for (px, _, pz, psc, _) in poses):
@@ -229,7 +253,7 @@ def placer_buissons():
         k = 0 if alea() < 0.5 else 1
         sc = 0.9 + alea() * 0.7
         ry = alea() * 360
-        if not sur_spawn(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
+        if not sur_spawn(x, z) and not sur_fuser(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
             out.append((k, x, 0.0, z, sc, ry))
     d = 8.0
     while d < SCENE_SIDE - 8:
@@ -239,7 +263,7 @@ def placer_buissons():
             z = bz + (alea() - 0.5) * 2
             sc = 0.8 + alea() * 0.6
             ry = alea() * 360
-            if not sur_spawn(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
+            if not sur_spawn(x, z) and not sur_fuser(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
                 out.append((k, x, 0.0, z, sc, ry))
         d += 23
     # Un second cordon, entre les arbres et le mur: c'est lui qui donne la profondeur que le
@@ -252,7 +276,7 @@ def placer_buissons():
             z = bz + (alea() - 0.5) * 3
             sc = 0.7 + alea() * 0.8
             ry = alea() * 360
-            if not sur_spawn(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
+            if not sur_spawn(x, z) and not sur_fuser(x, z) and degage_de_la_rue(z, RAYON_BUISSON * sc):
                 out.append((k, x, 0.0, z, sc, ry))
         d += 12
     return out
