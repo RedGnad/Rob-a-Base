@@ -2402,74 +2402,90 @@ const LoadingScreen = () => {
   const pret = loadingView.assetsReady && theftView.walletRecu && view.serverAlive
   if (pret || Date.now() - loadingView.since > LOADING_CEILING_MS) return null
   /*
-    The picture COVERS the screen, it is not a card floating on a navy field.
+    La photo COUVRE l'ecran, elle n'est pas une carte posee sur un fond navy.
 
-    It was drawn at 52 % of the height, which on a phone is 561 by 374 inside 1600 by 720:
-    a fifth of the surface, the rest empty (owner, 7 Sep, "l'image est trop petite"). A
-    loading screen is the game's first frame and the only one that has the screen to itself.
-    So it is sized like every full-bleed splash: keep the picture's own ratio, take the
-    dimension that leaves no gap, and crop the other.
+    Elle etait dessinee a 52 % de la hauteur, soit 561 par 374 dans 1600 par 720: un cinquieme
+    de la surface, le reste vide (proprietaire, 7 Sep). Un ecran de chargement est la premiere
+    image du jeu et la seule qui ait l'ecran pour elle. Elle est donc dimensionnee comme
+    n'importe quelle image plein cadre: garder son rapport, prendre la dimension qui ne laisse
+    aucun vide, rogner l'autre.
 
-    The file is 1440 by 960, so 3:2. Both canvases we can be handed are WIDER than that
-    (1600x720 is 2.22:1, 1920x1080 is 1.78:1), so the width always leads and the crop is
-    always vertical, centred: 16 % off the top and bottom on a phone, 8 % on a desktop.
-    Computed rather than guessed, so it holds on any canvas the client reports.
+    La mesure se fait contre la zone que le RENDERER remplit, pas contre le canevas: il est
+    pose sur la zone sure de l'appareil, donc un element en 100 % occupe ce rectangle-la et
+    non la dalle. Calculee contre `active`, la couverture visait plus grand que ce qu'elle
+    remplissait et l'image sortait decalee et coupee de travers. Et la dimension qui commande
+    n'est pas toujours la largeur: on compare les deux rapports plutot que de supposer.
   */
   const RATIO = 1440 / 960
-  /*
-    Mesure contre la zone que le renderer remplit reellement, pas contre le canevas.
-
-    Calculee contre `active`, la couverture visait un cadre plus grand que celui qu'un
-    element en `100%` occupe, parce que le renderer est pose sur la zone sure de l'appareil:
-    l'image sortait decalee et coupee de travers (proprietaire, 7 Sep). Et la dimension qui
-    commande n'est pas toujours la largeur: on compare les deux rapports plutot que de
-    supposer, sinon une tablette proche du 3:2 laisserait deux bandes vides.
-  */
   const z = zoneRenderer()
   const iw = z.w / z.h > RATIO ? z.w : Math.round(z.h * RATIO)
   const ih = z.w / z.h > RATIO ? Math.round(z.w / RATIO) : z.h
   const haut = Math.round((z.h - ih) / 2)
   const gauche = Math.round((z.w - iw) / 2)
-  const t = Date.now() / 1000
-  const attend = !loadingView.assetsReady ? 'LOADING THE FIELD'
-    : !theftView.walletRecu ? 'OPENING YOUR BASE'
-    : 'WAKING THE SERVER'
-  const bande = Math.round(z.h * 0.26)
   return (
     <UiEntity
       uiTransform={{
         width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 },
-        overflow: 'hidden', pointerFilter: 'block'
+        overflow: 'hidden', pointerFilter: 'block',
+        justifyContent: 'center', alignItems: 'center'
       }}
       uiBackground={{ color: Color4.fromHexString('#0f1524ff') }}
     >
       <UiEntity uiTransform={{ width: iw, height: ih, positionType: 'absolute', position: { top: haut, left: gauche } }}
         uiBackground={{ texture: { src: 'images/base-war-thumbnail.png' }, textureMode: 'stretch' }} />
-      {/*
-        A band under the words rather than a veil over the whole picture. Text laid straight
-        on an image is the oldest legibility fault there is, and dimming the entire frame to
-        cure it throws away the picture we just made full screen. The scrim covers only what
-        it has to.
-      */}
-      <UiEntity
-        uiTransform={{
-          width: '100%', height: bande, positionType: 'absolute', position: { bottom: 0, left: 0 },
-          flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
-        }}
-        uiBackground={{ color: Color4.create(0.06, 0.08, 0.14, 0.82) }}
-      >
-        <Label value={attend} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
-          uiTransform={{ width: 600, height: 40 }} textAlign="middle-center" textWrap="nowrap" />
-        {/* Three dots breathing in turn: the interface has no rotation, so a wheel is out. */}
-        <UiEntity uiTransform={{ height: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-          {[0, 1, 2].map((i) => (
-            <UiEntity key={`dot${i}`}
-              uiTransform={{ width: 14, height: 14, borderRadius: 7, margin: { left: 7, right: 7 },
-                opacity: 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 4 - i * 1.1)) }}
-              uiBackground={{ color: Color4.fromHexString('#ffd166ff') }} />
-          ))}
-        </UiEntity>
-      </UiEntity>
+      <Spinner />
     </UiEntity>
   )
 }
+
+/**
+ * Un anneau de points qui tourne, sans rien faire tourner.
+ *
+ * L'interface de Decentraland ne sait pas faire pivoter un element, donc une roue au sens
+ * propre est hors de portee: c'est deja pour cette raison que l'ecran de chargement affichait
+ * trois points qui respiraient. Un anneau resout le meme probleme autrement, et c'est la forme
+ * que tout le monde reconnait: les points sont fixes sur un cercle et c'est la LUMIERE qui en
+ * fait le tour. L'oeil lit une rotation la ou rien ne tourne.
+ *
+ * La bande sombre, la phrase et les trois points ont ete retires avec (proprietaire, 7 Sep):
+ * l'ecran ne dit plus ce qu'il charge, il dit seulement qu'il travaille, ce qui est la seule
+ * chose que le joueur ait a en savoir. La photo redevient donc l'image, entiere.
+ *
+ * Chaque point porte un liseré sombre plutot qu'un voile derriere l'anneau: le fond est une
+ * photo claire, un or pur s'y perdrait, et c'est deja la solution que le jeu emploie pour tout
+ * son texte en volume.
+ */
+const SPIN_D = 104
+const SPIN_POINT = 15
+const SPIN_N = 10
+const SPIN_MS = 1100
+const Spinner = () => {
+  const t = (Date.now() % SPIN_MS) / SPIN_MS
+  const R = (SPIN_D - SPIN_POINT) / 2
+  return (
+    <UiEntity uiTransform={{ width: SPIN_D, height: SPIN_D }}>
+      {Array.from({ length: SPIN_N }, (_, i) => {
+        const a = (i / SPIN_N) * Math.PI * 2 - Math.PI / 2
+        // La distance ARRIERE a la tete lumineuse, entre 0 et 1: la comete eclaire le point
+        // qu'elle vient d'atteindre et laisse une trainee courte derriere elle.
+        const d = (t - i / SPIN_N + 1) % 1
+        const feu = Math.max(0, 1 - d * 2.4)
+        return (
+          <UiEntity key={`sp${i}`}
+            uiTransform={{
+              width: SPIN_POINT, height: SPIN_POINT, positionType: 'absolute',
+              position: {
+                left: Math.round(SPIN_D / 2 + R * Math.cos(a) - SPIN_POINT / 2),
+                top: Math.round(SPIN_D / 2 + R * Math.sin(a) - SPIN_POINT / 2)
+              },
+              borderRadius: SPIN_POINT / 2, borderWidth: 2,
+              borderColor: Color4.create(0.04, 0.06, 0.11, 1),
+              opacity: 0.18 + 0.82 * feu * feu
+            }}
+            uiBackground={{ color: Color4.fromHexString('#ffd166ff') }} />
+        )
+      })}
+    </UiEntity>
+  )
+}
+
