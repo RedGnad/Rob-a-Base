@@ -452,15 +452,15 @@
       "data": {
         "0": {
           "json": {
-            "name": "Base War",
-            "description": "Open crates, put your loot on show, and it earns while you're away. Everything on show can be taken by someone else. Arm a sentry, or come take theirs.",
-            "thumbnail": "images/scene-thumbnail.png",
+            "name": "Rob a Base",
+            "description": "How rich can you get before someone robs you? Smash crates, put your loot on show, and it earns while you're away. Lock your door, arm a sentry, or go rob theirs.",
+            "thumbnail": "images/base-war-thumbnail.png",
             "ageRating": "A",
             "categories": [
               "social"
             ],
-            "author": "SDK",
-            "email": "",
+            "author": "Red.G",
+            "email": "mookipstore@hotmail.com",
             "tags": [
               "tycoon",
               "multiplayer",
@@ -469,6 +469,10 @@
               "mobile"
             ],
             "layout": {
+              "base": {
+                "x": 0,
+                "y": 0
+              },
               "parcels": [
                 {
                   "x": 0,
@@ -1046,14 +1050,8 @@
                   "x": 11,
                   "y": 11
                 }
-              ],
-              "base": {
-                "x": 0,
-                "y": 0
-              }
+              ]
             },
-            "silenceVoiceChat": false,
-            "disablePortableExperiences": false,
             "spawnPoints": [
               {
                 "name": "plaza",
@@ -1062,22 +1060,19 @@
                   "x": {
                     "$case": "range",
                     "value": [
-                      92,
-                      100
+                      90,
+                      102
                     ]
                   },
                   "y": {
-                    "$case": "range",
-                    "value": [
-                      0,
-                      0
-                    ]
+                    "$case": "single",
+                    "value": 0
                   },
                   "z": {
                     "$case": "range",
                     "value": [
-                      96.5,
-                      104.5
+                      116,
+                      128
                     ]
                   }
                 },
@@ -1089,9 +1084,7 @@
               }
             ],
             "skyboxConfig": {},
-            "creator": "",
-            "disableNearbyVoiceChat": false,
-            "hideLandscapeTerrain": false
+            "creator": "0x981F6E0Ea94f45fDB8ee7680DC862212E3C720e0"
           }
         }
       }

@@ -8,7 +8,7 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import { hitCarrier } from './carry'
 import { interrompreVol } from './theft'
-import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf, memeEspace } from './plots'
+import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf, memeEspace, shelteredAtHome } from './plots'
 import { dropAt } from './coins'
 import { raidHit } from './raid'
 
@@ -96,6 +96,21 @@ export function startCombat(): void {
 
     if (best === null) {
       void room.send('shotResult', { hitName: '', dropped: 0, reason: 'missed', loot: 0 }, { to: [a] })
+      return
+    }
+
+    /*
+      A shielded owner standing in their own base cannot be touched.
+
+      Checked BEFORE anything lands, so the round costs its cooldown and does nothing else: no
+      grip loosened, no theft cut, no coin dropped. This one is SPOKEN, unlike the wall, which
+      stays mute: a wall explains itself by being a wall, whereas nothing on screen tells the
+      shooter why a round that clearly reached its target did nothing at all.
+    */
+    if (shelteredAtHome(best.addr)) {
+      void room.send('shotResult', {
+        hitName: displayName(best.addr), dropped: 0, reason: 'shielded', loot: 0
+      }, { to: [a] })
       return
     }
 
@@ -199,7 +214,9 @@ export function startCombat(): void {
     if (from === null) return
     const best = cible(a, from, d, SLAP_RANGE)
     frapper(a, d, SLAP_RANGE, TASER_COOLDOWN_MS, true)
-    if (best === null) return
+    // The freeze is resolved here rather than inside `frapper`, so the shelter has to be
+    // asked about twice: a shielded owner who could not be hit must not be frozen either.
+    if (best === null || shelteredAtHome(best.addr)) return
     void room.send('tased', { byName: displayName(a), gelMs: TASER_FREEZE_MS }, { to: [best.addr] })
     log(`${displayName(a)} tased ${displayName(best.addr)}`)
   })

@@ -1672,6 +1672,32 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
  * Mesure sur les MURS et non sur la dalle: le socle deborde de huit dixiemes de metre et se
  * marche, donc qui se tient sur le rebord est dehors.
  */
+/**
+ * Is this player standing inside their OWN base while it is shielded?
+ *
+ * The shield used to seal the shelves and nothing else: it was read in exactly one place, the
+ * steal path, and no weapon ever asked about it. So a thief who walked into a sealed base
+ * could not take an item off a shelf but could still empty the owner's hands and pockets with
+ * a gun, standing next to them (owner, 7 Sep). Two rules that contradict each other on the
+ * same square: the base is closed, and the person in it is not.
+ *
+ * The walls already answer for anyone outside (`memeEspace`), so this only ever fires on
+ * someone who came in. Inside a shield, they are here as a visitor, not as a hunter.
+ *
+ * Both halves are required, and neither alone would do: a shield with the owner elsewhere
+ * protects nothing a body needs, and an owner at home without a shield is fair game, which is
+ * the whole point of the wall coming down when they arrive (`lockOnArrival`).
+ */
+export function shelteredAtHome(address: string): boolean {
+  if (lockOf(address) <= Date.now()) return false
+  const b = bases.get(address)
+  if (b === undefined) return false
+  const p = positionOf(address)
+  if (p === null) return false
+  const demi = BASE_SIDE / 2
+  return Math.abs(p.x - b.x) < demi && Math.abs(p.z - b.z) < demi
+}
+
 export function memeEspace(x1: number, z1: number, x2: number, z2: number): boolean {
   const demi = BASE_SIDE / 2
   const dedans = (x: number, z: number): string | null => {

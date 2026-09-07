@@ -454,6 +454,21 @@ export function setupCombat(): void {
       contextuel, soit on enleve tout").
     */
     if (d.loot > 0) combatView.lastHitAt = Date.now()
+    /*
+      The one exception to the silence above, and it is an exception for a reason.
+
+      Everything else the shooter needs is already in the world: the hit-marker says the round
+      connected, the falling pile says what it took. A shielded owner produces NEITHER, and the
+      round did reach them, so the only reading left is "my gun is broken". That is the case
+      the rule wants a word for, and the only one.
+
+      No cadence guard is needed: `alerter` refreshes a plate that already says the same thing
+      instead of stacking a twin under it, so holding the trigger keeps ONE line on screen for
+      as long as it stays true, which is exactly the behaviour asked for.
+    */
+    if (d.reason === 'shielded') {
+      alerter(`${String(d.hitName).toUpperCase()} IS SHIELDED AT HOME`, '#ffd166', TOAST.result)
+    }
   })
   /*
     Being shot has three channels and no toast.
