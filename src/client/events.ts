@@ -1,4 +1,4 @@
-import { engine, Material, SkyboxTime, TransitionMode, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
+import { engine, Material, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
 import { Vector2, Vector3, Color3, Color4 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
@@ -13,10 +13,14 @@ import { TOAST } from './theme'
  * What an event looks like, which is the part that makes it one.
  *
  * The genre's own column for this is titled "Environmental Changes", and every example in it
- * is the WORLD changing rather than a panel appearing: a red sky, a dark screen, music. The
- * platform gives one lever on the sky, its time of day, so an event drops the venue to dusk
- * for as long as it lasts and hands the clock back afterwards. The floor takes the theme's
- * colour, because the sky alone reads as evening and the floor is what you look at.
+ * is the WORLD changing rather than a panel appearing. Ours changes the FLOOR, and only the
+ * floor: the theme's mat and its colour, under the player's feet, where the event is played.
+ *
+ * L'heure du ciel a ete essayee et retiree (proprietaire, 7 Sep: "l'effet n'a pas ete
+ * apprecie"). Elle avait aussi un defaut que son retrait a mis au jour: la fin d'un rush ne
+ * rendait pas l'heure de depart. Le demarrage posait midi, la remise a zero posait 10h30, donc
+ * la place restait definitivement plus matinale apres le premier rush de la session. Le ciel
+ * est desormais pose une fois dans `setup.ts` et plus rien n'y touche.
  *
  * The HUD line follows the documented conveyance for timers: announced once in the player's
  * main gaze, then living at the top with the remaining time, in the theme's colour, with the
@@ -123,15 +127,13 @@ export function nextBigText(): string | null {
  * GOLD event with a floor of lava, because glowing cracks read as lava in any colour. The
  * venue is a play mat, so an event is the mat changing: a mid-tone from the palette carries
  * the colour, and a soft pattern with a fifth of contrast breathes underneath at sixteen
- * metres a cell. Gold sparkles under the golden hour, lava has slow blobs under a darker
- * evening, cursed swirls under the night. Sky times are seconds since midnight.
+ * metres a cell.
  */
 /*
-  One look per rush theme: the hour of the sky (seconds into the day), which of the three ground
-  mats the venue wears and its tint. The three mats are greyscale weaves, so a theme only picks
-  the closest weave and brings its own colour. Every theme in EVENT_THEMES needs a line here:
-  the seven added on 5 Sep fell back to the Lava look, a Galaxy rush under a dusk sky on a lava
-  mat (owner, 5 Sep: "on a un changement de ciel quand il y a certains events ?").
+  One look per rush theme: which of the three ground mats the venue wears and its tint. The
+  three mats are greyscale weaves, so a theme only picks the closest weave and brings its own
+  colour. Every theme in EVENT_THEMES needs a line here: the seven added on 5 Sep fell back to
+  the Lava look, a Galaxy rush on a lava mat (owner, 5 Sep).
 */
 /*
   One floor per rush, painted as a ground: `assets/textures/mat-rush-<theme>.png`, a colour
@@ -150,17 +152,17 @@ export function nextBigText(): string | null {
   bands of nearly three metres, and the drift slows in step so the floor moves at the same
   metres per second as the others.
 */
-const LOOK: Record<number, { lueur: number; sky: number; maille?: number; vitesse?: number }> = {
-  1: { lueur: 0.0, sky: 64800 },     // golden hour
-  5: { lueur: 0.55, sky: 72000 },    // dusk, red horizon: the cracks glow
-  9: { lueur: 0.2, sky: 79200 },     // night: faint veins
-  6: { lueur: 0.45, sky: 1800 },     // deep night: the stars
-  7: { lueur: 0.0, sky: 21600 },     // dawn, half and half
-  8: { lueur: 0.35, sky: 77400 },    // late evening: the flecks
-  10: { lueur: 0.0, sky: 27000 },    // sunrise light
-  11: { lueur: 0.0, sky: 32400, maille: 32, vitesse: 0.00375 },  // clear morning: a slow, wide sweep
-  12: { lueur: 0.5, sky: 82800 },    // neon hour: the grid
-  13: { lueur: 0.0, sky: 14400 }     // blue hour before dawn
+const LOOK: Record<number, { lueur: number; maille?: number; vitesse?: number }> = {
+  1: { lueur: 0.0 },     // golden hour
+  5: { lueur: 0.55 },    // dusk, red horizon: the cracks glow
+  9: { lueur: 0.2 },     // night: faint veins
+  6: { lueur: 0.45 },     // deep night: the stars
+  7: { lueur: 0.0 },     // dawn, half and half
+  8: { lueur: 0.35 },    // late evening: the flecks
+  10: { lueur: 0.0 },    // sunrise light
+  11: { lueur: 0.0, maille: 32, vitesse: 0.00375 },  // clear morning: a slow, wide sweep
+  12: { lueur: 0.5 },    // neon hour: the grid
+  13: { lueur: 0.0 }     // blue hour before dawn
 }
 let sol: Entity | null = null
 let solCouleur = ''
@@ -215,7 +217,6 @@ const MAILLE_SOL = 8
   and gives the rushes something to RESTORE, where they used to hand the sky back to the
   global clock and whatever hour it happened to be.
 */
-const JOUR_DE_BASE = 37_800
 /** The resting checker: two 2 m tiles per repeat, the genre's stride-sized grain. */
 const MAILLE_HERBE = 4
 
@@ -266,7 +267,15 @@ export function setupEvents(): void {
       const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
       if (a !== null) { a.playing = false; a.playing = true }
       const look = LOOK[theme] ?? LOOK[5]
-      SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: look.sky, transitionMode: TransitionMode.TM_FORWARD })
+      /*
+        Le CIEL ne bouge plus, jamais.
+
+        Chaque theme portait son heure du jour, et un rush plongeait la place au crepuscule ou
+        a l'aube. L'effet n'a pas ete apprecie (proprietaire, 7 Sep) et le retirer coute deux
+        lignes: l'heure est posee une fois pour toutes au demarrage (`setup.ts`, midi), et un
+        evenement ne la touche plus. Ce qui change pendant un rush reste le TAPIS, qui est sous
+        les pieds et non au-dessus de la tete: c'est la ou l'evenement se joue, et c'est assez.
+      */
       if (sol !== null) {
         const mat = Material.Texture.Common({
           src: `assets/textures/mat-rush-${LOOK[theme] === undefined ? 5 : theme}.png`,
@@ -288,7 +297,6 @@ export function setupEvents(): void {
         if (!isMobile()) Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), look.vitesse ?? 0.015, TextureMovementType.TMT_OFFSET)
       }
     } else {
-      SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: JOUR_DE_BASE, transitionMode: TransitionMode.TM_FORWARD })
       if (sol !== null && solCouleur !== '') {
         Material.setPbrMaterial(sol, groundMaterial(solCouleur))
         Tween.deleteFrom(sol)

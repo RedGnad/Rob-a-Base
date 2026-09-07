@@ -544,7 +544,23 @@ let gainMontant = 0
 */
 function compteurAffiche(): number {
   const vrai = theftView.coins
-  if (compteurVu < 0 || Math.abs(vrai - compteurVu) > Math.max(1000, vrai * 0.5)) { compteurVu = vrai; return vrai }
+  /*
+    Le saut sec est reserve a ce qui n'est PAS un gain.
+
+    La regle testait l'ecart en valeur absolue: au-dela de la moitie du solde, ou de mille, le
+    compteur se recalait d'un coup, sans animation et sans "+X". Elle traitait donc les grosses
+    HAUSSES comme des resynchronisations, et c'est exactement ce que le proprietaire voyait
+    (7 Sep, "des fois on la voit bien des fois non"): encaisser trois mille sur un solde de cinq
+    mille depasse le seuil et ne montrait rien, alors que treize millions sur deux cent
+    quarante-huit milliards passe dessous et s'animait. Plus le joueur est pauvre, plus ses
+    gains sont relativement gros, donc plus l'animation lui etait refusee: l'inverse de ce
+    qu'il faut.
+
+    Une vraie resynchronisation, c'est le premier montant recu, ou une BAISSE brutale, qui est
+    un prestige. Une hausse, quelle que soit sa taille, est un gain et se joue: l'interpolation
+    converge en une trentaine d'images quel que soit l'ecart, donc rien ne rampe.
+  */
+  if (compteurVu < 0 || compteurVu - vrai > Math.max(1000, vrai * 0.5)) { compteurVu = vrai; return vrai }
   if (vrai > compteurVu) { gainMontant = gainMontant > 0 && Date.now() - gainA < 700 ? gainMontant + (vrai - compteurVu) : vrai - compteurVu; gainA = Date.now() }
   compteurVu = compteurVu + (vrai - compteurVu) * 0.16
   if (Math.abs(vrai - compteurVu) < Math.max(2, vrai * 0.0002)) compteurVu = vrai
