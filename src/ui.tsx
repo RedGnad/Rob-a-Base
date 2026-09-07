@@ -533,6 +533,8 @@ const SellChip = (props: { right?: number }) => {
   long enough to float up and disappear. Module state, read by pure render functions.
 */
 let compteurVu = -1
+/** Quand le compteur a ete rafraichi pour la derniere fois: le rattrapage se mesure en temps. */
+let compteurA = 0
 let gainA = 0
 /*
   Le solde ne bouge que sur des EVENEMENTS, donc chaque hausse merite son nombre flottant.
@@ -565,10 +567,24 @@ function compteurAffiche(): number {
   // Toute hausse relance le coup de pouce. Le MONTANT du gain n'est plus retenu: il n'avait
   // qu'un lecteur, le petit "+X", et il est parti avec lui.
   if (vrai > compteurVu) gainA = Date.now()
-  // Un quart de l'ecart par image plutot qu'un sixieme: le compteur rattrape sa valeur en une
-  // douzaine d'images au lieu d'une vingtaine, donc le chiffre a fini de monter quand le son de
-  // piece finit de sonner, et les deux se repondent au lieu de se suivre.
-  compteurVu = compteurVu + (vrai - compteurVu) * 0.25
+  /*
+    Le rattrapage se compte en SECONDES, pas en images.
+
+    Il retirait une fraction fixe de l'ecart a chaque image. La bosse et le son, eux, sont sur
+    une horloge: sur une machine qui tombe a quinze images par seconde, le compteur mettait
+    quatre fois plus longtemps a rejoindre sa valeur pendant que les deux autres ne bougeaient
+    pas. Le proprietaire a signale un manque de reactivite puis a doute de sa machine (7 Sep);
+    il avait raison les deux fois, la lenteur etait reelle ET elle venait de la machine, parce
+    que l'animation etait indexee sur elle.
+
+    La forme exponentielle est gardee, elle est juste rapportee au temps: `1 - exp(-dt / tau)`
+    donne le meme mouvement a toutes les cadences. Tau vaut cent millisecondes, ce qui reproduit
+    le reglage d'origine a soixante images par seconde, sans le trahir ailleurs.
+  */
+  const maintenant = Date.now()
+  const dt = compteurA === 0 ? 16 : Math.min(200, maintenant - compteurA)
+  compteurA = maintenant
+  compteurVu = compteurVu + (vrai - compteurVu) * (1 - Math.exp(-dt / 100))
   if (Math.abs(vrai - compteurVu) < Math.max(2, vrai * 0.0002)) compteurVu = vrai
   return Math.round(compteurVu)
 }
@@ -583,16 +599,13 @@ function compteurAffiche(): number {
   Ce qui reste est le coup de pouce sur le nombre lui-meme: le retour est porte par la chose
   qui change, ce qui est la regle que ce depot suit partout ailleurs.
 
-  Il a ete rendu plus VIF (proprietaire, 7 Sep): la bosse monte d'un seul coup et redescend en
-  cent quatre-vingts millisecondes au lieu de deux cent soixante, et elle vaut seize pour cent
-  au lieu de neuf. Le carre de la retombee fait qu'elle quitte son sommet tout de suite puis
-  s'attarde: c'est la forme d'un impact, la ou une decroissance droite lit comme un fondu.
+  Sa duree et son amplitude sont celles d'origine. Elles avaient ete reglees, et le
+  proprietaire est revenu sur son impression de manque de reactivite en la mettant sur le
+  compte de sa machine (7 Sep): changer des valeurs reglees sur un symptome non confirme est
+  precisement la derive qu'on evite. Ce qui a ete corrige a la place est le vrai defaut que ce
+  doute a fait trouver, juste en dessous.
 */
-const POUSSEE_MS = 180
-function poussee(): number {
-  const k = Math.max(0, 1 - (Date.now() - gainA) / POUSSEE_MS)
-  return k * k
-}
+function poussee(): number { return Math.max(0, 1 - (Date.now() - gainA) / 260) }
 
 /*
   The verbs that MOVE, and the two poses each plays. There is exactly one.
@@ -1992,7 +2005,7 @@ const uiComponent = () => {
       <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
           value={formatSolde(compteurAffiche())}
-          size={Math.round(TYPE.hero * (1 + poussee() * 0.16))} role="money" align="center" box={strip(760).width} />
+          size={Math.round(TYPE.hero * (1 + poussee() * 0.09))} role="money" align="center" box={strip(760).width} />
       </UiEntity>
       {/*
         The line under it, in the same face for the same reason: no plate, so it has to
