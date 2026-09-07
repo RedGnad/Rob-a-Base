@@ -64,22 +64,27 @@ function largeurDe(seg: Segment3D): number {
  * returns that root so the caller can retire the whole line with one call. `estompe`
  * greys the letters the way the plate greys an absent owner.
  */
-export function place3DText(parent: Entity, segments: Segment3D[], estompe: boolean, largeurMax = 0): Entity {
+/**
+ * Ce que cette ligne mesurera, avant de la poser.
+ *
+ * C'est la PLAQUE qui doit s'ajuster au nom, pas le nom a la plaque (proprietaire, 7 Sep). Une
+ * premiere correction reduisait la ligne pour la faire tenir, ce qui rendait un nom long plus
+ * petit que celui du voisin: deux enseignes ne se lisaient plus a la meme distance, alors que
+ * la seule chose qui devait varier etait la longueur du panneau. Mesurer d'abord permet de
+ * tailler le panneau, et le texte garde son corps quel que soit le nom.
+ */
+export function largeur3D(segments: Segment3D[]): number {
+  return segments
+    .map((s) => ('image' in s ? s : { ...s, texte: s.texte.toUpperCase() }))
+    .reduce((w, s) => w + largeurDe(s), 0)
+}
+
+export function place3DText(parent: Entity, segments: Segment3D[], estompe: boolean): Entity {
   const racine = engine.addEntity()
+  Transform.create(racine, { parent })
 
   const propres: Segment3D[] = segments.map((s) => ('image' in s ? s : { ...s, texte: s.texte.toUpperCase() }))
   const total = propres.reduce((w, s) => w + largeurDe(s), 0)
-  /*
-    La ligne se REDUIT pour tenir dans sa plaque, au lieu d'en sortir.
-
-    La largeur d'un nom est libre et celle d'une plaque est fixe: sans contrainte, un nom long
-    suivi de son etoile de prestige poussait le badge hors du panneau (proprietaire, 7 Sep,
-    "NEO FROSTBORN" et son x2 dans le vide). Couper plus court aurait mutile des noms qui
-    tiennent tres bien; la mise a l'echelle garde la ligne entiere et lisible, et elle ne
-    s'applique qu'au cas ou elle deborde, donc les noms courts ne retrecissent jamais.
-  */
-  const k = largeurMax > 0 && total > largeurMax ? largeurMax / total : 1
-  Transform.create(racine, { parent, scale: Vector3.create(k, k, 1) })
   let curseur = -total / 2
 
   for (const seg of propres) {

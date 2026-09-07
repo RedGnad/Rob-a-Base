@@ -6,7 +6,7 @@ import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, STEAL_RANGE, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
-import { place3DText, Segment3D } from './texte3d'
+import { place3DText, largeur3D, Segment3D } from './texte3d'
 import { emettreGain } from './gains'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
@@ -1526,9 +1526,23 @@ export function setupPlots(): void {
             segs.push({ image: 'ui-prestige.png', taille: 0.66 })
             segs.push({ texte: `${p.rebirths + 1}`, role: 'money', taille: 0.78 })
           }
-          // 4,7 contre une enseigne de 5,1: une marge d'un bout et de l'autre, dans le repere
-          // local de la plaque, celui-la meme ou les glyphes sont poses.
-          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : place3DText(v.plaque, segs, !p.ownerPresent, 4.7)
+          /*
+            LE PANNEAU s'ajuste au nom, et non l'inverse.
+
+            Il etait fige a 5,1 de large pendant que la ligne, elle, etait libre: un nom long
+            suivi de son etoile de prestige sortait donc du navy (proprietaire, 7 Sep, "NEO
+            FROSTBORN" et son x2 dans le vide). Reduire le texte reglait le debordement en en
+            creant un autre, deux enseignes voisines ne se lisant plus a la meme distance.
+
+            Mesure d'abord, taille ensuite: le panneau prend la largeur de ce qu'il porte, plus
+            une marge de chaque cote. Les bornes existent pour les deux extremes, un pseudo de
+            deux lettres qui ferait une pastille, et un nom au maximum de quatorze avec son
+            badge qui depasserait la facade.
+          */
+          const largeurLigne = largeur3D(segs)
+          const te = Transform.getMutableOrNull(v.enseigne)
+          if (te !== null) te.scale = Vector3.create(Math.max(3.2, Math.min(7.4, largeurLigne + 0.9)), 1.28, 1)
+          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : place3DText(v.plaque, segs, !p.ownerPresent)
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
           if (rp !== null) {

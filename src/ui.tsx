@@ -2336,9 +2336,13 @@ const uiComponent = () => {
         le pouce regarde deja, et prend le corps d'un titre plutot que celui d'une legende.
         Un liseré dans sa propre couleur la separe du fond sans lui donner l'air d'un bouton:
         elle informe, elle ne se presse pas.
+
+        Au VRAI bas: `BAND.bottom` est le plancher de la mise en page, celui d'ou les rangees
+        de commandes montent. Un nombre ajoute par-dessus serait un reglage a l'oeil, juste sur
+        un format et faux sur le suivant; ce plancher, lui, est deja celui de tout le reste.
     */}
     {hint() !== '' && !combatView.aiming && hud() && (
-      <Centre bottom={row(0) + 62}>
+      <Centre bottom={BAND.bottom}>
         <UiEntity
           uiTransform={{
             height: 60, padding: { left: 26, right: 26 },
