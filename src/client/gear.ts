@@ -9,6 +9,7 @@ import { myClientAddress, alerter, pushToFeed } from './theft'
 import { applyFreeze, setCoil } from './locomotion'
 import { carryView } from './carry'
 import { TOAST } from './theme'
+import { cue } from './ui-kit'
 
 /**
  * Gear, client side: what the player holds, and what is lying on the floor.
@@ -119,6 +120,9 @@ export function setupGear(): void {
     setCoil(gearView.held[1] > 0)
   })
   room.onMessage('gearBought', (d) => {
+    // Le meme tiroir-caisse que l'achat au tapis: un seul son pour "de l'argent vient de
+    // partir", quel que soit le guichet.
+    cue('till.wav', 0.7)
     alerter(`${GEARS[d.gear].name} IN YOUR POCKET  ·  you hold ${d.held}  ·  -${formatIncome(d.cost)}`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('gearPlaced', (d) => {
@@ -135,6 +139,7 @@ export function setupGear(): void {
     alerter(`${d.byName.toUpperCase()}'S TASER  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('luckBought', (d) => {
+    cue('till.wav', 0.7)
     alerter(`LUCKY CHARM  ·  x2 on every mutation for ${Math.ceil(d.sec / 60)} min  ·  -${formatIncome(d.cost)}`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('bombed', (d) => {

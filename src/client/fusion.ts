@@ -24,6 +24,48 @@ export const fuserView = { codes: [] as number[] }
 
 const NOIR = Color3.create(0, 0, 0)
 const DOME_BRILLE_MS = 45_000
+/*
+  La boule RESPIRE en blanc, sur une periode qui n'est pas celle de son flottement.
+
+  Le mouvement l'avait sortie du decor, mais une bille creme immobile en VALEUR reste une
+  bille. Apres le deplacement, ce que la vision peripherique lit le mieux est le changement de
+  luminosite, donc la respiration passe par l'emissif. C'est aussi la seule voie qui rende
+  partout: les `LightSource` ne sont pas rendues sur le preset telephone
+  (`sceneLightsEnabled: 0`) et sont bannies ici de toute facon, elles font planter le client
+  bureau (voir la note plus bas). L'emissif, lui, rend sur mobile: c'est meme la recette que la
+  doc donne pour ce client, un albedo SOMBRE d'ou sort la couleur, ce que fait `plastic()`.
+
+  Deux periodes qui ne se rencontrent pas: 2100 ms pour le flottement, 3400 ms pour la
+  lumiere. Leur rapport vaut 1,619, le nombre d'or a trois milliemes, donc les deux vagues ne
+  se realignent jamais dans le temps d'un regard. Une periode partagee aurait donne un
+  clignotant, c'est-a-dire une machine: exactement le defaut corrige sur les pieces des
+  etageres.
+
+  Et elle reste FAIBLE: 0,55 d'emissif au sommet contre 1,6 quand une fusion la colore. La
+  respiration dit "cette chose est vivante", la couleur dit "quelqu'un vient de fabriquer",
+  et les deux ne doivent pas se disputer le meme niveau.
+
+  Le materiau n'est PAS reecrit a chaque image. La valeur est arrondie a vingt-quatre paliers
+  par cycle, sept ecritures par seconde au lieu de soixante, et l'ecart entre deux paliers
+  voisins vaut 0,019 d'emissif, sous le seuil de perception. Une ecriture de materiau par
+  image est une mise a jour reseau par image, ce que ce fichier refuse partout ailleurs.
+*/
+const PULSE_MS = 3400
+const PULSE_PAS = 24
+const PULSE_MIN = 0.10
+const PULSE_MAX = 0.55
+/** Le repos de la boule: un creme assombri d'ou sort de la lumiere blanche, jamais l'inverse. */
+function domeRepos(k: number) {
+  const c = Color4.fromHexString(TOY.wallCream + 'ff')
+  const sombre = 0.55
+  return {
+    albedoColor: Color4.create(c.r * sombre, c.g * sombre, c.b * sombre, 1),
+    emissiveColor: Color3.create(1, 1, 1),
+    emissiveIntensity: PULSE_MIN + k * (PULSE_MAX - PULSE_MIN),
+    metallic: 0,
+    roughness: 0.45
+  }
+}
 const AMPOULE = 16000
 
 function couleur(rarete: number, mut = 0): Color4 {
@@ -71,10 +113,21 @@ export function setupFuser(): void {
     tween, et le dome garde le sien, la secousse elastique de la fusion. Composer par le
     parentage est la meme solution que pour la piece qui tombe en tournant.
   */
+  /*
+    Elle flotte AU-DESSUS du tambour, ce qui n'etait pas le cas.
+
+    Au bas de sa vague elle etait a 2,35 pour un rayon de 0,65: son equateur passait sous le
+    sommet du tambour, qui est a 1,90. Elle n'y levitait pas, elle y etait POSEE, et une boule
+    posee sur un tambour n'a pas de raison d'attirer l'oeil. Le repos monte a 2,70, ce qui
+    ouvre vingt centimetres de vide sous elle, et c'est le vide qui dit "elle flotte", pas le
+    mouvement. Les deux etiquettes montent d'autant: au sommet de la vague le dome atteignait
+    deja 3,37 alors que la ligne d'explication est a 3,10, donc la boule mangeait le milieu de
+    sa propre phrase.
+  */
   const flotteur = engine.addEntity()
-  Transform.create(flotteur, { parent: racine, position: Vector3.create(0, 2.35, 0) })
+  Transform.create(flotteur, { parent: racine, position: Vector3.create(0, 2.70, 0) })
   Tween.create(flotteur, {
-    mode: Tween.Mode.Move({ start: Vector3.create(0, 2.35, 0), end: Vector3.create(0, 2.72, 0) }),
+    mode: Tween.Mode.Move({ start: Vector3.create(0, 2.70, 0), end: Vector3.create(0, 3.08, 0) }),
     duration: 2100,
     easingFunction: EasingFunction.EF_EASESINE
   })
@@ -99,11 +152,11 @@ export function setupFuser(): void {
   }
 
   const titre = engine.addEntity()
-  Transform.create(titre, { parent: racine, position: Vector3.create(0, 3.5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+  Transform.create(titre, { parent: racine, position: Vector3.create(0, 4.4, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(titre, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(titre, { text: 'FUSER', fontSize: 5, textColor: Color4.fromHexString(TOY.beltRail + 'ff'), outlineWidth: 0.22, outlineColor: NOIR })
   const ligne = engine.addEntity()
-  Transform.create(ligne, { parent: racine, position: Vector3.create(0, 3.1, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+  Transform.create(ligne, { parent: racine, position: Vector3.create(0, 3.95, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(ligne, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(ligne, { text: `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`, fontSize: 2.4, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
 
@@ -130,6 +183,7 @@ export function setupFuser(): void {
     changement de `atMs`, donne l'impact sans un objet ni une interface de plus.
   */
   let lastPulse = 0
+  let pulseVu = -1
   const DOME = Vector3.create(1.3, 1.3, 1.3)
   let vuFusion = 0
   let fusionLocal = -1e9
@@ -148,6 +202,14 @@ export function setupFuser(): void {
     // the window or never closes it, depending which way the skew runs (owner, 5 Sep).
     if (f !== null && f.atMs !== vuFusion) { vuFusion = f.atMs; if (f.atMs > 0) fusionLocal = now }
     const brille = f !== null && f.lastCode >= 0 && now - fusionLocal < DOME_BRILLE_MS
+    // La respiration tourne hors de la cle: elle change tout le temps, la cle ne change presque
+    // jamais. Elle se tait pendant qu'une fusion tient le dome, qui a sa couleur a lui.
+    if (brille) pulseVu = -1
+    else {
+      const onde = 0.5 - 0.5 * Math.cos(((now % PULSE_MS) / PULSE_MS) * Math.PI * 2)
+      const pas = Math.round(onde * PULSE_PAS)
+      if (pas !== pulseVu) { pulseVu = pas; Material.setPbrMaterial(dome, domeRepos(pas / PULSE_PAS)) }
+    }
     const mienne = fuserView.codes.length
     const rareteMienne = mienne > 0 ? rarityOf(fuserView.codes[0]) : -1
     // One string for everything drawn, rewritten only when it changes: a material or a light
@@ -185,7 +247,8 @@ export function setupFuser(): void {
       */
       Material.setPbrMaterial(dome, plasticDe(Color4.create(c.r, c.g, c.b, 1), 1.6))
     } else {
-      Material.setPbrMaterial(dome, plastic(TOY.wallCream))
+      // Rien a ecrire ici: la respiration reprend la main a l'image suivante et pose le repos.
+      pulseVu = -1
     }
     const t = TextShape.getMutableOrNull(ligne)
     if (t !== null) {

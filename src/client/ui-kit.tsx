@@ -333,7 +333,28 @@ export const Pouce = (props: {
         built; the thumb buttons, which are the ones a player presses every ten seconds, were
         silent, so the loudest control in the game gave the least feedback (owner, 5 Sep).
       */
-      onMouseDown={props.disabled === true ? undefined : () => { noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.() }}
+      /*
+        Le gestionnaire est TOUJOURS pose, et c'est l'inertie qui est traitee dedans.
+
+        Il valait `disabled ? undefined : handler`, et une prop d'evenement qui passe a
+        `undefined` fait DESINSCRIRE l'element cote scene: `upsertListener` (react-ecs,
+        `reconciler/index.js`) appelle `removeOnPointerDown`, qui efface le rappel dans sa
+        table. Le composant `PointerEvents`, lui, n'est pas retire, parce que `removeEvent`
+        (`@dcl/ecs`, `systems/events.js`) ne l'enleve que si l'inscription portait un
+        `hoverText`, ce que react-ecs ne pose jamais. Le client continue donc de tenir le
+        bouton pour cliquable pendant que la scene n'a plus personne pour repondre, et une
+        reinscription EMPILE une entree de plus dans la liste au lieu de la remplacer.
+
+        Chaque fois qu'un bouton bascule actif/inactif, ce cycle se joue. Le proprietaire
+        rapporte des boutons de menu qui ne repondent plus "souvent juste apres un claim ou
+        un autre appui" (7 Sep), et un claim est exactement ce qui fait basculer l'etat de
+        plusieurs controles dans la meme image. Poser le gestionnaire une fois pour toutes
+        supprime le cycle: l'inscription vit aussi longtemps que l'element.
+      */
+      onMouseDown={() => {
+        if (props.disabled === true) return
+        noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.()
+      }}
     >
       {/*
         The glyph takes the disc, measured against the platform's own pad.
@@ -508,7 +529,11 @@ export const Btn = (props: {
       }}
       uiBackground={SKIN[props.skin ?? (props.primary === true ? 'primary' : 'secondary')]}
       uiInputBinding={props.bind !== undefined ? { actions: props.bind } : undefined}
-      onMouseDown={actif ? () => { noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.() } : undefined}
+      /* Meme raison que sur le disque: une prop d'evenement ne bascule jamais vers `undefined`. */
+      onMouseDown={() => {
+        if (!actif) return
+        noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.()
+      }}
     >
       <UiEntity uiTransform={{ width: props.width, height, positionType: 'absolute', position: { top: enfonce ? 3 : 0, left: 0 } }}>
         {contenu}

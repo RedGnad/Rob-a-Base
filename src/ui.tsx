@@ -1798,9 +1798,9 @@ const uiComponent = () => {
     {liveAmounts().map((f) => (
       <UiEntity key={`amt${f.born}`}
         uiTransform={{
-          positionType: 'absolute', width: '100%', height: 64,
-          position: { top: `${34 - f.t * 7 + f.rank * 6}%`, left: 0 },
-          justifyContent: 'center', alignItems: 'center'
+          positionType: 'absolute', width: strip(760).width, height: 64,
+          position: { top: `${34 - f.t * 7 + f.rank * 6}%`, left: '50%' },
+          margin: strip(760).margin
         }}>
         {/*
           La meme police image que le compteur, et pour la meme raison.
@@ -1819,10 +1819,25 @@ const uiComponent = () => {
           width: '100%', height: 64, opacity: 1 - f.t * f.t,
           justifyContent: 'center', alignItems: 'center'
         }}>
+          {/*
+            OR pour un gain, et sur la MEME verticale que le compteur.
+
+            Deux defauts, une cause: ce nombre etait cale a gauche et peint dans la teinte
+            d'avertissement. Le calage vient de `Glyphs`, qui se pose en absolu a `left: 0`, ce
+            qui rend le `justifyContent` du parent sans effet: la boite de 760 s'accrochait donc
+            au bord de l'ecran au lieu du milieu. Le parent porte maintenant la recette que le
+            compteur utilise depuis toujours, `left: '50%'` avec la demi-largeur en marge
+            negative, et les deux nombres sont sur le meme axe.
+
+            La couleur: `bonus` vaut #ff8a3d, et ce fichier ecrit lui-meme que l'orange est la
+            teinte d'AVERTISSEMENT. Un gain d'argent portait donc la couleur d'une alerte. Ce
+            nombre est le delta du compteur en or: il prend l'or. La perte garde le rouge, parce
+            qu'une perte n'est pas le meme evenement, et la taille les separe deja.
+          */}
           <Glyphs
             value={`${f.loss ? '-' : '+'}${formatSolde(f.amount)}`}
             size={f.loss ? TYPE.hero : TYPE.title}
-            role={f.loss ? 'danger' : 'bonus'}
+            role={f.loss ? 'danger' : 'money'}
             align="center" box={strip(760).width} />
         </UiEntity>
       </UiEntity>

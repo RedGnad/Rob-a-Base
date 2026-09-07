@@ -7,6 +7,7 @@ import { myClientAddress, theftView } from './theft'
 import { basesConnues } from './slots'
 import { alerter } from './theft'
 import { TOAST } from './theme'
+import { cue } from './ui-kit'
 
 function maBase(): Vector3 | null {
   const moi = myClientAddress()
@@ -127,13 +128,24 @@ function setupGardeFou(): void {
   })
 }
 
+/*
+  Un deplacement s'entend, parce qu'il n'a pas de geste.
+
+  Toutes les autres actions du jeu ont un corps qui les execute: on marche, on frappe, on
+  ramasse. Un voyage remplace l'ecran d'un coup, sans transition, et c'est le seul endroit ou
+  le joueur peut douter d'avoir appuye. Le son emprunte a l'ascenseur, moins fort: le jeu s'en
+  sert deja pour dire "on te deplace", et lui inventer un clip separe aurait ajoute un actif
+  pour dire la meme chose.
+*/
 export function rentrer(): void {
   const p = maBase()
   if (p === null) { alerter('YOU HAVE NO BASE YET', '#ffd166', TOAST.warning); return }
+  cue('lift.wav', 0.55)
   moveTo('retour-base', p, Vector3.create(p.x, FLOOR_HEIGHT, p.z - 4))
 }
 
 export function goToBelt(): void {
   const p = Vector3.create(CENTER.x, 0, CENTER.z - 4.5)
+  cue('lift.wav', 0.55)
   moveTo('tapis', p, Vector3.create(CENTER.x, 2.5, CENTER.z))
 }

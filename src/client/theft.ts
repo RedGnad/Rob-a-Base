@@ -11,6 +11,7 @@ import { sendOrHold } from './intent'
 import { poseView } from './pose'
 import { TOAST } from './theme'
 import { setSfx } from './sfx'
+import { cue } from './ui-kit'
 
 export const theftView = {
   alertes: [] as Array<{ t: string; c: string; ne: number; until: number }>,
@@ -216,6 +217,7 @@ export function setupTheft(): void {
     alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left${butin}`, '#4dd2ff', TOAST.warning)
   })
   room.onMessage('sentryBought', (d) => {
+    cue('till.wav', 0.7)
     alerter(`FLOOR ${d.floor} DEFENDED  ·  ${d.charges} charges there  ·  -${formatIncome(d.cost)} coins`, '#4dd2ff', TOAST.result)
   })
 
@@ -310,6 +312,9 @@ export function setupTheft(): void {
   let prefsAppliquees = false
   room.onMessage('index', (d) => {
     indexView.vus = [...d.vus]
+    // Un skin qui change s'entend comme un achat: c'est le meme acte, de la monnaie contre une
+    // apparence. La toute premiere reception ne sonne pas, elle ne fait que decrire l'etat.
+    if (prefsAppliquees && d.skin !== indexView.skin) cue('till.wav', 0.7)
     indexView.skin = d.skin
     if (!prefsAppliquees) {
       prefsAppliquees = true
@@ -335,24 +340,39 @@ export function setupTheft(): void {
     console.log(`[CLIENT] offline: +${d.gain} over ${Math.round(d.seconds / 60)} min`)
   })
 
+  /*
+    LA RECOMPENSE S'ENTEND, elle ne se lit plus.
+
+    Ces deux evenements posaient une banniere en travers de l'ecran pour annoncer une caisse
+    que le joueur venait lui-meme de reclamer. C'est un accuse de reception d'une action
+    volontaire, et la litterature d'interface est constante la-dessus depuis Nielsen: la
+    visibilite de l'etat est obligatoire, la MODALITE ne l'est pas. Un accuse de reception est
+    du travail de lecture impose pour une information que le joueur possede deja, et il occupe
+    le canal des banniers, qui doit rester celui des choses qu'on n'a PAS faites: on te vole,
+    un boss arrive, quelqu'un t'a surencheri.
+
+    Ce qui remplace: le son de livraison, celui-la meme qui dit deja "une caisse est arrivee
+    chez toi" quand un convoi se pose, et le compteur de caisses en attente qui monte, avec sa
+    ligne d'aide "N boxes waiting at your base". L'evenement est donc annonce, date et
+    consultable, sans une phrase a lire (proprietaire, 7 Sep).
+  */
   room.onMessage('dailyReward', (d) => {
-    alerterEnFile(`DAY ${d.log}/7  ·  free crate!`, '#4dd2ff', TOAST.event)
+    cue('deliver.wav', 0.8)
     console.log(`[CLIENT] recompense du log ${d.log}`)
   })
-  /*
-    A goal's crate used to ride the login-day message with a zero in it, so a player on their
-    fourth day read "DAY 0/7" for finishing an objective. Two events, two messages.
-  */
   room.onMessage('questReward', (d) => {
-    alerterEnFile(`GOAL DONE  ·  ${crate(d.crate).name.toUpperCase()}!`, '#4dd2ff', TOAST.event)
+    cue('deliver.wav', 0.8)
+    console.log(`[CLIENT] quete: caisse ${crate(d.crate).name}`)
   })
 
   room.onMessage('siloBought', (d) => {
+    cue('till.wav', 0.7)
     alerter(`SILO ${d.silos}  ·  ${Math.round(d.capS / 60)} min of production banked while away`, '#4dd2ff', TOAST.result)
     console.log(`[CLIENT] silo ${d.silos} achete pour ${d.cost}, plafond ${d.capS}s`)
   })
 
   room.onMessage('floorBought', (d) => {
+    cue('till.wav', 0.7)
     alerter(`FLOOR ${d.floors} UNLOCKED  ·  +6 slots`, '#4dd2ff', TOAST.result)
     console.log(`[CLIENT] floor ${d.floors} achete pour ${d.cost}`)
   })
