@@ -70,14 +70,19 @@ FRAPPE = (0.30, 0.26)
 # The void carved around the mallet, in canvas shares. Two masses of one ink that touch fuse
 # into a blob; this is the same separation the crate draws between its own planks.
 VIDE = 0.045
-# A quarter turn clockwise, and it is what makes the tool STRIKE rather than stand there.
+# A quarter turn ANTICLOCKWISE, and it is what makes the tool STRIKE rather than stand there.
 #
 # The mallet is drawn head up-right, grip down-left, which is the right pose for BUILD where it
 # is alone. Laid beside a box in that pose it points AWAY from it: a tool floating in a corner
-# (owner, 7 Sep). Turned a quarter clockwise the head comes down-right, onto the box's top left
-# shoulder, and the handle runs up-left out of the way. That is how the whole genre draws a
-# blow, and it costs one rotation rather than a second mallet drawing.
-MALLET_TURN = -90
+# (owner, 7 Sep). Turned, the head comes down onto the box and the handle runs up-left out of
+# the way, which is how the whole genre draws a blow, and it costs one rotation rather than a
+# second mallet drawing.
+#
+# The direction of the turn was decided by rendering all four and looking (owner, 7 Sep). Turned
+# clockwise the head meets the box corner-first and reads thin; turned ANTICLOCKWISE its flat
+# FACE lands on the box, which is the shape of a blow, and the void carved under it makes the
+# box look bitten into rather than merely overlapped.
+MALLET_TURN = 90
 # A SHORT mallet, and the reason is stroke weight, not composition.
 #
 # Two objects share this canvas, so the tool is drawn shorter than when it stands alone.
