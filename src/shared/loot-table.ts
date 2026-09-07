@@ -367,8 +367,21 @@ export function formatSolde(v: number): string {
   let val = n / 1000
   let base = 0
   while (Math.round(val) >= 1000 && base < SUF.length - 1) { val /= 1000; base += 1 }
-  // Trois decimales, zeros de fin retires par le nombre lui-meme: 1.2 et non 1.200.
-  return signe + (Math.round(val * 1000) / 1000).toString() + SUF[base]
+  /*
+    DEUX decimales, toujours, et les deux moities de cette phrase comptent.
+
+    "Toujours": Cookie Clicker supprime ses zeros de fin, donc 248.65B devient 248.7B puis
+    249B. La largeur du nombre change a chaque mise a jour et la ligne entiere tremble sous
+    l'oeil (proprietaire, 7 Sep). Un compteur qui bouge ne doit pas changer de largeur en
+    bougeant; c'est la meme raison qui fait exister les chiffres tabulaires en typographie.
+
+    "Deux": mesure contre un revenu reel de 13,1M/s sur un solde de 248B. A trois decimales le
+    dernier chiffre change tous les millions, soit treize fois par seconde: ce n'est plus un
+    compteur qui monte, c'est un flou. A deux, tous les dix millions, environ une fois par
+    seconde, ce qui se lit. Le bon nombre de decimales n'est pas le plus precis, c'est celui
+    dont la derniere decimale change a une cadence lisible.
+  */
+  return signe + val.toFixed(2) + SUF[base]
 }
 
 export function formatIncome(v: number): string {

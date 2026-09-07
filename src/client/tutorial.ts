@@ -48,11 +48,19 @@ export function stepExpects(id: string | undefined): boolean {
 }
 
 /** The verb icon of the current step, or the collect icon once the tutorial is done. */
-export function stepVerb(): 'build' | 'crate' | 'place' | 'steal' {
-  // Une fois le tutoriel fini, le disque inerte montre le verbe du jeu, qui est le vol.
-  // Il montrait la collecte, qui n'existe plus.
-  if (tutoView.etape >= tutoView.total) return 'steal'
-  return STEP_TEXTS[tutoView.etape].verb as 'build' | 'crate' | 'place' | 'steal'
+export function stepVerb(): 'build' | 'crate' | 'place' | 'steal' | 'collect' {
+  /*
+    Une fois le tutoriel fini, le disque montre le verbe de l'ETAT DE BASE, l'encaissement.
+
+    Il montrait le vol, choisi le temps ou l'encaissement n'existait plus. Le resultat se voyait
+    a chaque arrivee: tant que le premier message du portefeuille n'etait pas la, la cagnotte
+    valait zero, donc aucune action n'etait offerte, donc le disque affichait le VOL, puis
+    basculait sur l'encaissement des que le serveur repondait (proprietaire, 7 Sep: "je voyais
+    aucune icone puis l'icone de vol puis la bonne"). Ce n'etait pas un bug de contexte, c'etait
+    le disque qui annoncait un verbe qui n'a jamais ete son etat de base.
+  */
+  if (tutoView.etape >= tutoView.total) return 'collect'
+  return STEP_TEXTS[tutoView.etape].verb as 'build' | 'crate' | 'place' | 'steal' | 'collect'
 }
 
 export function stepHintDue(): boolean {

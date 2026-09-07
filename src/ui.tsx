@@ -1977,33 +1977,24 @@ const uiComponent = () => {
               : `+${formatIncome(theftView.income)}/S`
               + (theftView.multiplier > 1 ? `   x${theftView.multiplier} PRESTIGE` : '')
               + (theftView.prime > 0 ? `   +${Math.round(theftView.prime * 100)}% CROWD` : '')
+              /*
+                La cagnotte est un MORCEAU DE CETTE LIGNE, pas une etiquette posee dessous.
+
+                Je l'avais ajoutee comme un element voisin dans un bloc qui n'empile pas ses
+                enfants: les deux textes se sont donc superposes et plus rien n'etait lisible
+                (proprietaire, 7 Sep, capture a l'appui). Cette ligne a deja sa facon de dire
+                plusieurs choses, le multiplicateur et le bonus de foule s'y ajoutent en toutes
+                lettres; la cagnotte s'y ajoute pareil, meme police et meme ligne par
+                construction plutot que par reglage.
+
+                Et le format est celui du SOLDE, pas celui des prix: `formatIncome` change de
+                regle selon la taille (deux decimales sous dix, aucune sous mille, une au-dela),
+                donc la cagnotte semblait tantot precise tantot grossiere en montant.
+              */
+              + (theftView.pending >= 1
+                  ? `   ${formatSolde(theftView.pending)} WAITING${cagnottePleine() ? ', FULL' : ''}`
+                  : '')
           } />
-        {/*
-          La cagnotte, ecrite en permanence sous le taux.
-
-          C'est le correctif de ce qui avait condamne l'encaissement: le montant en attente
-          n'existait NULLE PART a l'ecran, seul le serveur le connaissait, et un ancien
-          commentaire justifiait ce silence en disant qu'il "voyageait deja sur le bouton
-          COLLECT" alors que ce bouton ne portait qu'un verbe nu. Trois testeurs n'ont jamais
-          compris que leurs pieces rapportaient; il n'y avait rien a comprendre, rien ne le
-          montrait.
-
-          Elle est dans la couleur de l'argent, sous le taux qui l'alimente, donc les deux se
-          lisent comme une cause et son effet. Et quand elle atteint son plafond, elle le DIT:
-          c'est le defaut exact de l'ancienne version, une production qui s'arretait sans un
-          mot. Un joueur prevenu peut agir, un joueur qui ne l'est pas croit que le jeu est
-          casse.
-        */}
-        {hud() && theftView.pending >= 1 && (
-          <Label
-            uiTransform={{ width: '100%', height: 30 }}
-            textAlign="middle-center" textWrap="nowrap"
-            fontSize={TYPE.caption}
-            color={cagnottePleine() ? C.bonus : Color4.fromHexString('#ffd166ff')}
-            value={cagnottePleine()
-              ? `${formatIncome(theftView.pending)} WAITING  ·  FULL, COLLECT IT`
-              : `${formatIncome(theftView.pending)} WAITING`} />
-        )}
       </UiEntity>
       {!view.serverAlive && <WaitBar />}
     </UiEntity>
