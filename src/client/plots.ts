@@ -789,41 +789,28 @@ const GAIN_PERIODE_MS = 3000
   precisement ce qu'on lui demande.
 */
 /*
-  CENT VINGT METRES, POUR QUE LA COUPURE SOIT OPTIQUE ET NON GEOMETRIQUE.
+  IL N'Y A PLUS DE PORTEE DU TOUT, ET C'EST LA SEULE FACON D'ETRE SUR.
 
-  Le defaut n'etait pas la valeur, c'etait le MUR. A une distance precise les pieces
-  disparaissaient d'un coup, et une coupure geometrique se trouve: on recule de deux pas et le
-  monde s'eteint (proprietaire, 7 Sep). Une piece qui retrecit jusqu'a devenir invisible, elle,
-  ne se remarque jamais. La bonne portee est donc celle qui DEPASSE ce que l'oeil peut voir,
-  pour que ce soit l'oeil qui coupe.
+  Trois reglages successifs (26, 45, 70, 120 m) et le proprietaire retrouvait la limite a chaque
+  fois. La raison n'etait pas la valeur: c'est qu'une limite EXISTAIT, et qu'un joueur qui recule
+  finit toujours par tomber dessus.
 
-  Le calcul, sachant que `grossir` plafonne a 1,8 des trente-quatre metres, donc qu'au-dela la
-  piece ne fait plus que retrecir en 1/D. Une Common porte a 0,216 m, une Legendary a 0,35 m,
-  sur un ecran de 720 pixels:
-      45 m   3,4 px / 5,4 px       100 m   1,5 px / 2,4 px
-      70 m   2,1 px / 3,5 px       120 m   1,2 px / 2,0 px
-  A cent vingt metres la plus petite piece fait UN pixel: personne ne peut voir la limite,
-  parce qu'il n'y a plus rien a voir avant elle. Le terrain fait 192 m de cote.
+  Pire, elle n'etait meme pas ronde. La garde comparait une distance de MANHATTAN, |dx| + |dz|,
+  quand tout le reste de ce fichier utilise `Math.hypot`. Manhattan vaut jusqu'a 1,41 fois la
+  vraie distance selon l'orientation, donc le mur etait un LOSANGE: coupure a 120 m plein nord et
+  a 85 m en diagonale. Tourner autour de sa base a distance constante allumait et eteignait les
+  pieces. Ce defaut etait la depuis la premiere version et j'ai regle la valeur trois fois sans
+  jamais regarder la formule.
 
-  Le cout n'est pas les entites (huit, fixes, en pool dans `gains.ts`) mais le PARCOURS des
-  soixante-douze emplacements a chaque image tant qu'on est a portee: elargir le ferait tourner
-  presque tout le temps. C'est pourquoi le raccourci ci-dessous existe, et il fallait le poser
-  dans le meme geste, sinon on echangeait un mur visible contre une depense invisible.
-*/
-const GAIN_PORTEE_M = 120
-/*
-  Le DEBIT de la base est borne, et c'est ce qui rend l'elargissement possible.
+  Supprimee. La piece est emise quelle que soit la distance et c'est l'OEIL qui coupe: elle
+  plafonne a 1,8 fois sa taille des trente-quatre metres, puis retrecit en 1/D jusqu'a passer
+  sous le pixel. Aucun nombre a regler, aucune limite a trouver.
 
-  Le pool tient huit pieces en l'air et chacune vit une seconde: au-dela de huit emissions par
-  seconde les suivantes sont refusees. Avec un intervalle fixe par socle, ouvrir les douze
-  etages porterait la base a vingt-quatre emissions par seconde, donc les trois quarts seraient
-  jetees: elargir la portee aurait rendu l'effet PLUS PAUVRE, pas plus riche.
-
-  L'intervalle par socle s'etire donc avec leur nombre pour que la base entiere reste sous
-  trois pieces par seconde. Un etage plein garde ses trois secondes, une tour de douze etages
-  passe a vingt-quatre secondes par socle mais paie toujours trois fois par seconde a
-  l'ensemble. La densite lue reste constante quelle que soit la fortune, ce qui est le prix a
-  payer, et le pool ne sature jamais, ce qui est le gain.
+  Ce que ca coute: rien. Le raccourci `prochainGain` ci-dessous fait sortir la fonction avant de
+  lire quoi que ce soit tant qu'aucun socle n'est du, donc la boucle tourne trois fois par
+  seconde au lieu de soixante, portee ou pas. Le pool de `gains.ts` tient huit entites fixes et
+  n'a qu'UN seul appelant dans tout le depot, celui-ci: personne ne se dispute ses places, et une
+  piece emise trop loin pour etre vue ne prend celle de personne.
 */
 const GAIN_DEBIT_MAX = 3
 
@@ -831,8 +818,9 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
   const rt = Transform.getOrNull(v.racine)
   const me = Transform.getOrNull(engine.PlayerEntity)
   if (rt === null || me === null) return
-  const dist = Math.abs(me.position.x - rt.position.x) + Math.abs(me.position.z - rt.position.z)
-  if (dist > GAIN_PORTEE_M) return
+  // La VRAIE distance, pas celle de Manhattan: elle ne sert plus qu'a dimensionner la piece,
+  // et une taille qui dependrait de l'orientation se verrait.
+  const dist = Math.hypot(me.position.x - rt.position.x, me.position.z - rt.position.z)
   const now = Date.now()
   // Rien n'est du: on sort avant de lire quoi que ce soit. C'est le cas de la grande majorite
   // des images, et c'est ce qui rend la portee de cent vingt metres gratuite.
