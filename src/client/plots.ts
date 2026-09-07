@@ -291,24 +291,8 @@ function baseCost(
     if (rarityOf(it) >= RAYS_MIN_RARITY) rays++
     if (rarity(rarityOf(it)).glow >= LIGHT_MIN_GLOW) lit++
   }
-  /*
-    LA COURONNE DE RAYONS QUITTE LE COUT REDUIT, PARCE QU'ELLE QUITTE LA BASE LOINTAINE.
-
-    Elle y etait, et c'est ce qui donnait au LOD un PLANCHER qu'il ne pouvait pas descendre. Le
-    systeme ne decide que qui est PROMU au detail complet: tout le monde paie deja le cout
-    reduit. Une couronne par piece Legendary y valait un materiau unique, donc seize bases de
-    trois etages garnies de Legendary coutaient 461 materiaux contre un budget de 380, avec
-    ZERO base au detail complet. Le systeme avait deja tout degrade et etait encore au-dessus:
-    il n'avait plus de levier (mesure du 7 Sep).
-
-    Retiree du loin: 461 -> 233 materiaux sur ce meme terrain, 930 -> 774 draws, et deux bases
-    redeviennent finançables au detail complet. Sur seize tours de douze etages, 1325 -> 173.
-    Le probleme materiaux disparait; ce qui reste vient des ETAGES, pas des rayons.
-
-    `rays` bascule donc du cote `pres`, ou il est vrai: une base au detail complet porte ses
-    couronnes, une base reduite n'en porte plus.
-  */
-  const loin: Cost = { mats: 2, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces }
+  // Reduced: plinth and lift are primitives; shells, accents, glass and the bare pieces are shared files.
+  const loin: Cost = { mats: 2 + rays, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces + rays }
   if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
@@ -317,7 +301,7 @@ function baseCost(
   // and crown of a skin, one glyph plane per letter; in draws also one pad per piece and one
   // painted pool per lit piece. Pads are files shared per colour, billed once on the field.
   const extras = 2 + cones + crown + p.ownerName.length
-  return { mats: loin.mats + extras + rays, draws: loin.draws + extras + rays + pieces + lit }
+  return { mats: loin.mats + extras, draws: loin.draws + extras + pieces + lit }
 }
 
 function modele(src: string, y: number, rendu = true): Entity {
@@ -1888,23 +1872,10 @@ export function setupPlots(): void {
           clearShape(ent)
           clearPedestal(ent)
           clearLight(ent)
-          /*
-            LA COURONNE PART AUSSI, ET C'EST LE COMMENTAIRE D'EN DESSOUS QUI L'EXIGE.
-
-            Elle etait gardee a distance comme signal qu'il y a du butin qui vaut le
-            deplacement (5 Sep). Ce que cette decision ne voyait pas, c'est ce qu'une couronne
-            EST: `spawnRays` cree deux entites, un quad avec son propre materiau PBR, et un
-            `setRotateContinuous` PERPETUEL. Trois lignes plus bas, ce fichier ecrit que la
-            rotation est coupee au loin parce que "cent pieces tweenees coutent au tick de
-            scene plus que toutes les bases reunies". La chose interdite par ce commentaire
-            etait faite juste au-dessus, sous un autre nom, et jusqu'a onze cent cinquante deux
-            fois sur un terrain de tours garnies.
-
-            Le signal ne disparait pas: une base lointaine garde ses pieces, leur taille, leur
-            couleur et leur flottement, ce qui dit deja qu'il y a du rare dedans. Ce qu'elle
-            perd est une rotation qu'on ne distingue pas a cette distance.
-          */
-          clearRays(ent)
+          // The crown of rays stays at a distance: it is the signal that there is loot worth
+          // the walk, which is what a far base has to say (owner, 5 Sep: the margin goes to legibility).
+          toyRays(ent, v.racine, Vector3.create(d.dx, d.dy + JEU + PEDESTAL_THICKNESS + size + 0.35, d.dz),
+            rarityOf(code) >= RAYS_MIN_RARITY ? (m.mult > 1 ? m.color : itemColor(rarityOf(code), mutationDe(code))) : null)
           remonter(ent, itemFile(code))
           toyFloat(ent, rarityOf(code) >= FLOAT_MIN_RARITY ? FLOAT_AMPLITUDE / size : null)
           // No spin at a distance: every tweened piece writes its Transform back into the scene
