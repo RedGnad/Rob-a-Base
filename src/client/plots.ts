@@ -291,8 +291,35 @@ function baseCost(
     if (rarityOf(it) >= RAYS_MIN_RARITY) rays++
     if (rarity(rarityOf(it)).glow >= LIGHT_MIN_GLOW) lit++
   }
-  // Reduced: plinth and lift are primitives; shells, accents, glass and the bare pieces are shared files.
-  const loin: Cost = { mats: 2 + rays, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces + rays }
+  /*
+    LA COURONNE DE RAYONS QUITTE LE COUT REDUIT, ET L'ARGUMENT N'EST PAS CELUI DE CE MATIN.
+
+    Premiere tentative, retiree: "le plancher du LOD depasse le budget". FAUX, et le pont MCP l'a
+    montre le 7 Sep: le modele annonçait 461 materiaux la ou le client en mesure 323. Il est
+    pessimiste d'un facteur deux parce qu'il ignore le culling (427 draws visibles sur 769).
+
+    LE VRAI ARGUMENT, mesure puis projete. Au champ plein le telephone compte 366 materiaux sur
+    un avertissement a 400, soit 92 %: c'est le SEUL compteur qui approche son plafond, tout le
+    reste est entre 32 et 57 %. Or la couronne est un quad primitif, donc UN materiau chacune, et
+    leur nombre suit la part de Legendary+ posee sur le terrain. Le harnais qui a servi a mesurer
+    genere 20 % de Legendary+; un monde mur en tient davantage. A 30 % on est a 404 materiaux, a
+    40 % a 432.
+
+    C'est donc LE SEUL TERME DU TERRAIN QUI GRANDIT AVEC LA RICHESSE DES JOUEURS SANS PLAFOND, et
+    il tombe sur le compteur le plus tendu. Le LOD ne peut rien y faire: il ne decide que des
+    PROMOTIONS au detail complet, tout le monde paie deja le cout reduit.
+
+    Retirees du loin, elles ne sont plus payees que par les bases que le budget a deja decide de
+    pouvoir s'offrir: le cout redevient BORNE. Pres, elles restent, parce que c'est la qu'on les
+    voit et que le proprietaire les a achetees le 5 Sep en relevant `MATERIAL_BUDGET` de 360 a
+    380 "a la lisibilite des bases".
+
+    Effet de bord qui compte autant: `spawnRays` pose un `setRotateContinuous` PERPETUEL par
+    couronne. Trois lignes sous l'appel dans la branche lointaine, ce fichier ecrit que la
+    rotation est coupee au loin parce que "cent pieces tweenees coutent au tick de scene plus que
+    toutes les bases reunies". On en comptait deja une cinquantaine sur le champ mesure.
+  */
+  const loin: Cost = { mats: 2, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces }
   if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
@@ -301,7 +328,7 @@ function baseCost(
   // and crown of a skin, one glyph plane per letter; in draws also one pad per piece and one
   // painted pool per lit piece. Pads are files shared per colour, billed once on the field.
   const extras = 2 + cones + crown + p.ownerName.length
-  return { mats: loin.mats + extras, draws: loin.draws + extras + pieces + lit }
+  return { mats: loin.mats + extras + rays, draws: loin.draws + extras + rays + pieces + lit }
 }
 
 function modele(src: string, y: number, rendu = true): Entity {
@@ -786,7 +813,17 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
     donnerait des pieces d'un metre: elle maintient un reflet visible, ce qui est le role
     demande.
   */
-  const grossir = Math.min(3.2, 1 + Math.max(0, dist - 8) / 14)
+  /*
+    LE PREMIER REGLAGE ETAIT TROP FORT (proprietaire, 7 Sep: "l'effet est trop exagere, ca fait
+    bizarre"). Plafond a 3,2, soit une piece 220 % plus grosse au bout du terrain, et une rampe
+    qui demarrait des huit metres. Une compensation de distance doit se SENTIR sans se VOIR: des
+    qu'on la remarque, elle cesse d'etre une correction optique et devient un effet.
+
+    Donc rien avant dix metres, une rampe deux fois plus douce, plafond a 1,8. La piece la plus
+    lointaine est 80 % plus grosse au lieu de 220 %, ce qui suffit a la garder visible sans qu'on
+    puisse dire qu'elle a change de taille.
+  */
+  const grossir = Math.min(1.8, 1 + Math.max(0, dist - 10) / 30)
   // Combien de socles paient, pour savoir a quel rythme chacun peut le faire.
   let occupes = 0
   for (const c of p.items) if (c !== VIDE) occupes += 1
@@ -1872,10 +1909,11 @@ export function setupPlots(): void {
           clearShape(ent)
           clearPedestal(ent)
           clearLight(ent)
-          // The crown of rays stays at a distance: it is the signal that there is loot worth
-          // the walk, which is what a far base has to say (owner, 5 Sep: the margin goes to legibility).
-          toyRays(ent, v.racine, Vector3.create(d.dx, d.dy + JEU + PEDESTAL_THICKNESS + size + 0.35, d.dz),
-            rarityOf(code) >= RAYS_MIN_RARITY ? (m.mult > 1 ? m.color : itemColor(rarityOf(code), mutationDe(code))) : null)
+          // La couronne part avec le reste: un materiau chacune, en nombre non borne, sur le
+          // compteur le plus tendu du jeu. Le raisonnement complet est dans `baseCost`. Ce que la
+          // base lointaine garde pour dire qu'il y a du rare dedans: ses pieces, leur taille,
+          // leur couleur et leur flottement.
+          clearRays(ent)
           remonter(ent, itemFile(code))
           toyFloat(ent, rarityOf(code) >= FLOAT_MIN_RARITY ? FLOAT_AMPLITUDE / size : null)
           // No spin at a distance: every tweened piece writes its Transform back into the scene
