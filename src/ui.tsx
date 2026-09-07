@@ -282,6 +282,41 @@ function coinDroit(rang: number): number {
 const MENU_PAD = 18
 const MENU_ENTETE = TAP.height + 14
 
+/*
+  UN MUR PLEIN ECRAN DERRIERE LA FENETRE, SUR ORDINATEUR SEULEMENT.
+
+  Ce que dit la trace (`debug:ui`, lue le 7 Sep). Sur le bureau, on trouve des series d'appuis
+  qui n'atteignent personne: `entity=-1`, porteur 0, aucun porteur d'interface, aucun
+  gestionnaire. Build 1925, cinq appuis en 3,5 s juste apres un CLAIM (15217, 16266, 17081,
+  18172, 18750). Build 2b97, cinq appuis en 5 s juste apres TRAVEL. Ce ne sont pas des doubles:
+  ils sont espaces d'une seconde a une seconde et demie. Le client ne teste meme pas la
+  fenetre: l'appui part au MONDE.
+
+  La cause etait deja ecrite trois lignes plus bas, et le diagnostic date du 2 Sep: un appui
+  qui passe a cote d'un bouton va au monde, le client reprend le curseur, notre systeme le
+  relache une image plus tard, et cet appui-la a servi a recuperer le curseur au lieu d'agir.
+  La fenetre a ete rendue etanche a ce moment-la. Ce qui ne l'a jamais ete, c'est TOUT CE QUI
+  L'ENTOURE, laisse libre pour qu'un glissement puisse encore tourner la camera sur telephone.
+
+  Ce compromis ne paie rien sur un ordinateur: avec un menu ouvert on ne fait pas pivoter la
+  camera a la souris, on clique. Le mur n'existe donc que la, et le telephone garde son ecran
+  libre exactement comme avant. Il porte un voile leger plutot que d'etre transparent, pour
+  deux raisons qui vont dans le meme sens: une surface reellement invisible n'est pas garantie
+  d'etre testee au pointeur, et un panneau modal se detache de son fond dans a peu pres toutes
+  les interfaces publiees.
+*/
+const MenuSheet = () => {
+  if (phone() || modale() || !menuView.open) return null
+  return (
+    <UiEntity
+      uiTransform={{
+        width: '100%', height: '100%', positionType: 'absolute',
+        position: { top: 0, left: 0 }, pointerFilter: 'block'
+      }}
+      uiBackground={{ color: Color4.create(0, 0, 0, 0.22) }} />
+  )
+}
+
 const MenuWindow = () => {
   if (modale() || !menuView.open) return null
 
@@ -1849,6 +1884,7 @@ const uiComponent = () => {
     <WelcomePanel />
     <PrestigePanel />
     <FusionPanel />
+    <MenuSheet />
     <MenuWindow />
 
     {/* Not over the crate act: nothing is aimed at during it (owner, 5 Sep). */}

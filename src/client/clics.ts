@@ -49,13 +49,36 @@ const ENVOI_MS = 10_000
   covers a handler that ran earlier in the same frame; it is one frame wide, not more, so it can
   never reach the previous press.
 */
-type EnAttente = { at: number; entity: number; ui: boolean; menu: boolean; contexte: string; age: number; stamp: number; porteur: number }
+/*
+  LE DOUBLE EST MESURE, donc il cesse d'etre compte comme un raté.
+
+  La premiere lecture (7 Sep) donne la reponse a la question posee en tete de ce fichier: un
+  seul clic est rapporte DEUX FOIS par le client, avec deux estampilles consecutives et deux
+  PORTEURS differents, l'entite racine puis l'element d'interface presse. Exemple mesure,
+  `CLAIM/187` sur le build 1925: 13916 (porteur 0, estampille 14818) puis 13951 (porteur 1441,
+  estampille 14819), 35 ms plus tard, un seul appui.
+
+  Consequence sur cet instrument, et elle invalide une partie de sa premiere sortie: l'ecart
+  observe va de 18 a 132 ms, alors que `AVANT_MS` vaut 40. La seconde moitie d'un double
+  tombait donc regulierement hors de la fenetre d'attribution et etait ecrite `served=0`, ce
+  qui la faisait lire comme un appui perdu alors que le premier avait ete servi. Une bonne
+  part des `served=0` de la premiere lecture sont ce faux positif.
+
+  Corrige ici, pas en elargissant la fenetre (ce qui creerait le faux positif inverse, un vrai
+  rate attribue au service precedent): l'appui porte maintenant sa propre colonne `dbl`, mise a
+  un quand il suit le precedent de moins de 250 ms. Un `served=0 dbl=1` est un doublon
+  inoffensif, un `served=0 dbl=0` est un appui reellement perdu.
+*/
+const DOUBLE_MS = 250
+type EnAttente = { at: number; entity: number; ui: boolean; menu: boolean; contexte: string; age: number; stamp: number; porteur: number; dbl: boolean }
 /** How far back a serving may sit and still belong to this press: one frame at 30 fps. */
 const AVANT_MS = 40
 
 let attente: EnAttente | null = null
 /** The highest command timestamp seen: the SDK's own newness rule, applied here. */
 let dernierStamp = 0
+/** L'instant du dernier appui recu, pour reconnaitre la seconde moitie d'un double. */
+let dernierePresse = 0
 /** The recent servings, newest last: a press is matched against this, never against a counter. */
 let servis_recents: Array<{ cle: string; at: number }> = []
 let dernierEvenement = { nom: 'start', at: Date.now() }
@@ -126,7 +149,7 @@ function ecrire(e: EnAttente, servePar: string | null): void {
     entity whose result carried it tell the two apart: same stamp twice is the scene, two
     stamps from the root is the client.
   */
-  // t | entity hit | ui? | menu? | served? | control | what happened before | its age | camera flips | client stamp | carrier
+  // t | entity hit | ui? | menu? | served? | control | before | age | flips | stamp | carrier | double?
   lignes.push([
     e.at,
     e.entity,
@@ -138,7 +161,8 @@ function ecrire(e: EnAttente, servePar: string | null): void {
     e.age,
     bascules,
     e.stamp,
-    e.porteur
+    e.porteur,
+    e.dbl ? 1 : 0
   ].join('|'))
   if (lignes.length > TAMPON_MAX) lignes = lignes.slice(-TAMPON_MAX)
 }
@@ -212,8 +236,10 @@ export function setupClics(): void {
           menu: menuOuvert(),
           age: Math.min(99_999, maintenant - dernierEvenement.at),
           stamp: cmd.timestamp,
-          porteur: porteur & 0xffff
+          porteur: porteur & 0xffff,
+          dbl: maintenant - dernierePresse < DOUBLE_MS
         }
+        dernierePresse = maintenant
       }
     }
 

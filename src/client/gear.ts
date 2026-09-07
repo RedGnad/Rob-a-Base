@@ -119,11 +119,16 @@ export function setupGear(): void {
     // Worn gear is passive: holding it is using it.
     setCoil(gearView.held[1] > 0)
   })
-  room.onMessage('gearBought', (d) => {
-    // Le meme tiroir-caisse que l'achat au tapis: un seul son pour "de l'argent vient de
-    // partir", quel que soit le guichet.
+  /*
+    Achete depuis la boutique, en regardant la ligne qui vient de changer.
+
+    La banniere disait "TU EN AS N" alors que le titre de la ligne sous le doigt dit deja
+    `<nom> xN` et se met a jour au meme instant (`shop-ui.tsx`, ligne du titre). Elle repetait
+    donc, en travers de l'ecran, ce que le joueur etait deja en train de lire. Le tiroir-caisse
+    dit que l'argent est parti, la ligne dit ce qu'on a: il ne manque rien.
+  */
+  room.onMessage('gearBought', () => {
     cue('till.wav', 0.7)
-    alerter(`${GEARS[d.gear].name} IN YOUR POCKET  ·  you hold ${d.held}  ·  -${formatIncome(d.cost)}`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('gearPlaced', (d) => {
     alerter(`${GEARS[d.gear].name} SET  ·  ${d.held} left in your pocket`, '#4dd2ff', TOAST.result)

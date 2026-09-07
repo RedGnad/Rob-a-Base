@@ -296,6 +296,18 @@ export function setupTheft(): void {
       the player was handed a number about the one thing that had stayed the same, at the
       exact moment they were trying to work out what they had just paid for.
     */
+    /*
+      La seule fanfare du jeu, et le seul endroit ou elle a le droit d'exister.
+
+      Le prestige etait MUET: la seule decision irreversible du jeu, le seul multiplicateur
+      definitif, et il ne jouait rien pendant que le compteur repartait de zero. Le silence au
+      moment culminant de la boucle se lit "il ne s'est rien passe", exactement le contraire de
+      ce qui vient d'arriver. Il ne pouvait rien emprunter non plus: `reveal-huge` appartient a
+      la caisse la plus rare et `till` a la monnaie, et porter l'un des deux aurait dit "tu as
+      tire un Secret" ou "tu as achete un truc" a l'instant ou le joueur vient de tout rendre.
+      Un son de cette taille employe deux fois cesse de vouloir dire "la plus grande chose".
+    */
+    cue('prestige.wav', 0.9)
     alerter(`PRESTIGE ${d.prestige}  ·  INCOME x${d.multiplier} FOR GOOD`, '#f5a524', TOAST.event)
     console.log(`[CLIENT] prestige ${d.prestige}, income x${d.multiplier}`)
   })
@@ -371,9 +383,14 @@ export function setupTheft(): void {
     console.log(`[CLIENT] silo ${d.silos} achete pour ${d.cost}, plafond ${d.capS}s`)
   })
 
+  /*
+    L'etage se VOIT, donc il ne s'ecrit plus: un plancher entier apparait devant le joueur avec
+    ses six emplacements vides dessus. Le silo, lui, reste ecrit: rien ne change dans le monde
+    quand on l'achete, il ne fait que relever le plafond de ce que la base met de cote pendant
+    l'absence, et une phrase est le seul endroit ou ce chiffre existe.
+  */
   room.onMessage('floorBought', (d) => {
     cue('till.wav', 0.7)
-    alerter(`FLOOR ${d.floors} UNLOCKED  ·  +6 slots`, '#4dd2ff', TOAST.result)
     console.log(`[CLIENT] floor ${d.floors} achete pour ${d.cost}`)
   })
 
