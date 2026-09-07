@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Base War: a Decentraland SDK7 multiplayer tycoon game, deployed as a World (`basewar.dcl.eth`).
+Rob a Base: a Decentraland SDK7 multiplayer tycoon game, deployed as a World (`basewar.dcl.eth`).
 Authoritative multiplayer server (`@dcl/sdk@auth-server`); the same codebase runs on server and client.
 
 ## Language: English only, no exceptions
