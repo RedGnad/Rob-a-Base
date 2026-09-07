@@ -1601,10 +1601,11 @@ const uiComponent = () => {
   */
   const topBlocks: Array<[string, boolean, number]> = [
     ['money', true, TYPE.hero + 6 + 34 + 6],
-    // As tall as the plate drawn in it (64): a band shorter than its plate ate the gap under it,
-    // and the toasts landed glued to a boss line (owner, 5 Sep).
-    ['event', bannerLine() !== null, 64],
-    ['belt', beltView.annonce !== '', 68]  // the announcement plate is 68 high; same rule
+    // Aussi hautes que la plaque dessinee dedans: une bande plus courte que sa plaque mangeait
+    // l'ecart en dessous, et les toasts arrivaient colles a une ligne de boss (5 Sep). Les deux
+    // sont a 52 pour que les TROIS blocs tiennent, voir `BAND.topHeight`.
+    ['event', bannerLine() !== null, 52],
+    ['belt', beltView.annonce !== '', 52]
   ]
   const band = topBand(topBlocks)
   /*
@@ -1948,7 +1949,7 @@ const uiComponent = () => {
         uiBackground={SKIN.panel}
       >
         <Label value={`INVISIBLE  ${gearView.cloakLeftS}s`} fontSize={TYPE.caption} textWrap="nowrap"
-          color={Color4.fromHexString('#4dd2ffff')} uiTransform={{ height: 40 }} textAlign="middle-center" />
+          color={Color4.fromHexString('#4dd2ffff')} uiTransform={{ height: 40 }} textAlign="middle-left" />
       </UiEntity>
     )}
 
@@ -1961,9 +1962,19 @@ const uiComponent = () => {
         }}
         uiBackground={SKIN.panel}
       >
+        {/*
+          Le texte est cale a GAUCHE, comme toute rangee d'une colonne.
+
+          La colonne porte une largeur unique, 440, pour que ses bords gauches ne fassent pas
+          un escalier. Centre dedans, un texte court comme "RAID IN 00:30" flotte au milieu
+          d'une plaque trois fois plus large que lui et lit comme une grosse bulle, alors que
+          c'est une rangee (proprietaire, 7 Sep). Cale a gauche, la meme plaque lit comme une
+          ligne d'un panneau, ce qu'elle est: la largeur unique cesse d'etre un cadre autour
+          du texte pour redevenir une colonne.
+        */}
         <Label value={nextBigText() ?? ''} fontSize={TYPE.caption}
           color={Color4.fromHexString('#ffd166ff')}
-          uiTransform={{ height: 40 }} textAlign="middle-center" textWrap="nowrap" />
+          uiTransform={{ height: 40 }} textAlign="middle-left" textWrap="nowrap" />
       </UiEntity>
     )}
 
@@ -2038,7 +2049,7 @@ const uiComponent = () => {
         <UiEntity
           uiTransform={{
             width: Math.min(strip(760).width, largeurTexte(bannerLine()?.text ?? '', TYPE.label) + 60),
-            height: 64, justifyContent: 'center', alignItems: 'center'
+            height: 52, justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={SKIN.panel}
         >
@@ -2046,7 +2057,7 @@ const uiComponent = () => {
             value={bannerLine()?.text ?? ''}
             fontSize={TYPE.label}
             color={Color4.fromHexString(lisible(bannerLine()?.color ?? '#ffffff') + 'ff')}
-            uiTransform={{ width: '100%', height: 64 }} textAlign="middle-center" textWrap="nowrap" />
+            uiTransform={{ width: '100%', height: 52 }} textAlign="middle-center" textWrap="nowrap" />
         </UiEntity>
       </Centre>
     )}
@@ -2056,7 +2067,7 @@ const uiComponent = () => {
         <UiEntity
           uiTransform={{
             width: Math.min(strip(860).width, largeurTexte(beltView.annonce, TYPE.label) + 64),
-            height: 68, justifyContent: 'center', alignItems: 'center'
+            height: 52, justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={SKIN.panel}
         >
@@ -2255,16 +2266,28 @@ const uiComponent = () => {
       player is WAITING for, so it gets the plate every other statement in this interface has,
       body size, and the amber that means "there is something for you here".
     */}
+    {/*
+        Plus bas et plus affirme, en deux passes.
+
+        Cette ligne dit la seule chose que le joueur peut faire et ne fait pas: des boites
+        l'attendent chez lui. Elle etait une legende grise perdue au-dessus des commandes, et
+        apres une premiere correction elle restait "encore un peu trop peu discrete" et trop
+        haut (proprietaire, 6 puis 7 Sep). Elle descend contre la rangee de commandes, la ou
+        le pouce regarde deja, et prend le corps d'un titre plutot que celui d'une legende.
+        Un liseré dans sa propre couleur la separe du fond sans lui donner l'air d'un bouton:
+        elle informe, elle ne se presse pas.
+    */}
     {hint() !== '' && !combatView.aiming && hud() && (
-      <Centre bottom={row(0) + 62}>
+      <Centre bottom={row(0) + 18}>
         <UiEntity
           uiTransform={{
-            height: 52, padding: { left: 22, right: 22 },
-            justifyContent: 'center', alignItems: 'center'
+            height: 60, padding: { left: 26, right: 26 },
+            justifyContent: 'center', alignItems: 'center',
+            borderWidth: 2, borderColor: C.bonus, borderRadius: RAD.card
           }}
           uiBackground={SKIN.panel}
         >
-          <Label value={hint()} fontSize={TYPE.body} color={C.bonus} textWrap="nowrap" />
+          <Label value={hint()} fontSize={TYPE.label} color={C.bonus} textWrap="nowrap" />
         </UiEntity>
       </Centre>
     )}

@@ -132,7 +132,18 @@ export const STACK_GAP = 16
 export const BAND = {
   /** Non-actionable messages: the counter, the step line, the belt announcement. */
   top: 10,
-  topHeight: 250,
+  /*
+    262, et ce nombre est une capacite, pas un gout.
+
+    Les trois blocs de la bande demandaient 118 + 64 + 68 plus deux ecarts de 16, soit 282
+    pour 250 disponibles: le troisieme etait donc REFUSE et jamais dessine. Ce n'etait pas un
+    cas limite, c'etait une impossibilite geometrique permanente. Une caisse Divine est passee
+    sur le tapis pendant qu'une horloge de raid etait affichee et le proprietaire n'a rien vu
+    (7 Sep), ce qui etait le comportement ecrit: sur une bande pleine, le dernier bloc saute.
+    Les deux plaques de moment sont ramenees a 52 et le plafond a 262: 118 + 16 + 52 + 16 + 52
+    = 254, les trois tiennent, et une annonce ne peut plus disparaitre en silence.
+  */
+  topHeight: 262,
   /** Controls. Rows stack upward from the bottom, each one TAP.height tall. */
   bottom: 26,
   /** Dialogs own the middle and everything else hides while one is up. */
