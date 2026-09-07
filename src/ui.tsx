@@ -1956,7 +1956,20 @@ const uiComponent = () => {
     */}
     {hud() && rushChip() !== null && (() => {
       const texte = rushChip()?.text ?? ''
-      const w = largeurTexte(texte, TYPE.caption) + 32 + 38
+      /*
+        La largeur est DECLAREE, et elle ne l'etait pas.
+
+        `w` etait calculee ici puis servait uniquement a centrer le depart du vol; la pastille,
+        elle, n'avait aucune largeur et se dimensionnait sur son contenu. Les deux nombres ne
+        coincidaient donc pas, ce qui faisait partir le vol decentre et, quand un halo a ete
+        pose derriere en se fiant a `w`, deborder tout l'ecart d'un seul cote (ancre a droite).
+        Une largeur calculee et jamais appliquee est une largeur fausse.
+
+        Elle est calculee comme celles de la colonne, meme plancher `COIN_MIN`, plus la place
+        de l'icone et de ses marges: dans une colonne de plaques alignees, celle-ci ne peut pas
+        etre la seule a mesurer autre chose.
+      */
+      const w = Math.max(COIN_MIN, Math.round(largeurTexte(texte, TYPE.caption) + 28 + 10 + 32))
       const age = Date.now() - eventView.sinceMs
       const p = Math.max(0, Math.min(1, (age - RUSH_HOLD_MS) / RUSH_FLIGHT_MS))
       const e = 1 - Math.pow(1 - p, 3)
@@ -1964,35 +1977,43 @@ const uiComponent = () => {
       const top = Math.round(fromTop + (coinDroit(1) - fromTop) * e)
       const right = Math.round(fromRight + (rightCornerMargin() - fromRight) * e)
       /*
-        Un halo qui respire, et seulement sous celle-ci.
+        LE HALO QUI RESPIRAIT EST RETIRE, ET LE SIGNIFIANT PASSE PAR LE BORD.
 
-        C'est la seule plaque du coin qui prenne un appui: elle ouvre la carte de l'evenement.
-        Rien ne le disait, donc l'affordance existait sans etre signifiee (proprietaire, 7 Sep:
-        "c'etait bien et affordant mais pas assez signifiant"), ce qui est exactement le defaut
-        que Norman nomme en propre, un signifiant manquant sur une affordance reelle. Le
-        mouvement est le canal preattentif le moins couteux ici: une lueur qui monte et descend
-        dit "vivant, appuie" sans un mot et sans une fleche.
+        Le probleme reste vrai: c'est la seule plaque du coin qui prenne un appui, elle ouvre la
+        carte de l'evenement, et rien ne le disait. Norman nomme exactement ce defaut, un
+        signifiant manquant sur une affordance reelle. Ce sont les trois reponses successives
+        qui etaient fausses.
 
-        Il est dessine AVANT la plaque et deborde de onze unites tout autour, donc il est
-        derriere elle et ne touche pas la lisibilite du texte. Lent, deux secondes et demie par
-        cycle, et d'amplitude tenue basse: un clignotement rapide dans un coin de compteurs
-        serait precisement le bruit que cette colonne existe pour eviter.
+        1. LE MOUVEMENT REPONDAIT A LA MAUVAISE QUESTION. Une lueur qui pulse dit "il se passe
+        quelque chose ici"; elle ne dit pas "ceci s'appuie". Dans un HUD, un compteur qui
+        clignote veut meme conventionnellement dire une ALERTE, un minuteur qui expire ou une
+        ressource au plafond. Le mouvement est un canal d'ATTENTION, la question posee etait
+        une question d'IDENTITE.
+
+        2. UN HALO N'EST PAS FAISABLE. L'interface de la plateforme n'a ni flou, ni degrade, ni
+        ombre portee: une couleur de fond avec un rayon de coin est une DALLE PLATE. Ce que le
+        proprietaire a vu, "un carre solide abrupt", est exactement ce que l'API peut produire.
+
+        3. ET LA PLAQUE DE BOUTON AURAIT COUTE LA LISIBILITE, mesure a l'appui. `SKIN.secondary`
+        est un bleu moyen (63, 134, 214). Le texte et l'icone de cette pastille portent la
+        couleur du rush, qui est ce qui dit LEQUEL tourne. Le cyan du Cyber Rush mesure 8,55
+        contre la plaque navy et 2,44 contre la plaque bleue: sous le plancher de 3 pour 1 que
+        ce depot s'impose pour un graphique ou un grand texte. Signifier le bouton par sa plaque
+        aurait divise par trois et demi la lisibilite de l'information que la pastille porte.
+
+        CE QUI RESTE, ET C'EST LE SIGNIFIANT LE PLUS DIRECT DE TOUS: une surface BORNEE qui se
+        lit comme un objet distinct. Un liseré dans le bleu des controles, sur la plaque sombre
+        qu'on garde. Il mesure 3,5 contre elle, donc il se voit; il ne touche ni le fond ni le
+        texte, donc les 8,55 du rush restent intacts; et il ne coute aucun actif.
       */
-      const pulse = 0.14 + 0.13 * (0.5 + 0.5 * Math.sin(Date.now() / 400))
-      const teinte = Color4.fromHexString(lisible(rushChip()?.color ?? '#ffffff') + 'ff')
       return [
-      <UiEntity key="rush-halo"
-        uiTransform={{
-          width: w + 22, height: COIN_H[1] + 22, positionType: 'absolute',
-          position: { top: top - 11, right: right - 11 },
-          borderRadius: RAD.card, opacity: pulse
-        }}
-        uiBackground={{ color: teinte }} />,
       <UiEntity key="rush-chip"
         uiTransform={{
-          height: COIN_H[1], positionType: 'absolute', padding: { left: 16, right: 16 },
+          width: w, height: COIN_H[1], positionType: 'absolute',
           position: { top, right },
-          flexDirection: 'row', alignItems: 'center', pointerFilter: 'block'
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+          borderWidth: 3, borderColor: Color4.fromHexString('#3f86d6ff'), borderRadius: RAD.card,
+          pointerFilter: 'block'
         }}
         uiBackground={SKIN.panel}
         onMouseDown={() => openRushCard(false)}
