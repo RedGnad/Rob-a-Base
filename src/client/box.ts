@@ -708,15 +708,15 @@ export function openCrate(crateTier: number): void {
 
   const base = myBasePosition()
   if (base === null) {
-    alerter('BUILD YOUR BASE FIRST', '#ff6b6b', TOAST.warning)
+    alerter('BUILD YOUR BASE FIRST', '#ff6b6b', TOAST.result)
     return
   }
   if (!peutOuvrirIci()) {
-    alerter('GO TO YOUR BASE TO OPEN IT', '#ffd166', TOAST.warning)
+    alerter('GO TO YOUR BASE TO OPEN IT', '#ffd166', TOAST.result)
     return
   }
   if (maBasePleine()) {
-    alerter('BASE FULL  ·  SELL OR BUY A FLOOR', '#ff6b6b', TOAST.warning)
+    alerter('BASE FULL  ·  SELL OR BUY A FLOOR', '#ff6b6b', TOAST.result)
     return
   }
 

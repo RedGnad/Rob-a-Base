@@ -143,8 +143,8 @@ export const FusionPanel = () => {
                   width={360} height={TAP.menu} primary={assez && paye}
                   onClick={() => {
                     // A press that cannot act says why: a silent button is pressed again (owner, 4 Sep).
-                    if (!assez) { alerter(`${FUSION_NEEDS} ${r.name.toUpperCase()}S NEEDED, YOU HAVE ${total}`, '#ffd166', TOAST.warning); return }
-                    if (!paye) { alerter(`NOT ENOUGH COINS  ·  ${formatIncome(Math.ceil(prix - theftView.coins))} MORE`, '#ffd166', TOAST.warning); return }
+                    if (!assez) { alerter(`${FUSION_NEEDS} ${r.name.toUpperCase()}S NEEDED, YOU HAVE ${total}`, '#ffd166', TOAST.result); return }
+                    if (!paye) { alerter(`NOT ENOUGH COINS  ·  ${formatIncome(Math.ceil(prix - theftView.coins))} MORE`, '#ffd166', TOAST.result); return }
                     sendOrHold(() => { void room.send('fuseFromBase', { rarity: r.id }) })
                     closeFuser()
                   }} />

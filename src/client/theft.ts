@@ -244,7 +244,7 @@ export function setupTheft(): void {
   })
   room.onMessage('stealFailed', (d) => {
     theftView.stealing = false
-    alerter(`STEAL FAILED: ${d.reason.toUpperCase()}`, '#ff6b6b', TOAST.warning)
+    alerter(`STEAL FAILED: ${d.reason.toUpperCase()}`, '#ff6b6b', TOAST.result)
   })
   room.onMessage('beingRobbed', (d) => {
     alerter(`${d.byName.toUpperCase()} IS TAKING YOUR ${rarity(d.rarity).name.toUpperCase()}!`, '#ff6b6b', Math.min(TOAST.event, Math.max(TOAST.warning, d.restantMs)))
@@ -407,7 +407,7 @@ export function setupTheft(): void {
   room.onMessage('actionRejected', (d) => {
     // Une pose refusee rend la main: le marqueur se rallume et le joueur peut choisir ailleurs.
     if (d.action === 'build') poseView.pending = false
-    alerter(d.reason.toUpperCase(), '#ff6b6b', TOAST.warning)
+    alerter(d.reason.toUpperCase(), '#ff6b6b', TOAST.result)
     console.log(`[CLIENT] refuse (${d.action}): ${d.reason}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })
 

@@ -125,7 +125,7 @@ const Rang = (props: {
         skin={props.bouton === 'LOCKED' || props.bouton === 'OWNED' ? 'disabled' : undefined}
         onClick={() => {
           if (props.possible) props.onClick()
-          else if (props.refus !== undefined && props.bouton !== 'LOCKED' && props.bouton !== 'OWNED') alerter(props.refus.toUpperCase(), '#ffd166', TOAST.warning)
+          else if (props.refus !== undefined && props.bouton !== 'LOCKED' && props.bouton !== 'OWNED') alerter(props.refus.toUpperCase(), '#ffd166', TOAST.result)
         }} />
     </UiEntity>
   </UiEntity>

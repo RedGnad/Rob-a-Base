@@ -137,7 +137,7 @@ export function setupConvoy(): void {
       }
 
       if (clicMonde(v.body)) {
-        if (mine) alerter('THIS ONE IS ALREADY YOURS', '#ffd166', TOAST.warning)
+        if (mine) alerter('THIS ONE IS ALREADY YOURS', '#ffd166', TOAST.result)
         else void room.send('outbid', { convoyId: c.convoyId })
       }
     }

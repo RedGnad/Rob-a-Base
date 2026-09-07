@@ -1441,7 +1441,7 @@ export function setupPlots(): void {
 
       if (clicMonde(v.ascenseur)) {
         if (v.ownerId.toLowerCase() !== myClientAddress()) {
-          alerter('NOT YOUR ELEVATOR  ·  TAKE THE RAMP', '#ffd166', TOAST.warning)
+          alerter('NOT YOUR ELEVATOR  ·  TAKE THE RAMP', '#ffd166', TOAST.result)
           return
         }
         goUpOneFloor(v)

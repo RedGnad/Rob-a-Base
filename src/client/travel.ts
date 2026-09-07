@@ -139,7 +139,7 @@ function setupGardeFou(): void {
 */
 export function rentrer(): void {
   const p = maBase()
-  if (p === null) { alerter('YOU HAVE NO BASE YET', '#ffd166', TOAST.warning); return }
+  if (p === null) { alerter('YOU HAVE NO BASE YET', '#ffd166', TOAST.result); return }
   cue('lift.wav', 0.55)
   moveTo('retour-base', p, Vector3.create(p.x, FLOOR_HEIGHT, p.z - 4))
 }

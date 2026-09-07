@@ -202,10 +202,24 @@ export const RAD = { card: 14, bar: 10 } as const
  * to 9, on a plate half the width of a phone, in the third of the screen where the game is
  * played: "they take too much room and stay too long" (mobile tester, 3 Sep).
  *
- *   result   what the player just did, and the screen already shows it: fused, delivered,
- *            set, bought. Read in passing.
- *   warning  a refusal, or something done to the player that asks for a reaction: shot,
- *            frozen, base full. Long enough to be read twice.
+ * The line between the first two is NOT how bad the news is, it is WHO STARTED IT, and that
+ * distinction is the whole reason a refusal can be short. A player who has just pressed
+ * something is already looking at the interface waiting for the answer, so the plate only has
+ * to be read; a player who is shot, frozen or outbid was looking at the world, and has to
+ * NOTICE the plate before reading a word of it. That noticing is the only thing 4 s buys, and
+ * it is worth nothing to the player who asked the question.
+ *
+ * The measurement that settled it (7 Sep): our toasts run 6 words median and 9 at the longest,
+ * which is 1.5 s to 2.3 s of reading at 238 wpm (Brysbaert 2019, 190 studies, silent reading of
+ * English non-fiction). So 4 s was more than double the reading time for a class where half the
+ * entries had no noticing to pay for. It also costs something real: the stack holds TWO plates,
+ * so a refusal squatting a slot for 4 s can push out a fresher line mid-fight.
+ *
+ *   result   the player pressed something and this is the answer, refusals included: fused,
+ *            delivered, bought, base full, not enough coins, steal failed. They are already
+ *            looking. Read in passing.
+ *   warning  done TO the player, unasked, and it asks for a reaction: shot, frozen, outbid,
+ *            sentry triggered, pushed out. Pays for the noticing, then reads twice.
  *   event    rare and worth a beat: a boss slain, a prestige, your best item stolen. The
  *            ceiling; nothing lives longer.
  *

@@ -107,7 +107,7 @@ export function setupCarry(): void {
   room.onMessage('carryResult', (d) => {
     if (d.ok) return
     // Only the failures need saying: a success is already visible in the player's own hand.
-    alerter(d.reason.toUpperCase(), '#ffd166', TOAST.warning)
+    alerter(d.reason.toUpperCase(), '#ffd166', TOAST.result)
   })
 
   engine.addSystem(() => {
