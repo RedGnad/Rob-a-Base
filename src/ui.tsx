@@ -38,7 +38,7 @@ import { verb } from './client/verb'
 import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue, stepVerb } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
-import { RARITIES, itemName, itemColor, mutation, formatIncome, formatSolde, prixDeRevente, crate, itemIncome } from './shared/loot-table'
+import { RARITIES, itemName, itemColor, mutation, formatIncome, formatSolde, prixDeRevente, crate } from './shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
@@ -1079,10 +1079,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   if (fuserInReach()) return { id: 'fuser', label: 'FUSER', icon: ico('fuse'), action: agirSurFuser }
   if (elevatorInReach()) return { id: 'monter', label: 'GO UP', icon: ico('up'), action: monterIci }
   const pad = padEnFace()
-  // Le rendement suit le nom, comme le prix suit le nom sur l'achat au tapis. Voler dit ce que
-  // le vol vaut, ramasser dit ce qu'on retire a sa propre base: c'est la meme information et
-  // elle decide dans les deux cas.
-  if (pad !== null && !pad.mine) return { id: 'voler', label: `STEAL ${pad.nom}  ·  ${rendementDuPad(pad.code)}`, icon: ico('steal'), action: () => agirSurPad(pad) }
+  if (pad !== null && !pad.mine) return { id: 'voler', label: `STEAL ${pad.nom}`, icon: ico('steal'), action: () => agirSurPad(pad) }
   /*
     Se planter devant son propre socle passe avant l'offre d'ouvrir une caisse.
 
@@ -1090,7 +1087,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     une, le bouton disait OPEN partout dans sa base et "PICK UP" ne pouvait plus jamais sortir
     (proprietaire, 1 Sep). Se tenir face a un socle precis est un acte delibere, il gagne.
   */
-  if (pad !== null && pad.mine) return { id: 'ramasser', label: `PICK UP ${pad.nom}  ·  ${rendementDuPad(pad.code)}`, icon: ico('pickup'), action: () => agirSurPad(pad) }
+  if (pad !== null && pad.mine) return { id: 'ramasser', label: `PICK UP ${pad.nom}`, icon: ico('pickup'), action: () => agirSurPad(pad) }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
     return { id: 'ouvrir-caisse', label: `OPEN ${boxView.stock.length}`, icon: ico('crate'), action: openBestCrate }
   }
@@ -1251,17 +1248,6 @@ function barre(): string {
 function cagnottePleine(): boolean {
   const plafond = theftView.income * PENDING_CAP_S
   return plafond > 0 && theftView.pending >= plafond * 0.99
-}
-
-/*
-  Ce qu'un socle rapporte, dans la forme que le reste de l'interface emploie deja pour un taux.
-
-  `itemIncome` porte la mutation, donc un objet Lava annonce son rendement multiplie sans qu'on
-  ait a le recomposer ici: c'est la meme fonction que la carte de l'objet et que la somme du
-  revenu de la base, donc les trois ne peuvent pas diverger.
-*/
-function rendementDuPad(code: number): string {
-  return `${formatIncome(itemIncome(code, INCOME_UI))}/s`
 }
 
 function hint(): string {

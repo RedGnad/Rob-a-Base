@@ -1843,21 +1843,7 @@ export function setupPlots(): void {
  * shelf is not offered the toy at their elbow. Of the pedestals that pass, the nearest.
  */
 export const PAD_REACH = 2.4
-/*
-  Rend AUSSI le rendement du socle, et c'est la reparation d'un retrait.
-
-  L'infobulle du client disait `Pick up <objet> · <n>/s` (entree 533), et c'est la seule fois
-  ou le jeu ait jamais nomme le rendement d'un objet POSE. Elle a ete coupee sur les neuf
-  objets cliquables parce que le doigt qu'elle traine n'est pas notre interface; le chiffre est
-  parti avec, et personne ne l'avait vu (proprietaire, 7 Sep).
-
-  Le chiffre revient donc par le bouton contextuel, qui etait deja la raison du retrait ("notre
-  bouton contextuel reste la seule affordance") et qui porte deja des valeurs partout ailleurs:
-  `BUY LEGENDARY 1.9K`, `OUTBID 420`, `COLLECT 1.2K`. Et il revient SUR LES DEUX PLATEFORMES:
-  le survol n'existe pas sur telephone, donc cette information n'a jamais atteint un joueur
-  mobile, alors que le jury teste dans l'application mobile.
-*/
-export function padEnFace(): { ownerId: string; k: number; mine: boolean; nom: string; code: number } | null {
+export function padEnFace(): { ownerId: string; k: number; mine: boolean; nom: string } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
   let base: { p: ReturnType<typeof Plot.get>; x: number; z: number } | null = null
@@ -1891,8 +1877,7 @@ export function padEnFace(): { ownerId: string; k: number; mine: boolean; nom: s
   return {
     ownerId: base.p.ownerId, k: choisi,
     mine: base.p.ownerId.toLowerCase() === myClientAddress(),
-    nom: nomDuCode(base.p.items[choisi]),
-    code: base.p.items[choisi]
+    nom: nomDuCode(base.p.items[choisi])
   }
 }
 
