@@ -130,44 +130,66 @@ def creuser(fond, dessus, at, marge):
     return fond
 
 
-def dessine(size, pose, colour):
-    big = size * SS
-    im = Image.new('RGBA', (big, big), (0, 0, 0, 0))
+def dessiner_poses(size, colour):
+    """The three frames at once, because two of their three decisions are SHARED.
 
+    Drawn one pose at a time, this glyph flickered (owner, 7 Sep). Two mistakes, both invisible
+    when you look at a single frame:
+
+      The void was carved per pose, so the box lost a different piece of itself in each one and
+      its planks blinked in and out while the mallet swung. The box must be identical in all
+      three: it is carved ONCE, around the UNION of the three mallet poses.
+
+      And the mallet was placed by its own ink in each pose, which quietly cancelled most of the
+      swing: `framed` already returns the three poses in one common frame of reference, so
+      re-anchoring each one puts them all back on top of each other. The anchor is taken from the
+      resting pose alone and the other two ride on it, which is what makes the head travel.
+    """
+    big = size * SS
     bx = boite(int(BOX_PART * big), colour)
-    ml = maillet_court(int(MALLET_PART * big), colour)[pose].rotate(MALLET_TURN, resample=Image.BICUBIC)
-    bb, mb = encre(bx), encre(ml)
+    poses = {p: maillet_court(int(MALLET_PART * big), colour)[p].rotate(MALLET_TURN, resample=Image.BICUBIC)
+             for p in ('struck', 'mid', 'raised')}
+    bb = encre(bx)
+    mb = encre(poses['struck'])
 
     # The box first: its ink's top left corner lands on the chosen point.
     bx_at = (round(BOX_TL[0] * big) - bb[0], round(BOX_TL[1] * big) - bb[1])
     # Then the mallet, so its head (the bottom right of the ink, once turned) lands on the point
-    # of the box it strikes, given as a share of the box's own ink.
+    # of the box it strikes, given as a share of the box's own ink. One position for all three.
     vise = (round(BOX_TL[0] * big) + round(FRAPPE[0] * (bb[2] - bb[0])),
             round(BOX_TL[1] * big) + round(FRAPPE[1] * (bb[3] - bb[1])))
     ml_at = (vise[0] - mb[2], vise[1] - mb[3])
+
+    # The union of the three poses: what the box has to make room for, and what has to fit.
+    union = Image.new('RGBA', poses['struck'].size, (0, 0, 0, 0))
+    for im in poses.values():
+        union.alpha_composite(im)
+    ub = encre(union)
 
     # Nothing may leave the canvas: a bar amputated by the frame reads as a mistake at 35 px,
     # and `normalise-glyphs.py` would then scale the damage rather than the drawing. The test is
     # on the INTENDED rectangles, never on the composite: `alpha_composite` drops what falls
     # outside without a word, so a check made afterwards always finds a glyph that fits.
-    for at, bb2, quoi in ((bx_at, bb, 'boite'), (ml_at, mb, 'maillet')):
-        x0, y0 = at[0] + bb2[0], at[1] + bb2[1]
-        x1, y1 = at[0] + bb2[2], at[1] + bb2[3]
+    for at, box, quoi in ((bx_at, bb, 'boite'), (ml_at, ub, 'maillet')):
+        x0, y0, x1, y1 = at[0] + box[0], at[1] + box[1], at[0] + box[2], at[1] + box[3]
         assert 0 <= x0 and 0 <= y0 and x1 <= big and y1 <= big, \
             f'{quoi} hors cadre: {(x0, y0, x1, y1)} dans {big}'
 
     fond = Image.new('RGBA', (big, big), (0, 0, 0, 0))
     fond.alpha_composite(bx, bx_at)
-    fond = creuser(fond, ml, ml_at, round(VIDE * big))
-    im.alpha_composite(fond)
-    im.alpha_composite(ml, ml_at)
-    return im.resize((size, size), Image.LANCZOS)
+    fond = creuser(fond, union, ml_at, round(VIDE * big))
+
+    out = {}
+    for nom, im in poses.items():
+        f = fond.copy()
+        f.alpha_composite(im, ml_at)
+        out[nom] = f.resize((size, size), Image.LANCZOS)
+    return out
 
 
 if __name__ == '__main__':
     for family, colour in (('icon', WHITE), ('encre', NAVY)):
-        for pose in ('struck', 'mid', 'raised'):
-            im = dessine(N, pose, colour)
+        for pose, im in dessiner_poses(N, colour).items():
             name = f'{family}-smash.png' if pose == 'struck' else f'{family}-smash-{pose}.png'
             im.save(os.path.join(OUT, name), optimize=True)
             print(f'wrote {name}')
