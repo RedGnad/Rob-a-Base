@@ -70,7 +70,7 @@ import { moveTo } from './deplacer'
 import { serverNow } from './clock'
 import { clicMonde } from './monde'
 import { pickUp } from './carry'
-import { HUE, TOAST } from './theme'
+import { HUE, TOAST, lisible } from './theme'
 import { isMobile } from '@dcl/sdk/platform'
 
 type Floor = {
@@ -1240,7 +1240,108 @@ function tirDeSentinelle(ownerId: string, floor: number, at: Vector3): void {
   }
 }
 
+/* ==========================================================================================
+   LES ETIQUETTES DE PRIX, AU PIED DES PIECES DE L'ETAGE OU L'ON SE TIENT
+   ========================================================================================== */
+/*
+  Pourquoi un prix, et pourquoi il ne pouvait pas venir de la couleur.
+
+  Le jeu n'a jamais dit ce que RAPPORTE une piece posee. L'infobulle du client le disait
+  (`Pick up <objet> · <n>/s`), elle a ete coupee le 7 Sep avec le doigt qu'elle traine, et le
+  chiffre est parti avec sans que personne le voie (entree 547). Il n'existait de toute facon
+  que sur ordinateur: le survol n'existe pas sur telephone, et c'est dans l'application mobile
+  que le jury teste.
+
+  Et il ne peut pas etre deduit de l'objet. La couleur et la matiere ne sont VOLONTAIREMENT
+  pas representatives du rendement (proprietaire, 7 Sep): un Common Gold rapporte moins qu'un
+  Epic ordinaire, et c'est le dessin. Un trait `+2` vaut `TRAIT_BONUS` x 5 fois la base et
+  n'a aucun signe visuel du tout. Le nombre n'est donc pas un doublon de ce que l'oeil voit,
+  c'est la seule source.
+
+  LA FORME EST CELLE DU PRIX SUR L'ETAGERE, et c'est le signifiant canonique de la valeur
+  (Norman, `The Design of Everyday Things`: un signifiant est un indice PERCEPTIBLE de ce
+  qu'une chose est ou permet). Un nouveau venu entre dans une base, voit des chiffres sous des
+  objets, et comprend le jeu sans qu'on le lui dise. Les pieces sortent par le HAUT et le prix
+  se pose au PIED: deux canaux, deux endroits, aucune collision.
+
+  L'objection de densite ne tient pas ici, et c'est ce qui separe ce cas du precedent: une base
+  compte 72 emplacements, mais un joueur en voit SIX, ceux de l'etage ou il se tient. A six,
+  la lecture reste parallele; c'est a soixante-douze qu'elle deviendrait sequentielle
+  (Treisman & Gelade 1980) et que l'etagere deviendrait un tableur.
+
+  LE COUT EST FIXE ET NE SUIT PAS LE TERRAIN. Six entites creees une fois, garees sous le sol
+  et repositionnees; seize bases a l'ecran n'en ajoutent aucune. Elles ne sont ecrites que
+  quand ce qu'elles disent CHANGE: un `TextShape` reecrit a chaque image serait une mise a jour
+  reseau par image, la meme faute que le materiau du fuser.
+*/
+const PRIX_POOL = SLOTS_PER_FLOOR
+/** "Dans la piece": la base fait 14 m de cote, donc onze metres du centre veut dire dedans ou sur le pas de la porte. */
+const PRIX_PORTEE_M = 11
+/** Au pied de l'objet, et tire vers la rue pour ne pas etre mange par lui. */
+const PRIX_HAUTEUR = 0.35
+const PRIX_AVANCE = 0.6
+const prixEtiquettes: Entity[] = []
+const prixVu: string[] = []
+
+function setupPrixSocles(): void {
+  for (let i = 0; i < PRIX_POOL; i++) {
+    const e = engine.addEntity()
+    Transform.create(e, { position: Vector3.create(0, -60, 0), scale: Vector3.Zero() })
+    // Elle se tourne vers qui la regarde, comme le panneau des records: un prix lu de biais
+    // n'est pas lu. BM_Y garde le texte debout et ne le fait pivoter qu'autour de la verticale.
+    Billboard.create(e, { billboardMode: BillboardMode.BM_Y })
+    TextShape.create(e, { text: '', fontSize: 3, textColor: Color4.White(), ...LISIBLE_3D })
+    prixEtiquettes.push(e)
+    prixVu.push('')
+  }
+
+  engine.addSystem(() => {
+    const me = Transform.getOrNull(engine.PlayerEntity)
+    if (me === null) return
+
+    // La base la plus proche, quel qu'en soit le proprietaire: le rendement d'une piece volable
+    // dit ce que le vol vaut AVANT de le tenter, ce qui est son usage le plus fort.
+    let proche: { p: ReturnType<typeof Plot.get>; x: number; z: number; id: number } | null = null
+    let d = PRIX_PORTEE_M
+    for (const [e, p] of engine.getEntitiesWith(Plot)) {
+      const bt = Transform.getOrNull(e)
+      if (bt === null) continue
+      const dd = Math.hypot(me.position.x - bt.position.x, me.position.z - bt.position.z)
+      if (dd > d) continue
+      d = dd
+      proche = { p, x: bt.position.x, z: bt.position.z, id: e as unknown as number }
+    }
+
+    const etage = proche === null ? -1 : Math.max(0, Math.round(me.position.y / FLOOR_HEIGHT))
+    for (let k = 0; k < PRIX_POOL; k++) {
+      const e = prixEtiquettes[k]
+      const slot = etage * SLOTS_PER_FLOOR + k
+      const code = proche === null ? VIDE : (proche.p.items[slot] ?? VIDE)
+      const cle = proche === null || code === VIDE ? '' : `${proche.id}|${slot}|${code}`
+      if (cle === prixVu[k]) continue
+      prixVu[k] = cle
+      const t = Transform.getMutableOrNull(e)
+      if (t === null) continue
+      if (cle === '') { t.scale = Vector3.Zero(); t.position = Vector3.create(0, -60, 0); continue }
+      const sp = slotPosition(slot)
+      const o = orientToBase(proche!.z, sp.dx, sp.dz + PRIX_AVANCE)
+      t.position = Vector3.create(proche!.x + o.dx, sp.dy + PRIX_HAUTEUR, proche!.z + o.dz)
+      t.scale = Vector3.create(0.42, 0.42, 0.42)
+      const ts = TextShape.getMutableOrNull(e)
+      if (ts !== null) {
+        // Le nom PUIS le taux, parce que le nom porte le trait (`+2`) qui n'a aucun signe
+        // visuel et qui vaut a lui seul plus qu'une marche de rarete.
+        ts.text = `${nomDuCode(code)}\n+${formatIncome(itemIncome(code, INCOME_UI))}/s`
+        // La teinte de l'objet sur son propre prix: c'est ce qui met la couleur et le montant
+        // cote a cote, donc ce qui APPREND au joueur que la couleur ne dit pas le rendement.
+        ts.textColor = Color4.fromHexString(lisible(itemColor(rarityOf(code), mutationDe(code))) + 'ff')
+      }
+    }
+  })
+}
+
 export function setupPlots(): void {
+  setupPrixSocles()
   // Volumes from the ledger in tools/sounds/README.md: the seal measured among the three
   // loudest files at full volume, the lift is pressed three times to climb a base.
   zapEmitter = emitter('assets/sounds/zap.wav', 0.8)
