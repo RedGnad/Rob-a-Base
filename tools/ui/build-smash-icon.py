@@ -62,11 +62,11 @@ NAVY = (16, 26, 43, 255)
 # les VIDES qui dessinent". So the mallet crosses the box, and the box is HOLLOWED OUT around
 # the mallet's silhouette. Both keep their full size, the pair stays compact, and one flat ink
 # still reads as two objects.
-BOX_PART = 0.70          # the box's file, as a share of the canvas
-MALLET_PART = 0.60       # the mallet's file, same
-BOX_TL = (0.36, 0.48)    # where the box's ink starts, in canvas shares
+BOX_PART = 0.72          # the box's file, as a share of the canvas
+MALLET_PART = 0.56       # the mallet's file, same
+BOX_TL = (0.36, 0.02)    # where the box's ink starts, in canvas shares
 # Where the head lands, as a share of the box's ink, measured from its top left corner.
-FRAPPE = (0.30, 0.26)
+FRAPPE = (0.26, 0.74)
 # The void carved around the mallet, in canvas shares. Two masses of one ink that touch fuse
 # into a blob; this is the same separation the crate draws between its own planks.
 VIDE = 0.045
@@ -82,7 +82,9 @@ VIDE = 0.045
 # clockwise the head meets the box corner-first and reads thin; turned ANTICLOCKWISE its flat
 # FACE lands on the box, which is the shape of a blow, and the void carved under it makes the
 # box look bitten into rather than merely overlapped.
-MALLET_TURN = 90
+MALLET_TURN = 0
+# Le coin de l'encre du maillet qui porte sa TETE, en fractions de sa boite.
+TETE_COIN = (1.0, 0.0)
 # A SHORT mallet, and the reason is stroke weight, not composition.
 #
 # Two objects share this canvas, so the tool is drawn shorter than when it stands alone.
@@ -163,7 +165,12 @@ def dessiner_poses(size, colour):
     # of the box it strikes, given as a share of the box's own ink. One position for all three.
     vise = (round(BOX_TL[0] * big) + round(FRAPPE[0] * (bb[2] - bb[0])),
             round(BOX_TL[1] * big) + round(FRAPPE[1] * (bb[3] - bb[1])))
-    ml_at = (vise[0] - mb[2], vise[1] - mb[3])
+    # Quel coin de l'encre du maillet EST sa tete, en fractions de sa boite. Sans rotation la
+    # tete est en haut a droite (1, 0); c'est ce coin la qu'on pose sur la boite, jamais un
+    # coin choisi une fois pour toutes, sinon changer l'orientation deplace tout l'assemblage.
+    tx = mb[0] + TETE_COIN[0] * (mb[2] - mb[0])
+    ty = mb[1] + TETE_COIN[1] * (mb[3] - mb[1])
+    ml_at = (round(vise[0] - tx), round(vise[1] - ty))
 
     # The union of the three poses: what the box has to make room for, and what has to fit.
     union = Image.new('RGBA', poses['struck'].size, (0, 0, 0, 0))

@@ -774,7 +774,18 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
     if (rythmeSocle.size > 512) rythmeSocle.clear()
     const du = rythmeSocle.get(cle)
     if (du === undefined) {
-      rythmeSocle.set(cle, now + Math.round((k / Math.max(1, p.items.length)) * GAIN_PERIODE_MS))
+      /*
+        Le decalage se prend sur le NOMBRE D'OR, pas sur la longueur du tableau.
+
+        Il valait `k / p.items.length`, et ce tableau porte TOUS les emplacements de la tour,
+        soixante-douze sur douze etages. Six objets s'y repartissaient donc sur un douzieme de
+        la periode: ils partaient quasiment ensemble et le proprietaire a vu juste (7 Sep, "on
+        voit pas assez la difference"). La partie fractionnaire des multiples du nombre d'or
+        remplit l'intervalle regulierement quel que soit le nombre d'objets, ce qui est
+        exactement la propriete qu'on cherche ici.
+      */
+      const phase = (k * 0.6180339887) % 1
+      rythmeSocle.set(cle, now + Math.round(phase * GAIN_PERIODE_MS))
       continue
     }
     if (now < du) continue
@@ -784,9 +795,18 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
     // demi-tour a la main: deux calculs du meme changement de repere finissent toujours par
     // diverger (la rampe dessinee d'un cote et marchable de l'autre, 3 Sep).
     const o = orientToBase(rt.position.z, socle.position.x, socle.position.z)
+    /*
+      Elle part du SOMMET de sa piece, pas d'un point en l'air au-dessus.
+
+      La hauteur valait 1,15 fois la taille de l'objet, soit les deux tiers de sa hauteur
+      AU-DESSUS de sa tete: la piece naissait detachee de ce qu'elle annonce, et sur une piece
+      haute elle finissait sa montee dans le plafond de l'etage (proprietaire, 7 Sep). L'entite
+      du socle porte l'objet a son CENTRE et son echelle est sa hauteur, donc son sommet est a
+      la moitie de l'echelle, et un doigt d'air au-dessus suffit a ce qu'elle s'en detache.
+    */
     emettreGain(Vector3.create(
       rt.position.x + o.dx,
-      socle.position.y + socle.scale.y * 1.15,
+      socle.position.y + socle.scale.y * 0.5 + 0.12,
       rt.position.z + o.dz
     ), rarityOf(code))
   }

@@ -10,7 +10,7 @@ import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference, zoneRenderer } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -2333,14 +2333,25 @@ const LoadingScreen = () => {
     Computed rather than guessed, so it holds on any canvas the client reports.
   */
   const RATIO = 1440 / 960
-  const iw = active.w
-  const ih = Math.round(active.w / RATIO)
-  const haut = Math.round((active.h - ih) / 2)
+  /*
+    Mesure contre la zone que le renderer remplit reellement, pas contre le canevas.
+
+    Calculee contre `active`, la couverture visait un cadre plus grand que celui qu'un
+    element en `100%` occupe, parce que le renderer est pose sur la zone sure de l'appareil:
+    l'image sortait decalee et coupee de travers (proprietaire, 7 Sep). Et la dimension qui
+    commande n'est pas toujours la largeur: on compare les deux rapports plutot que de
+    supposer, sinon une tablette proche du 3:2 laisserait deux bandes vides.
+  */
+  const z = zoneRenderer()
+  const iw = z.w / z.h > RATIO ? z.w : Math.round(z.h * RATIO)
+  const ih = z.w / z.h > RATIO ? Math.round(z.w / RATIO) : z.h
+  const haut = Math.round((z.h - ih) / 2)
+  const gauche = Math.round((z.w - iw) / 2)
   const t = Date.now() / 1000
   const attend = !loadingView.assetsReady ? 'LOADING THE FIELD'
     : !theftView.walletRecu ? 'OPENING YOUR BASE'
     : 'WAKING THE SERVER'
-  const bande = Math.round(active.h * 0.26)
+  const bande = Math.round(z.h * 0.26)
   return (
     <UiEntity
       uiTransform={{
@@ -2349,7 +2360,7 @@ const LoadingScreen = () => {
       }}
       uiBackground={{ color: Color4.fromHexString('#0f1524ff') }}
     >
-      <UiEntity uiTransform={{ width: iw, height: ih, positionType: 'absolute', position: { top: haut, left: 0 } }}
+      <UiEntity uiTransform={{ width: iw, height: ih, positionType: 'absolute', position: { top: haut, left: gauche } }}
         uiBackground={{ texture: { src: 'images/base-war-thumbnail.png' }, textureMode: 'stretch' }} />
       {/*
         A band under the words rather than a veil over the whole picture. Text laid straight

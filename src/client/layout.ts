@@ -34,6 +34,26 @@ export const active = { w: 1920, h: 1080 }
 export function setReference(w: number, h: number): void { active.w = w; active.h = h }
 
 /**
+ * La zone dans laquelle le renderer place, en NOS unites, encoche deduite.
+ *
+ * Un element en `100%` remplit cette zone, pas la dalle: le renderer est declare avec
+ * `screenInset: 'device'`, donc son origine et sa taille sont celles du rectangle sur,
+ * publie par le client dans `screenInsetArea`. Calculer une couverture plein ecran contre
+ * `active` revenait donc a viser un cadre plus grand que celui qu'on remplit, et l'image
+ * sortait decalee et coupee de travers (proprietaire, 7 Sep). Sans information du client,
+ * la reponse honnete est le canevas de reference.
+ */
+export function zoneRenderer(): { w: number; h: number } {
+  const info = UiCanvasInformation.getOrNull(engine.RootEntity)
+  if (info === null) return { w: active.w, h: active.h }
+  const scale = Math.min(info.width / active.w, info.height / active.h)
+  if (!(scale > 0)) return { w: active.w, h: active.h }
+  const i = info.screenInsetArea
+  const g = i?.left ?? 0, d = i?.right ?? 0, h = i?.top ?? 0, b = i?.bottom ?? 0
+  return { w: (info.width - g - d) / scale, h: (info.height - h - b) / scale }
+}
+
+/**
  * What the client's own controls take from the left and right edges, in our units.
  *
  * This used to be one guessed number, 320, for the action buttons on the right. Two things
