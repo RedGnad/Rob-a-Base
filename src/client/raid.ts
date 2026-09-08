@@ -184,7 +184,15 @@ export function setupRaid(): void {
     if (!etaitActif) {
       etaitActif = true
       vu = { x: r.x, z: r.z }
-      alerter('RAID BOSS  ·  3 MIN  ·  TOP DAMAGE TAKES A LEGENDARY', '#ff6b6b', TOAST.event)
+      /*
+        La caisse n'est plus la Legendary depuis le 2 Sep, et cette phrase le promettait encore.
+
+        `crateDuButin` donne un cran au-dessus du meilleur objet du gagnant: une Good a qui n'a
+        que des Commons, une Mythic a qui tient des Legendary. Annoncer "A LEGENDARY" a toute la
+        place etait donc faux pour presque tout le monde, et faux publiquement. On annonce ce qui
+        est vrai a tous les paliers, et le palier exact se decouvre en gagnant.
+      */
+      alerter('RAID BOSS  ·  3 MIN  ·  TOP DAMAGE TAKES A CRATE', '#ff6b6b', TOAST.event)
       const a = AudioSource.getMutableOrNull(son)
       if (a !== null) { a.playing = false; a.playing = true }
     }

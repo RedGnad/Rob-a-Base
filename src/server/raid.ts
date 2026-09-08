@@ -262,6 +262,8 @@ function finir(vaincu: boolean): void {
       addCrate(top.address, butin)
       void room.send('inventory', { crates: cratesOf(top.address) }, { to: [top.address] })
       void room.send('raidWon', { crate: butin }, { to: [top.address] })
+      // Le code n'est PAS lu pour ce genre d'entree: le journal dit qui a tue le boss, pas ce
+      // qu'il a gagne (voir `records.ts`), parce que le butin depend du palier du gagnant.
       noter('raid', top.name, '', encoder(4, 0))
       void room.send('raidOver', { winner: top.name, slain: true })
       log(`raid: slain, ${top.name} takes the crate; ${degats.size} dealers rained on`)

@@ -245,7 +245,10 @@ function journalLine(e: { t: number; kind: string; a: string; b: string; code: n
     case 'tirage': phrase = `${e.a} pulled a ${objet}`; break
     case 'fusion': phrase = `${e.a} fused a ${objet}`; break
     case 'trait': phrase = `${e.a}'s ${objet} was marked by the ${e.b}`; break
-    case 'raid': phrase = `${e.a} slew the raid boss, Legendary Crate`; break
+    // Le butin n'est pas nomme, et c'est voulu: il vaut un cran au-dessus du meilleur objet du
+    // gagnant, donc "Legendary Crate" en dur mentait au journal de tout le monde. Ce que le
+    // monde a besoin de savoir, c'est QUI l'a tue.
+    case 'raid': phrase = `${e.a} slew the raid boss`; break
     default: phrase = e.a
   }
   // Sixty characters is what the full width holds at this size; the end of a long line is the
