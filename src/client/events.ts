@@ -169,8 +169,23 @@ export function nextBigText(): { text: string; color: string } | null {
   default to the venue's stride. The rainbow is the one mat whose motif is a full hue cycle,
   and a full cycle every eight metres is bands of sixty centimetres: at any distance that is
   moire, not a rainbow (owner, 6 Sep: "trop serre, du bruit"). Four times the repeat gives
-  bands of nearly three metres, and the drift slows in step so the floor moves at the same
-  metres per second as the others.
+  bands of nearly three metres, and the wide weave is what the owner likes about that floor.
+
+  WHAT THE SAME CHANGE GOT WRONG, and it is a lesson about which quantity a floor is read by.
+  Widening the repeat came with a drift cut to a quarter, so that the mat kept the same METRES
+  PER SECOND as the others. That is the right invariant for a mat with FEATURES: on lava you
+  follow a crack, on the galaxy a star, and what reads is the speed that feature travels over
+  the ground. The rainbow has no feature to follow. `rainbow(x, y)` in build-rush-mats.py is
+  `h = (x + y) % 1.0` under a mottle of six percent: a pure diagonal hue ramp, no edge
+  anywhere. The only thing an eye can see moving is the rate the hue turns under one's feet,
+  and that rate is REPEATS per second, not metres. Quartering it made the floor four times
+  less alive, not equally alive: one hue cycle every 267 s against a rush that lasts 300 s
+  (`EVENT_MS`), so the colour barely came round once and the floor read as frozen (owner,
+  9 Sep: "j'aimerais qu'il defile lentement, comme les autres").
+
+  So the rainbow keeps its wide weave and takes the venue's drift back, the same 0.015 the
+  nine other mats carry with the same direction vector: a full sweep every 67 s, four and a
+  half over a rush. Same rhythm as the rest of the floor, four times the band width.
 */
 const LOOK: Record<number, { lueur: number; maille?: number; vitesse?: number }> = {
   1: { lueur: 0.0 },     // golden hour
@@ -180,7 +195,7 @@ const LOOK: Record<number, { lueur: number; maille?: number; vitesse?: number }>
   7: { lueur: 0.0 },     // dawn, half and half
   8: { lueur: 0.35 },    // late evening: the flecks
   10: { lueur: 0.0 },    // sunrise light
-  11: { lueur: 0.0, maille: 32, vitesse: 0.00375 },  // clear morning: a slow, wide sweep
+  11: { lueur: 0.0, maille: 32 },  // clear morning: wide bands, the venue's own drift
   12: { lueur: 0.5 },    // neon hour: the grid
   13: { lueur: 0.0 }     // blue hour before dawn
 }
