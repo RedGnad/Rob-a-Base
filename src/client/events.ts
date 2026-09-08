@@ -1,5 +1,6 @@
 import { engine, Material, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
 import { Vector2, Vector3, Color3, Color4 } from '@dcl/sdk/math'
+import { replay } from './sfx'
 import { isMobile } from '@dcl/sdk/platform'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
@@ -283,8 +284,7 @@ export function setupEvents(): void {
     if (actif && t !== undefined) {
       // The first rush of the session explains itself once; the rest is the chip and the world.
       if (!rushCardSeen) { rushCardSeen = true; openRushCard(true) }
-      const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
-      if (a !== null) { a.playing = false; a.playing = true }
+      replay(cloche)
       const look = LOOK[theme] ?? LOOK[5]
       /*
         Le CIEL ne bouge plus, jamais.

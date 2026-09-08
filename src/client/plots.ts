@@ -2,6 +2,7 @@ import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoo
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction, TweenLoop } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+import { replay } from './sfx'
 import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, STEAL_RANGE, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
 } from '../shared/schemas'
@@ -1303,8 +1304,7 @@ function jouerA(e: Entity | null, at: Vector3): void {
   if (e === null) return
   const t = Transform.getMutableOrNull(e)
   if (t !== null) t.position = Vector3.create(at.x, at.y, at.z)
-  const a = AudioSource.getMutableOrNull(e)
-  if (a !== null) { a.playing = false; a.playing = true }
+  replay(e)
 }
 
 /** A base's world point from a local offset, through the base's own facing. */

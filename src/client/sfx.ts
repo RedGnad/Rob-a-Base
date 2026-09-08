@@ -43,6 +43,33 @@ export function setSfx(on: boolean): void {
   if (on) volumes.clear()
 }
 
+/**
+ * Replay an emitter, and be heard EVERY time.
+ *
+ * Writing `playing = false` then `playing = true` on a mutable does not retrigger. Both writes
+ * land in the same frame, so only the final state is ever serialized, and the CRDT layer drops
+ * a component whose bytes match the last ones it sent: `createGetCrdtMessagesForLww` in
+ * `@dcl/ecs/dist/engine/lww-element-set-component-definition.js` compares against `lastSentData`
+ * and `continue`s on a match. `getMutableOrNull` only marks the entity dirty, it never clears
+ * that snapshot. Measured on the version we ship: the first press emits one message, every
+ * press after it emits zero. The sound then only comes back when something else happens to
+ * touch the component, which is why it worked for a while and then stopped.
+ *
+ * `AudioSource.playSound` goes through `createOrReplace`, which deletes the snapshot, so the
+ * message always leaves. The SDK states the contract itself: "Always emits a CRDT PUT, so
+ * repeated calls with identical parameters reliably retrigger playback."
+ *
+ * The clip is read back from the emitter, so an entity keeps the sound it was built with, and
+ * `playSound` carries the rest of the component over untouched, including the volume the mute
+ * switch wrote. A muted scene stays muted.
+ */
+export function replay(e: Entity | null): void {
+  if (e === null) return
+  const a = AudioSource.getOrNull(e)
+  if (a === null) return
+  AudioSource.playSound(e, a.audioClipUrl)
+}
+
 /** The volume an emitter created NOW should carry: zero while muted, so it joins the silence. */
 export function volumeInitial(voulu: number, e: Entity): number {
   if (sfxView.on) return voulu

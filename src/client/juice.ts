@@ -1,5 +1,6 @@
 import { engine, Transform, AudioSource, Entity } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
+import { replay } from './sfx'
 
 /*
   Damage flash: a brief red pulse over the world when the player is hit.
@@ -117,9 +118,7 @@ export function setupJuiceSound(): void {
 }
 
 function play(e: Entity | null): void {
-  if (e === null) return
-  const a = AudioSource.getMutableOrNull(e)
-  if (a !== null) { a.playing = false; a.playing = true }
+  replay(e)
 }
 
 /** Something took money or goods off you. */

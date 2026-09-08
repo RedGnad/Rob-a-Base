@@ -4,6 +4,7 @@ import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Color3, Vector3, Quaternion } from '@dcl/sdk/math'
+import { replay } from './sfx'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, RAID_HIT_RANGE } from '../shared/schemas'
 import { gearView } from './gear'
 import { raidView } from './raid'
@@ -219,8 +220,7 @@ let emetteurRange: Entity | null = null
 function jouerDraw(sortie: boolean): void {
   const e = sortie ? emetteurDraw : emetteurRange
   if (e === null) return
-  const a = AudioSource.getMutableOrNull(e)
-  if (a !== null) { a.playing = false; a.playing = true }
+  replay(e)
 }
 /** Addresses whose weapon is drawn right now, as relayed by the server. */
 const enJoue = new Set<string>()
@@ -439,8 +439,7 @@ export function setupCombat(): void {
     */
     if (d.reason !== 'missed') {
       combatView.lastHitAt = Date.now()
-      const h = AudioSource.getMutableOrNull(hitmark)
-      if (h !== null) { h.playing = false; h.playing = true }
+      replay(hitmark)
     }
     /*
       A landed shot writes NOTHING on the interface. It never should have.
@@ -956,8 +955,7 @@ function tirer(now: number): boolean {
     }
   }
   if (vue !== null) {
-    const s = AudioSource.getMutableOrNull(vue.racine)
-    if (s !== null) { s.playing = false; s.playing = true }
+    replay(vue.racine)
   }
   return true
 }

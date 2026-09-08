@@ -1,6 +1,7 @@
 import { plasticDe, caisse, FIT, TOY_DIR, spinLoop } from './toy'
 import { engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers, GltfContainer, TextShape, Billboard, BillboardMode } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+import { replay } from './sfx'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
@@ -487,8 +488,7 @@ function jouerReveal(rarete: number): void {
 }
 
 function jouer(e: Entity): void {
-  const a = AudioSource.getMutableOrNull(e)
-  if (a !== null) { a.playing = false; a.playing = true }
+  replay(e)
 }
 
 /**

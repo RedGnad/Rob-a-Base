@@ -3,6 +3,7 @@ import {
   PointerEvents, PointerEventType, InputAction, AudioSource, Entity, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+import { replay } from './sfx'
 import { Raid } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { flashDamage, floatAmount, playHurt } from './juice'
@@ -201,8 +202,7 @@ export function setupRaid(): void {
         est vrai a tous les paliers, et le palier exact se decouvre en gagnant.
       */
       alerter('RAID BOSS  ·  3 MIN  ·  TOP DAMAGE TAKES A CRATE', '#ff6b6b', TOAST.event)
-      const a = AudioSource.getMutableOrNull(son)
-      if (a !== null) { a.playing = false; a.playing = true }
+      replay(son)
     }
     // Glide toward the last position the server wrote.
     vu = { x: vu.x + (r.x - vu.x) * Math.min(1, dt * 6), z: vu.z + (r.z - vu.z) * Math.min(1, dt * 6) }

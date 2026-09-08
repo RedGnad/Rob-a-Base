@@ -3,6 +3,7 @@ import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer, AudioSource, GltfContainer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
+import { replay } from './sfx'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , FALL_END} from '../shared/schemas'
 import { clicMonde } from './monde'
 import { room } from '../shared/messages'
@@ -249,8 +250,7 @@ export function setupBelt(): void {
     beltView.annonceJusqua = Date.now() + 3500 + d.crateTier * 500
     // And it is HEARD. The band is at the top of the screen; a player at their own base is
     // looking the other way, which is the very reason the rush has a bell (owner, 5 Sep).
-    const a = AudioSource.getMutableOrNull(sonAnnonce)
-    if (a !== null) { a.playing = false; a.playing = true }
+    replay(sonAnnonce)
     console.log(`[CLIENT] announced: ${r.name}`)
   })
 

@@ -10,7 +10,7 @@ import { tutoView } from './tutorial'
 import { sendOrHold } from './intent'
 import { poseView } from './pose'
 import { TOAST } from './theme'
-import { setSfx } from './sfx'
+import { setSfx, replay } from './sfx'
 import { cue } from './ui-kit'
 
 export const theftView = {
@@ -154,8 +154,7 @@ export function setupTheft(): void {
       ? `\nyour base is sealed for ${d.shieldSec >= 3600 ? Math.round(d.shieldSec / 3600) + 'h' : Math.round(d.shieldSec / 60) + ' min'}`
       : ''
     alerter(`${d.byName} STOLE YOUR ${r.name.toUpperCase()}!${abri}`, r.color, TOAST.event)
-    const a = AudioSource.getMutableOrNull(sonneur)
-    if (a !== null) { a.playing = false; a.playing = true }
+    replay(sonneur)
     console.log(`[CLIENT] VOL SUBI: ${d.byName} -> ${r.name}`)
   })
 

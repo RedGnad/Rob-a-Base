@@ -4,7 +4,7 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity, Label } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN, RAD } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
-import { sfxView, setSfx, volumeInitial } from './sfx'
+import { sfxView, setSfx, volumeInitial, replay } from './sfx'
 import { noterServi } from './clics'
 import { room } from '../shared/messages'
 
@@ -86,8 +86,7 @@ export function cue(fichier: string, volume = 0.8): void {
     cues.set(fichier, e)
   }
   if (!sfxView.on) return
-  const a = AudioSource.getMutableOrNull(e)
-  if (a !== null) { a.playing = false; a.playing = true }
+  replay(e)
 }
 
 export function tic(): void {
@@ -97,8 +96,7 @@ export function tic(): void {
     AudioSource.create(sonClic, { audioClipUrl: 'assets/sounds/tick.wav', playing: false, loop: false, volume: volumeInitial(0.45, sonClic) })
   }
   if (!sfxView.on) return
-  const a = AudioSource.getMutableOrNull(sonClic)
-  if (a !== null) { a.playing = false; a.playing = true }
+  replay(sonClic)
 }
 
 /**
