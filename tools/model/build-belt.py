@@ -178,8 +178,18 @@ def construire():
             m.boite((x0 - cote * LONG / 14, (pont - 0.2) / 2, 0), (0.08, pont - 0.5, 0.08), SOMBRE)
 
     # The collection pit at the end of the ride, in the same object: one draw call for both.
+    #
+    # ITS HALF-WIDTH IS A WALKWAY, NOT A LOOK. At 2.2 its side walls stood at z = +/-2.08 while
+    # the belt's own beams reach +/-1.44, leaving a corridor of 0.60 m down each side. A
+    # Decentraland player capsule is about 0.60 m across, so a player walking along either side
+    # of the belt towards this end entered a slot exactly their own width and wedged in it
+    # (owner, 8 Sep, playing: "si on touche l'une ou l'autre des extremites on est bloques").
+    # The whole installation is one mesh with physics collision, so nothing tells the engine
+    # that the pit is scenery and the corridor is a path.
+    # At 2.8 the corridor is 1.20 m, twice the capsule. The crates are unaffected: they fall on
+    # `bx`, which does not move, and their descent is animated (`beltPos`), never physical.
     bx = BELT_LENGTH / 2 + 1.3
-    R = 2.2
+    R = 2.8
     m.boite((bx, 0.10, 0), (R * 2, 0.20, R * 2), SOMBRE)
     for dx, dz, sx, sz in ((0, R, R * 2, 0.24), (0, -R, R * 2, 0.24), (R, 0, 0.24, R * 2), (-R, 0, 0.24, R * 2)):
         m.boite((bx + dx, 0.45, dz), (sx, 0.90, sz), METAL)
