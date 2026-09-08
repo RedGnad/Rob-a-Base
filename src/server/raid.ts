@@ -244,9 +244,20 @@ function finir(vaincu: boolean): void {
         Legendary gagne une Mythic. Le boss reste un grand moment a tous les stades, et il
         cesse d'etre un raccourci par-dessus toute la courbe.
       */
-      addCrate(top.address, crateDuButin(meilleureRarete(top.address)))
+      /*
+        La caisse ANNONCEE est celle qui est DONNEE, et elle ne l'etait pas.
+
+        `addCrate` recevait `crateDuButin(...)`, echelonne sur la progression du gagnant, mais le
+        message partait avec `RAID_REWARD_CRATE` en dur, c'est-a-dire la Legendary. Un debutant
+        recevait donc une Good Crate dans son inventaire et lisait "LEGENDARY CRATE in your boxes"
+        sur son ecran. Le calcul du 2 Sep qui a cree l'echelonnement etait bon; seule la phrase
+        est restee sur l'ancienne valeur, et elle mentait au joueur sur ce qu'il venait de gagner
+        (trouve le 8 Sep en verifiant si un boss plus frequent gonflait les Legendary).
+      */
+      const butin = crateDuButin(meilleureRarete(top.address))
+      addCrate(top.address, butin)
       void room.send('inventory', { crates: cratesOf(top.address) }, { to: [top.address] })
-      void room.send('raidWon', { crate: RAID_REWARD_CRATE }, { to: [top.address] })
+      void room.send('raidWon', { crate: butin }, { to: [top.address] })
       noter('raid', top.name, '', encoder(4, 0))
       void room.send('raidOver', { winner: top.name, slain: true })
       log(`raid: slain, ${top.name} takes the crate; ${degats.size} dealers rained on`)
