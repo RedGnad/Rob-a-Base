@@ -96,7 +96,24 @@ class Maillage:
             self.idx.extend([base, base + 1, base + 2, base, base + 2, base + 3])
 
     def cylindre(self, centre, rayon, longueur, couleur, axe='z', cotes=12):
-        """A drum or a roller. Its axis lies along `axe`; the caps are fans."""
+        """A drum or a roller. Its axis lies along `axe`; the caps are fans.
+
+        L'ENROULEMENT ETAIT INVERSE, sur les flancs COMME sur les fonds, donc les onze cylindres
+        de l'installation (deux tambours, neuf rouleaux) etaient retournes: 528 des 948 triangles
+        du mesh, verifie en comparant la normale geometrique de chaque triangle a sa normale
+        stockee. Les boites, elles, etaient justes.
+
+        Ce que ca donnait: le tambour ne montrait que sa face arriere, puisque ses faces avant
+        regardaient vers l'interieur, et un joueur qui le touchait restait coince dedans
+        (proprietaire, 8 Sep: "le rouleau qui est visuellement buge, on voit que la face arriere,
+        on reste irremediablement bloque dans l'objet"). Un collider bati sur un maillage retourne
+        n'a pas de dehors: le moteur pousse la capsule du mauvais cote.
+
+        La regle qui manquait: en glTF la face avant est celle dont les sommets tournent dans le
+        sens ANTIHORAIRE vue de l'exterieur. Un flanc parcouru (a0,-e) (a0,+e) (a1,+e) (a1,-e)
+        avec a croissant tourne dans l'autre sens, et un eventail de fond parcouru a angle
+        croissant regarde vers l'interieur du cylindre.
+        """
         cx, cy, cz = centre
         for i in range(cotes):
             a0 = 2 * math.pi * i / cotes
@@ -116,7 +133,8 @@ class Maillage:
                 self.pos.append(p)
                 self.nor.append(n)
                 self.uv.append(uv(couleur))
-            self.idx.extend([base, base + 1, base + 2, base, base + 2, base + 3])
+            # Sens antihoraire vu du dehors: le quad se lit A D C puis A C B, pas A B C A C D.
+            self.idx.extend([base, base + 3, base + 2, base, base + 2, base + 1])
         # caps, one fan each, so the drum reads as solid from the ends
         for sens, e in ((-1, -longueur / 2), (1, longueur / 2)):
             centre_i = len(self.pos)
@@ -132,10 +150,12 @@ class Maillage:
                 self.nor.append(n)
                 self.uv.append(uv(couleur))
             for i in range(cotes):
+                # Le fond du bas se lit a angle DECROISSANT, celui du haut a angle croissant:
+                # chacun tourne alors dans le sens antihoraire vu depuis SON propre dehors.
                 if sens < 0:
-                    self.idx.extend([centre_i, centre_i + 1 + i, centre_i + 2 + i])
-                else:
                     self.idx.extend([centre_i, centre_i + 2 + i, centre_i + 1 + i])
+                else:
+                    self.idx.extend([centre_i, centre_i + 1 + i, centre_i + 2 + i])
 
     def prim(self):
         return {'pos': self.pos, 'nor': self.nor, 'uv_atlas': self.uv, 'idx': self.idx}
