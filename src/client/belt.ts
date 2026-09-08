@@ -143,11 +143,26 @@ export function setupBelt(): void {
         // bottom face sits on the tread, and the labels stack above whatever its size is.
         const item = engine.addEntity()
         Transform.create(item, { parent: racine, position: Vector3.create(0, r.size / 2 - 0.27, 0), scale: Vector3.create(r.size, r.size, r.size) })
-        // Pointer only: a crate on the belt is bought with a tap, and it rides above head height.
-        // Solid again, on trial. The body was dropped after two ejections blamed on it (1 and
-        // 2 Sep); the owner doubts that reading and wants it tested: back to a body, and out
-        // again the moment a push reproduces without another cause (owner, 4 Sep).
-        MeshCollider.setBox(item, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
+        /*
+          POINTEUR SEUL. L'essai du corps physique est termine, et il a echoue.
+
+          Le corps avait ete retire apres deux ejections (1 et 2 Sep), puis remis A L'ESSAI le
+          4 Sep avec une consigne ecrite ici meme: le ressortir des qu'une poussee se reproduit
+          SANS AUTRE CAUSE. Le 8 Sep les deux autres causes du bout du tapis ont ete trouvees et
+          corrigees, la fente de 0,60 m contre la fosse et les onze cylindres a l'envers, et la
+          poussee est restee: on se bloque au tambour et c'est UNE GROSSE CAISSE QUI DELIVRE en
+          poussant (proprietaire, 8 Sep). L'essai a donc rendu son verdict.
+
+          La geometrie dit pourquoi, et le commentaire d'origine se trompait en affirmant que la
+          caisse "rides above head height". Sa racine roule a `BELT_HEIGHT + 0.45` = 1,80 et sa
+          boite est posee dessous, donc son plancher tombe a **1,53 m** quelle que soit sa taille,
+          de la Basic Box a la plus grosse. La capsule d'un joueur debout monte a environ 1,80.
+          Chaque caisse traverse donc la TETE de qui passe au bout du tapis, la ou le pont ne
+          protege plus, et une boite cinematique qui traverse une capsule gagne toujours.
+
+          Le tap d'achat ne perd rien: c'est `CL_POINTER` qui porte le rayon, jamais le corps.
+        */
+        MeshCollider.setBox(item, ColliderLayer.CL_POINTER)
         caisse(item, b.crateTier)
         const haut = r.size - 0.27
         PointerEvents.create(item, {
