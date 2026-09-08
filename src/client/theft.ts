@@ -372,11 +372,11 @@ export function setupTheft(): void {
     consultable, sans une phrase a lire (proprietaire, 7 Sep).
   */
   room.onMessage('dailyReward', (d) => {
-    cue('deliver.wav', 0.8)
+    cue('reward.wav', 0.85)
     console.log(`[CLIENT] recompense du log ${d.log}`)
   })
   room.onMessage('questReward', (d) => {
-    cue('deliver.wav', 0.8)
+    cue('reward.wav', 0.85)
     console.log(`[CLIENT] quete: caisse ${crate(d.crate).name}`)
   })
 

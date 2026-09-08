@@ -6,4 +6,4 @@
  * construction: the code may be wrong, or the client may simply be showing the previous
  * version. Two hours of that argument (1 Sep) is what this four-character string ends.
  */
-export const BUILD = '2228'
+export const BUILD = 'e3e2'

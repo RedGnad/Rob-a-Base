@@ -1416,11 +1416,21 @@ export const Raid = engine.defineComponent('basetycoon::raid', {
 /** The switch. Off, the entity exists and never activates; the HUD shows nothing. */
 export const RAID_ENABLED = true
 /*
-  On the clock, not on the server's uptime: hh:20 and hh:50 UTC, every day, the practice of
-  the genre for the events people organise around (the reference's rarest run "every day at
-  3:00 AM EST"). Never on the grand rush's 20:00 slot; a slot with nobody present is skipped.
+  On the clock, not on the server's uptime: hh:05, hh:20, hh:35 and hh:50 UTC, every day, the
+  practice of the genre for the events people organise around (the reference's rarest run "every
+  day at 3:00 AM EST"). Never on the grand rush's 20:00 slot; a slot with nobody present is
+  skipped, and so is one that lands on a rush (see the guard in `raid.ts`).
+
+  FOUR SLOTS AND NOT TWO, and the reason is a measurement rather than a taste. At hh:20 and hh:50
+  the boss was up six minutes an hour, so a ten-minute visit missed it two times out of three,
+  and a random rush (exponential, mean fifteen minutes) was missed one time in two. Multiplied,
+  a third of ten-minute solo sessions saw NO event at all (owner, 8 Sep, playing: "ca fait 10 min
+  que je suis en jeu il n'y a eu aucun event ni boss ni rush"). A judge or a first-time player
+  gets exactly one such session, and "Show up for the rush" is a promise the game makes on its
+  own front page. Every quarter of an hour halves the miss rate without touching the reward: the
+  boss is still an appointment you can plan around, which is what a fixed clock buys.
 */
-export const RAID_MINUTES = [20, 50] as const
+export const RAID_MINUTES = [5, 20, 35, 50] as const
 export const RAID_MS = 3 * 60_000
 /** On the plaza side of the belt lane, opposite the board and the fuser. */
 export const RAID_POS = { x: CENTER.x, z: CENTER.z + 7 }
