@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import {
   Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS,
   RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
-  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN, RAID_STANDOFF, RAID_THREAT_SWITCH,
+  RAID_SWIPE_CAP_S, RAID_RAIN_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN, RAID_STANDOFF, RAID_THREAT_SWITCH,
   SCENE_SIDE, forceDuTir
 , RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE} from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -208,14 +208,18 @@ function finir(vaincu: boolean): void {
       The corpse rains coins, and the rain is for the crowd.
 
       The crate goes to whoever dealt the most; that is the trophy. The coins on the floor
-      are the party: one drop per damage dealer, scaled to THEIR income (forty-five seconds
-      of it, so it matters to the rich and to the new alike), scattered in a ring around
-      where the boss fell, and anyone may scoop anyone's pile. Same drop machinery as the
-      swipe, so the client already knows how to draw and grab them.
+      are the party: one drop per damage dealer, scaled to THEIR income (`RAID_RAIN_S` of it,
+      so it matters to the rich and to the new alike), scattered in a ring around where the
+      boss fell, and anyone may scoop anyone's pile. Same drop machinery as the swipe, so the
+      client already knows how to draw and grab them.
+
+      `RAID_RAIN_S` is the swipe's cap, deliberately the same constant: see the note on it in
+      `schemas.ts`. Winning covers exactly one swipe taken, which is what stops the fight from
+      being a net loss for everyone who is not the top dealer.
     */
     let k = 0
     for (const [addr] of degats) {
-      const pluie = Math.floor(incomePerSecond(addr) * 45 + 500)
+      const pluie = Math.floor(incomePerSecond(addr) * RAID_RAIN_S + 500)
       const a2 = (k / Math.max(1, degats.size)) * Math.PI * 2 + rnd()
       /*
         Dropped by NOBODY, so the six second lock does not apply to a reward.

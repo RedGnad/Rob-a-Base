@@ -1491,6 +1491,26 @@ export const RAID_SWIPE_RANGE = 4
 /** A swipe shakes a tenth of the purse loose, capped at two minutes of income, onto the floor. */
 export const RAID_SWIPE_SHARE = 0.10
 export const RAID_SWIPE_CAP_S = 120
+/*
+  The rain pays back what the boss can take, and it did not.
+
+  Winning rained forty-five seconds of a dealer's own income on them, while ONE swipe could take
+  a hundred and twenty of it, plus everything they were carrying, and swipes land every five
+  seconds inside four metres. A close fight takes six to twelve of them. So the arithmetic said
+  that engaging the boss with coins in your pocket was, on average, a way to leave poorer: only
+  the top damage dealer got a crate, and everybody else paid to have played the feature (owner,
+  8 Sep: "jouer aux features du jeu doit etre recompense").
+
+  A feature that punishes its own participants is worse than one nobody notices, because the
+  player who tried is the one taught not to.
+
+  So the rain is set to the SAME constant as the punishment's cap, and that is the whole rule
+  rather than a number somebody liked: winning covers exactly one swipe taken. Dodge and you
+  profit, get hit once and you break even, stand in its claws and you still pay. It stays a
+  share of the player's OWN income, so it inflates nothing relative to progression, and it is
+  still paid once per boss.
+*/
+export const RAID_RAIN_S = RAID_SWIPE_CAP_S
 /** The Legendary crate, to whoever dealt the most. */
 export const RAID_REWARD_CRATE = 7
 
