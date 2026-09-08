@@ -72,7 +72,6 @@ The first five steps are the in-game tutorial, in its order.
   earning, it stands again on their return. A player who is present is never removed.
 - **Detail follows the same budget.** Nearest bases in full, far ones as silhouettes, yours
   always full. A storey is 4 merged meshes instead of 23 objects; item models are shared.
-  Measured on the mobile client, not estimated.
 
 ## Verify in sixty seconds
 
