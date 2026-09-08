@@ -175,11 +175,18 @@ def construire():
         # The safety stripe, inset into the outer face rather than floating above the deck.
         m.boite((0, pont - 0.06, z + (0.13 if z > 0 else -0.13)), (LONG - 0.6, 0.12, 0.03), JAUNE)
 
-    # A drum at each end: the one shape that says the thing turns.
-    # The drum alone. A dark hub ring, two centimetres proud of the drum at its middle, read
-    # as an odd disc standing across the belt right where the crates arrive (owner, 6 Sep).
-    for x in (-DEMI, DEMI):
-        m.cylindre((x, pont, 0), 0.30, MAILLE - 0.30, METAL)
+    # PLUS DE TAMBOUR AUX EXTREMITES.
+    #
+    # Il portait la lecture "cette chose tourne", et il a coute trois fois. Son anneau de moyeu
+    # avait deja du sauter le 6 Sep parce qu'il lisait comme un disque en travers du tapis. Son
+    # maillage etait retourne, flancs et fonds, donc on n'en voyait que la face arriere. Et il
+    # est la seule piece commune aux DEUX bouts, la ou le proprietaire se bloque (8 Sep). Il
+    # sortait a chaque fois d'un compromis, jamais d'un besoin: le convoyeur se lit deja par son
+    # cadre, ses rails, ses pieds et sa bande qui defile.
+    #
+    # On le retire donc, sur demande du proprietaire ("je l'aime pas ce cylindre on peut pas
+    # juste le retirer ?"). Le pont se termine sur la face plate de sa propre boite, ce qui est
+    # une fin nette, et la geometrie suspecte des deux extremites disparait avec lui.
 
     # Rollers under the deck, seen between the legs as you walk past.
     for i in range(9):
