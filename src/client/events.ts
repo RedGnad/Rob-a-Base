@@ -42,14 +42,13 @@ const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padS
  * countdown to the next grand rush, at caption size. The centre stays for the raid, which
  * is a fight with a health figure and a direction, not a clock.
  */
-export function bannerLine(): { text: string; color: string } | null {
-  if (raidView.active) {
-    // The distance is what turns the banner into a direction: the beam says which way, this
-    // says how far, and together they answer "where is it" without a minimap.
-    const loin = raidView.distance > 0 ? `   ·   ${raidView.distance} m` : ''
-    return { text: `RAID BOSS   ${mmss(raidView.leftS)}${loin}${raidView.topName !== '' ? `   ·   top: ${raidView.topName}` : ''}`, color: '#ff6b6b' }
-  }
-  return null
+export function raidLine(): { text: string; color: string } | null {
+  if (!raidView.active) return null
+  // The distance is what turns the line into a direction: the beam says which way, this says
+  // how far, and together they answer "where is it" without a minimap.
+  const loin = raidView.distance > 0 ? `  ·  ${raidView.distance} m` : ''
+  const top = raidView.topName !== '' ? `  ·  ${raidView.topName}` : ''
+  return { text: `RAID BOSS  ${mmss(raidView.leftS)}${loin}${top}`, color: '#ff6b6b' }
 }
 
 /**
@@ -109,13 +108,33 @@ export function rushAgeS(): number {
  * and an hour in the middle of the screen is furniture (tester, 27 Aug): it goes where the
  * other standing facts go, under the money, at caption size.
  */
-export function nextBigText(): string | null {
-  if (eventView.theme >= 0 || raidView.active) return null
+export function nextBigText(): { text: string; color: string } | null {
+  /*
+    LE BOSS EN COURS TIENT CETTE MEME PLACE, et il tenait le centre de l'ecran.
+
+    Sa ligne vivante, temps restant, distance et meneur, occupait un bloc de 52 px dans la
+    bande du haut, ce qui poussait toute la colonne de toasts de 52 px vers le bas, soit sept
+    pour cent de la hauteur d'un telephone, pendant les trois minutes ou il y a le plus de
+    choses a dire. Le fichier defendait ce choix ("The centre stays for the raid"), et il avait
+    raison quand le boss sortait DEUX fois par heure. Il en sort QUATRE depuis le 8 Sep, et
+    l'argument que ce meme fichier oppose au grand rush lui revient dessus: "an hour in the
+    middle of the screen is furniture". Un evenement qui revient au quart d'heure n'est plus un
+    moment, c'est du mobilier (proprietaire, 8 Sep).
+
+    Et le boss n'a pas besoin de cette place: il est un objet visible sur la place, il porte sa
+    propre barre de vie en 3D, une cloche sonne, et une annonce convoque ceux qui sont loin.
+
+    Le compte a rebours AVANT et l'etat PENDANT partagent donc une seule puce, ce qui laisse un
+    seul emplacement a apprendre au lieu de deux.
+  */
+  const live = raidLine()
+  if (live !== null) return live
+  if (eventView.theme >= 0) return null
   const grand = eventView.nextGrandS > 0 && eventView.nextGrandS <= 3600 ? eventView.nextGrandS : 0
   const raid = raidView.nextS > 0 && raidView.nextS <= 600 ? raidView.nextS : 0
   // The sooner of the two standing facts; the raid within ten minutes, the grand rush within the hour.
-  if (raid > 0 && (grand === 0 || raid <= grand)) return `RAID IN ${mmss(raid)}`
-  if (grand > 0) return `GRAND RUSH IN ${mmss(grand)}`
+  if (raid > 0 && (grand === 0 || raid <= grand)) return { text: `RAID IN ${mmss(raid)}`, color: '#ffd166' }
+  if (grand > 0) return { text: `GRAND RUSH IN ${mmss(grand)}`, color: '#ffd166' }
   return null
 }
 

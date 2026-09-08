@@ -22,7 +22,7 @@ import { loadingView } from './client/loading'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
-import { bannerLine, nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
+import { nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
 import { convoyInReach, surencherir } from './client/convoy'
 import { fuserInReach, agirSurFuser } from './client/fusion'
@@ -1742,27 +1742,25 @@ const uiComponent = () => {
   /*
     The top band, resolved once per frame, in priority order.
 
-    The money is permanent and leads. The tutorial step matters only until it is finished.
-    A crowd bonus and a crate on the belt are moments. The feed is history, so it goes last
-    and is the one dropped when the band is full.
+    The money is permanent and leads. A crate on the belt is a moment.
+
+    DEUX BLOCS, ET C'EN ETAIT TROIS. La ligne du boss vivait ici et pesait 52 px, ce qui poussait
+    la colonne de toasts d'autant vers le bas pendant les trois minutes ou l'ecran a le plus de
+    choses a dire. Elle est partie dans la colonne du coin le 8 Sep, avec le compte a rebours qui
+    l'annonce, parce qu'un boss qui sort quatre fois par heure est un fait permanent et pas un
+    moment (voir `nextBigText` dans `events.ts`).
+
+    Consequence qui vaut d'etre notee: la bande demandait 118 + 52 + 52 plus deux ecarts de 16,
+    soit 250 pour 262 disponibles, et le troisieme bloc etait celui qu'on abandonnait quand une
+    plaque grandissait. A deux blocs elle demande 186. L'annonce du tapis, RARE (1,7 % des
+    caisses, une toutes les quatre minutes et demie) et qui ne repasse jamais, ne peut donc plus
+    etre refusee par un compte a rebours qu'on retrouve seconde apres seconde.
   */
   const topBlocks: Array<[string, boolean, number]> = [
     ['money', true, TYPE.hero + 6 + 34 + 6],
-    // Aussi hautes que la plaque dessinee dedans: une bande plus courte que sa plaque mangeait
-    // l'ecart en dessous, et les toasts arrivaient colles a une ligne de boss (5 Sep). Les deux
-    // sont a 52 pour que les TROIS blocs tiennent, voir `BAND.topHeight`.
-    /*
-      L'annonce du tapis passe AVANT la banniere d'evenement, et l'ordre est la vraie garantie.
-
-      Faire tenir les trois blocs corrige le cas d'aujourd'hui, pas la classe de defaut: le
-      dernier de la liste reste celui qu'on abandonne le jour ou une plaque grandit. Alors on
-      choisit lequel on est pret a perdre. L'annonce est RARE (1,7 % des caisses, une toutes les
-      quatre minutes et demie) et elle ne repasse jamais; la banniere est un compte a rebours
-      qui se redessine a chaque image et qu'on retrouve seconde apres seconde. Perdre une
-      seconde de compte a rebours ne coute rien, manquer une Divine coute le moment.
-    */
-    ['belt', beltView.annonce !== '', 52],
-    ['event', bannerLine() !== null, 52]
+    // Aussi haute que la plaque dessinee dedans: une bande plus courte que sa plaque mangeait
+    // l'ecart en dessous, et les toasts arrivaient colles a une ligne de boss (5 Sep).
+    ['belt', beltView.annonce !== '', 52]
   ]
   const band = topBand(topBlocks)
   /*
@@ -2212,7 +2210,7 @@ const uiComponent = () => {
     {hud() && nextBigText() !== null && (
       <UiEntity
         uiTransform={{
-          width: coinW(nextBigText() ?? ''), height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
+          width: coinW(nextBigText()?.text ?? ''), height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
           position: { top: coinDroit(3), right: rightCornerMargin() },
           flexDirection: 'row', alignItems: 'center'
         }}
@@ -2228,8 +2226,8 @@ const uiComponent = () => {
           ligne d'un panneau, ce qu'elle est: la largeur unique cesse d'etre un cadre autour
           du texte pour redevenir une colonne.
         */}
-        <Label value={nextBigText() ?? ''} fontSize={TYPE.caption}
-          color={Color4.fromHexString('#ffd166ff')}
+        <Label value={nextBigText()?.text ?? ''} fontSize={TYPE.caption}
+          color={Color4.fromHexString(lisible(nextBigText()?.color ?? '#ffd166') + 'ff')}
           uiTransform={{ height: 40 }} textAlign="middle-left" textWrap="nowrap" />
       </UiEntity>
     )}
@@ -2292,33 +2290,6 @@ const uiComponent = () => {
       A crate worth crossing the room for. One in about thirteen now, rather than one in
       four, so it is allowed to be loud; it is not allowed to be wider than its sentence.
     */}
-    {/*
-      The event clock: announced once in the player's gaze, then it lives here.
-
-      Placement and shape follow the documented timer conveyance: after the initial prompt the
-      timer moves to a permanent spot at the top, it carries iconography (the theme's name in
-      the theme's colour is ours), and it is set apart from the rest of the HUD by that colour
-      alone. It sits between the money and the belt line because it is the one thing on screen
-      that ties the two together: this is why the belt is worth watching right now.
-    */}
-    {hud() && bannerLine() !== null && band.event >= 0 && (
-      <Centre top={band.event}>
-        <UiEntity
-          uiTransform={{
-            width: Math.min(strip(760).width, largeurTexte(bannerLine()?.text ?? '', TYPE.label) + 60),
-            height: 52, justifyContent: 'center', alignItems: 'center'
-          }}
-          uiBackground={SKIN.panel}
-        >
-          <Label
-            value={bannerLine()?.text ?? ''}
-            fontSize={TYPE.label}
-            color={Color4.fromHexString(lisible(bannerLine()?.color ?? '#ffffff') + 'ff')}
-            uiTransform={{ width: '100%', height: 52 }} textAlign="middle-center" textWrap="nowrap" />
-        </UiEntity>
-      </Centre>
-    )}
-
     {hud() && beltView.annonce !== '' && band.belt >= 0 && (
       <Centre top={band.belt}>
         <UiEntity
