@@ -1,7 +1,6 @@
-import { engine, Material, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
+import { engine, Material, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial, MeshRenderer } from '@dcl/sdk/ecs'
 import { Vector2, Vector3, Color3, Color4 } from '@dcl/sdk/math'
 import { replay } from './sfx'
-import { isMobile } from '@dcl/sdk/platform'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
@@ -165,6 +164,35 @@ export function nextBigText(): { text: string; color: string } | null {
   cracks, the stars, the grid and the flecks light up and the plates do not.
 */
 /*
+  THE REPEAT MOVES FROM THE MATERIAL TO THE MESH, so the floor can flow on a phone too.
+
+  The mat used to carry its repetition in the material (`tiling: 192/8`), and the drift was
+  then desktop-only, because the mobile explorer's texture tween overwrites the material's UV
+  scale. Read again in the CURRENT source on 9 Sep, and it is still there: `apply_uv_to_mesh`
+  in godot-explorer `lib/src/scene_runner/components/tween.rs` writes
+  `set_uv1_scale(tex_anim.uv_scale)` on every animated frame, and `TextureAnimation::default()`
+  in `scene.rs` sets `uv_scale` to (1, 1). In offset mode nothing ever changes that field, so
+  the material's tiling is replaced by 1 and one mat cell stretches over the whole venue.
+
+  The belt already solved this by making (1, 1) the truth: its repetition is baked into
+  `belt-strip.png`. A ground of 192 m cannot bake 24 repeats, that is a 6144 px image per
+  theme. But there is a third place to put a repeat, and it is free: the MESH. A plane whose
+  UVs run 0..n repeats the texture n times with the material left at tiling 1, which is
+  exactly the value the mobile tween forces. Both explorers then agree, and the cost on the
+  three counters we watch is zero: same texture, same material, same draw call, same plane.
+
+  `uvsRepetes` is the documented helper, from the official Set UVs section of the materials
+  guide: sixteen numbers, the plane's two faces, corners lower-left, lower-right, upper-right,
+  upper-left, the south face mirrored.
+*/
+function uvsRepetes(n: number): number[] {
+  return [
+    0, 0, n, 0, n, n, 0, n,
+    n, 0, 0, 0, 0, n, n, n
+  ]
+}
+
+/*
   `maille` is metres per repeat of the mat, `vitesse` its drift in repeats per second; both
   default to the venue's stride. The rainbow is the one mat whose motif is a full hue cycle,
   and a full cycle every eight metres is bands of sixty centimetres: at any distance that is
@@ -311,10 +339,10 @@ export function setupEvents(): void {
         les pieds et non au-dessus de la tete: c'est la ou l'evenement se joue, et c'est assez.
       */
       if (sol !== null) {
+        MeshRenderer.setPlane(sol, uvsRepetes(Math.round(SCENE_SIDE / (look.maille ?? MAILLE_SOL))))
         const mat = Material.Texture.Common({
           src: `assets/textures/mat-rush-${LOOK[theme] === undefined ? 5 : theme}.png`,
-          wrapMode: TextureWrapMode.TWM_REPEAT,
-          tiling: Vector2.create(SCENE_SIDE / (look.maille ?? MAILLE_SOL), SCENE_SIDE / (look.maille ?? MAILLE_SOL))
+          wrapMode: TextureWrapMode.TWM_REPEAT
         })
         Material.setPbrMaterial(sol, {
           texture: mat,
@@ -325,13 +353,15 @@ export function setupEvents(): void {
           metallic: 0,
           roughness: 0.95
         })
-        // Not on the handset: its texture tweens overwrite the material's tiling with (1, 1)
-        // (godot-explorer tween.rs, 30 Aug), which would stretch one mat cell over the venue.
-        // The phone keeps a still mat at the right scale; the flow is a desktop flourish.
-        if (!isMobile()) Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), look.vitesse ?? 0.015, TextureMovementType.TMT_OFFSET)
+        // Every client now, phone included: with the repeat on the mesh, (1, 1) is the scale
+        // both explorers agree on, and the one the mobile tween forces anyway.
+        Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), look.vitesse ?? 0.015, TextureMovementType.TMT_OFFSET)
       }
     } else {
       if (sol !== null && solCouleur !== '') {
+        // The plane takes its plain UVs back: the grass keeps its repeat in the material, and
+        // with no tween left on the entity nothing overwrites that scale.
+        MeshRenderer.setPlane(sol)
         Material.setPbrMaterial(sol, groundMaterial(solCouleur))
         Tween.deleteFrom(sol)
       }
