@@ -211,9 +211,18 @@ function uvsRepetes(n: number): number[] {
   (`EVENT_MS`), so the colour barely came round once and the floor read as frozen (owner,
   9 Sep: "j'aimerais qu'il defile lentement, comme les autres").
 
-  So the rainbow keeps its wide weave and takes the venue's drift back, the same 0.015 the
-  nine other mats carry with the same direction vector: a full sweep every 67 s, four and a
-  half over a rush. Same rhythm as the rest of the floor, four times the band width.
+  MEASURED, AND THE FIRST FIX WAS NOT ENOUGH. Giving the rainbow the venue's own 0.015 back
+  was still read as barely moving (owner, 9 Sep: "ca defile mais tres lentement"). Two captures
+  21 s apart from a fixed camera, hue read at three scanlines: +0.084 cycle, so 0.0040 cycles
+  per second, one sweep every 250 s against a rush that lasts 300. The commanded 0.015 does not
+  arrive as 0.015: the measured ratio is 0.267, and MAILLE_SOL / maille is 8 / 32 = 0.25, so the
+  offset's unit appears to be the venue's stride and not one repeat of the mat. [One measurement,
+  one plausible rule: treat the ratio as observed, not as established.]
+
+  Whatever the mechanism, the correction it dictates is exact: a mat with a repeat n times wider
+  needs n times the drift to turn at the same rate, so the rainbow carries 0.060 where the others
+  carry 0.015. That brings the sweep to about one a minute, five over a rush, the same rhythm the
+  other nine mats have always had, with four times the band width.
 */
 const LOOK: Record<number, { lueur: number; maille?: number; vitesse?: number }> = {
   1: { lueur: 0.0 },     // golden hour
@@ -223,7 +232,7 @@ const LOOK: Record<number, { lueur: number; maille?: number; vitesse?: number }>
   7: { lueur: 0.0 },     // dawn, half and half
   8: { lueur: 0.35 },    // late evening: the flecks
   10: { lueur: 0.0 },    // sunrise light
-  11: { lueur: 0.0, maille: 32 },  // clear morning: wide bands, the venue's own drift
+  11: { lueur: 0.0, maille: 32, vitesse: 0.060 },  // clear morning: wide bands, four times the drift to match  // clear morning: wide bands, the venue's own drift
   12: { lueur: 0.5 },    // neon hour: the grid
   13: { lueur: 0.0 }     // blue hour before dawn
 }
