@@ -12,9 +12,9 @@ import { engine, GltfContainer, GltfContainerLoadingState, LoadingState } from '
  *
  * "Really there" is measured, not guessed: the load state the client writes on every model
  * entity (`GltfContainerLoadingState`, the same component toy.ts already reads for the
- * pieces). The watched files are the ones that shape the field. And a ceiling, because a
- * screen that could hold for ever on one stuck file would be worse than no screen: past
- * `TIMEOUT_MS` the game shows whatever it has.
+ * pieces). The watched files are every model the world lays down at startup, see `WATCHED`
+ * below. And a ceiling, because a screen that could hold for ever on one stuck file would be
+ * worse than no screen: past `TIMEOUT_MS` the game shows whatever it has.
  */
 export const loadingView = {
   assetsReady: false,
@@ -24,11 +24,42 @@ export const loadingView = {
   done: 0
 }
 
-/** The models without which the field is not a field. Paths as `decor.ts` names them. */
+/*
+  TOUT LE DECOR, et c'etait le terrain seulement.
+
+  La liste tenait trois fichiers, la ligne d'arbres, les buissons et le mur, sur l'idee des
+  "modeles sans lesquels le champ n'est pas un champ". Elle laissait donc apparaitre APRES la
+  chute de l'ecran l'anneau de la place, le tapis roulant et les ballons, c'est-a-dire des
+  objets fixes que le joueur regarde en arrivant (proprietaire, 8 Sep: "une fois le monde
+  arrive je vois encore des elements charger pendant une seconde").
+
+  L'elargissement ne coute rien, et c'est mesure: les six fichiers ajoutes pesent 310 Ko a eux
+  tous, contre 5,8 Mo pour la seule ligne d'arbres qui etait deja attendue. Ils seront prets
+  bien avant elle, donc l'ecran ne tient pas une seconde de plus qu'avant.
+
+  CE QUI N'EST PAS ICI, ET NE PEUT PAS L'ETRE: les bases et les objets sur leurs etageres.
+  Ils n'existent pas quand cet ecran demarre, ils sont crees quand les entites `Plot` du
+  serveur arrivent. On ne peut pas surveiller le chargement d'un fichier dont l'entite n'a pas
+  encore ete creee, et attendre le serveur ferait de la borne de 25 s le cas normal sur un
+  demarrage a froid.
+
+  REGLE POUR LA SUITE: tout modele pose une fois pour toutes au demarrage appartient a cette
+  liste. Un modele cree en cours de partie n'y appartient jamais. La difference n'est pas le
+  poids, c'est de savoir si l'entite existe deja quand l'ecran compte.
+*/
 const WATCHED = [
+  // decor.ts: la ligne d'arbres, les buissons, le mur d'enceinte, l'anneau de la place,
+  // la spirale de ballons et les trois ballons qui l'entourent.
   'assets/Models/vegetation-arbres.glb',
   'assets/Models/vegetation-buissons.glb',
-  'assets/Models/wall.glb'
+  'assets/Models/wall.glb',
+  'assets/toy/plaza-ring.glb',
+  'assets/Models/balloon-group01.glb',
+  'assets/Models/balloon004.glb',
+  'assets/Models/balloon005.glb',
+  'assets/Models/balloon006.glb',
+  // belt.ts: le chassis du tapis, pose au demarrage lui aussi.
+  'assets/Models/belt.glb'
 ]
 const TIMEOUT_MS = 25_000
 
@@ -41,20 +72,34 @@ export function setupLoading(): void {
   loadingView.since = Date.now()
   engine.addSystem(() => {
     if (loadingView.assetsReady) return
-    let vus = 0
-    let finis = 0
+    /*
+      ON COMPTE DES FICHIERS, ET ON COMPTAIT DES ENTITES.
+
+      L'ancienne condition demandait `entites vues >= WATCHED.length`, ce qui ne tenait que par
+      coincidence: la ligne d'arbres, les buissons et la spirale ne posent qu'UNE entite chacun,
+      et le total ne depassait le nombre de fichiers attendus que grace aux ballons et aux
+      segments de mur. Retirer un bouquet de ballons aurait fait tenir l'ecran jusqu'a la borne
+      de 25 s, en silence, sans qu'aucun fichier manque vraiment.
+
+      La question posee est "chaque fichier attendu est-il present et fini", alors on la pose
+      telle quelle: un ensemble de sources vues, un ensemble de sources dont au moins une entite
+      n'a pas fini. Le compte d'entites par fichier cesse d'etre une hypothese.
+    */
+    const vus = new Set<string>()
+    const incomplets = new Set<string>()
     for (const [e, g] of engine.getEntitiesWith(GltfContainer)) {
       if (!WATCHED.includes(g.src)) continue
-      vus += 1
+      vus.add(g.src)
       const st = GltfContainerLoadingState.getOrNull(e)
-      if (st !== null && termine(st.currentState)) finis += 1
+      if (st === null || !termine(st.currentState)) incomplets.add(g.src)
     }
-    loadingView.watched = vus
+    const finis = vus.size - incomplets.size
+    loadingView.watched = WATCHED.length
     loadingView.done = finis
-    const tousLa = vus >= WATCHED.length && finis >= vus
+    const tousLa = vus.size >= WATCHED.length && incomplets.size === 0
     if (tousLa || Date.now() - loadingView.since > TIMEOUT_MS) {
       loadingView.assetsReady = true
-      console.log(`[CLIENT] loading: ${finis}/${vus} models in after ${Math.round((Date.now() - loadingView.since) / 100) / 10}s${tousLa ? '' : ' (timeout)'}`)
+      console.log(`[CLIENT] loading: ${finis}/${WATCHED.length} files in after ${Math.round((Date.now() - loadingView.since) / 100) / 10}s${tousLa ? '' : ' (timeout)'}`)
     }
   })
 }
