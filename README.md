@@ -73,13 +73,6 @@ The first five steps are the in-game tutorial, in its order.
 - **Detail follows the same budget.** Nearest bases in full, far ones as silhouettes, yours
   always full. A storey is 4 merged meshes instead of 23 objects; item models are shared.
 
-## Verify in sixty seconds
-
-- Open the phone link. No setup beyond the app itself.
-- `1 MENU` shows a four-character build stamp: the deployed commit, compare with `git log`.
-- `images/base-war-thumbnail.png` is byte-identical to what the Worlds content server serves.
-- Live server logs: `npm run server-logs -- --world basewar.dcl.eth`.
-
 ## Under the hood
 
 - Decentraland SDK7, multiplayer server branch (`@dcl/sdk@auth-server`). One codebase, the
