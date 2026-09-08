@@ -4,7 +4,7 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { engine } from '@dcl/sdk/ecs'
 import { TYPE, C, TAP, SKIN, lisible, TOAST } from './theme'
 import { Glyphs } from './glyphs'
-import { Btn , SURF} from './ui-kit'
+import { Btn, SURF, Defilant } from './ui-kit'
 import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT, incomeMultiplier } from '../shared/schemas'
 import { RARITIES, MUTATIONS, rarityOf, mutationDe, traitsDe, itemIncome, nomDuCode, formatIncome, expectedMutationMult } from '../shared/loot-table'
 import { fusionCost } from '../shared/economy'
@@ -29,6 +29,14 @@ export function openFuser(): void { fuserPanelView.open = true }
 export function closeFuser(): void { fuserPanelView.open = false }
 
 const RANG = 84
+/*
+  The text column's width, stated once because the sliding line has to know it.
+
+  A marquee needs the exact box it is read through: pass it '100%' and the overflow is
+  unknown, so the travel is unknown. The column and the line therefore share this number
+  rather than each carrying their own copy of 500.
+*/
+const COLONNE_TEXTE = 500
 
 /** The player's toys: what the machine already holds for them first, then the shelves. */
 function miens(): { hopper: number[]; etagere: number[] } {
@@ -104,8 +112,8 @@ export const FusionPanel = () => {
         {/* What the machine already holds for this player, and the way back out of it. */}
         {m.hopper.length > 0 && (
           <UiEntity uiTransform={{ width: '100%', height: TAP.height + 8, flexDirection: 'row', alignItems: 'center' }}>
-            <Label value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`} fontSize={TYPE.caption}
-              color={Color4.fromHexString('#ffd166ff')} uiTransform={{ width: 600, height: TAP.height, overflow: 'hidden' }} textAlign="middle-left" textWrap="nowrap" />
+            <Defilant value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`}
+              fontSize={TYPE.caption} color={Color4.fromHexString('#ffd166ff')} width={600} height={TAP.height} />
             <UiEntity uiTransform={{ width: 280, height: TAP.menu, justifyContent: 'flex-end' }}>
               <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { sendOrHold(() => { void room.send('takeBackFusion', {}) }); closeFuser() }} />
             </UiEntity>
@@ -131,12 +139,12 @@ export const FusionPanel = () => {
           return (
             <UiEntity key={r.id} uiTransform={{ width: '100%', height: RANG, flexDirection: 'row', alignItems: 'center' }}>
               {/* The text column clips: nothing it holds may ever run under the button beside it. */}
-              <UiEntity uiTransform={{ width: 500, height: RANG, flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+              <UiEntity uiTransform={{ width: COLONNE_TEXTE, height: RANG, flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
                 <Label value={`${total}  ${r.name}${total === 1 ? '' : 's'}`} fontSize={TYPE.body}
                   color={Color4.fromHexString(lisible(r.color) + 'ff')}
                   uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
-                <Label value={pris.length > 0 ? `${pris.map(nomCourt).join(' · ')}   ·   ${chances(pris)}` : 'none on your shelves'} fontSize={TYPE.caption}
-                  color={C.dim} uiTransform={{ width: '100%', height: 30 }} textAlign="middle-left" textWrap="nowrap" />
+                <Defilant value={pris.length > 0 ? `${pris.map(nomCourt).join(' · ')}   ·   ${chances(pris)}` : 'none on your shelves'}
+                  fontSize={TYPE.caption} color={C.dim} width={COLONNE_TEXTE} height={30} />
               </UiEntity>
               <UiEntity uiTransform={{ width: 380, height: TAP.menu, justifyContent: 'flex-end' }}>
                 <Btn label={!assez ? `${FUSION_NEEDS} NEEDED` : `FUSE  ${formatIncome(prix)}`}
