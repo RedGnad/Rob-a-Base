@@ -128,9 +128,17 @@ export function setupRaid(): void {
     flashDamage()
     floatAmount(d.lost, true)
     playHurt()
-    alerter(d.lost > 0
-      ? 'THE BOSS HIT YOU  ·  your coins are on the floor, grab them back'
-      : 'THE BOSS HIT YOU  ·  you dropped what you carried', '#ff6b6b', TOAST.warning)
+    /*
+      Pas de toast, exactement comme un tir recu.
+
+      Ces trois lignes SONT les trois canaux que `combat.ts` a retenus le 6 Sep pour `wasShot`:
+      le flash rouge dit que c'est arrive, le chiffre rouge dit ce que ca coute, le son dit que
+      ca fait mal. La plaque qui suivait etait une quatrieme copie, posee en plein milieu du
+      combat, et elle disait en mots ce que les pieces qui tombent au sol montrent deja
+      (proprietaire, 8 Sep: "ce qui se passe a l'ecran est assez signifiant").
+
+      Meme situation que le tir, donc meme regle: le monde repond, l'interface se tait.
+    */
   })
   room.onMessage('raidWon', (d) => {
     alerter(`YOU SLEW THE BOSS  ·  ${crate(d.crate).name.toUpperCase()} in your boxes`, '#ffd166', TOAST.event)

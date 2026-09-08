@@ -391,6 +391,21 @@ export function startRaid(): void {
       const p = positionOf(addr)
       if (p === null) continue
       if (Math.hypot(p.x - m.x, p.z - m.z) > RAID_SWIPE_RANGE || Math.abs(p.y - 0) > 3) continue
+      /*
+        UN MUR ARRETE AUSSI UNE GRIFFE, et il n'arretait qu'une balle.
+
+        `memeEspace` etait branche sur les TIRS, dans les deux sens, mais jamais sur le corps a
+        corps du boss: la boucle ne testait que la distance et la hauteur. Colle a l'interieur de
+        son mur, avec le boss colle a l'exterieur, un joueur se prenait le coup a travers la paroi
+        (proprietaire, 8 Sep, en jouant). Deux metres separaient les deux corps, la portee en vaut
+        quatre, et rien ne regardait la cloison entre eux.
+
+        Ce n'est pas un detail d'equilibrage, ca contredit une intention ecrite trois cents lignes
+        plus haut, dans `horsDesBases`: le boss est tenu HORS des bases pour donner a la base "the
+        role it should have during a raid: a refuge you duck into, with the thing pacing outside".
+        Un refuge qui ne protege pas est pire qu'aucun refuge, parce qu'on y court.
+      */
+      if (!memeEspace(p.x, p.z, m.x, m.z)) continue
       if (now - (dernierCoup.get(addr) ?? 0) < RAID_SWIPE_MS) continue
       dernierCoup.set(addr, now)
       frappe = true
