@@ -67,13 +67,35 @@ export function damageFlashAlpha(): number {
 const FLOAT_MS = 1300
 const FLOAT_MAX = 4
 
-type FloatingAmount = { amount: number; loss: boolean; born: number }
+/*
+  EACH NUMBER CARRIES ITS OWN IDENTITY, and this is the second time that identity was wrong.
+
+  The interface keys these elements so the renderer can tell one from the next across frames.
+  It keyed on RANK first, and a rank shifts when the oldest expires, so a new number inherited
+  a stale element and sat frozen (mobile tester, 3 Sep). It then keyed on `born`, the instant
+  the number was created, which fixed that and looked unique. It is not.
+
+  MEASURED: five calls inside one batch return ONE distinct `Date.now()` out of five, and even
+  with real work between each, two out of five. Server messages are handled together in a
+  frame, so picking up several piles in a row creates several numbers stamped the same
+  millisecond, and the reconciler is handed duplicate sibling keys. React states the
+  consequence itself: children may be duplicated or omitted, and the behaviour is unsupported.
+  What the owner saw is the omitted half, an element nobody updates any more, so it neither
+  rises nor fades (owner, 9 Sep: "le dernier texte flottant reste bloque").
+
+  A counter is unique by construction, which a clock is not. RULE: an identity is never read
+  off a clock, however fine it looks.
+*/
+let prochainId = 1
+
+type FloatingAmount = { id: number; amount: number; loss: boolean; born: number }
 const floating: FloatingAmount[] = []
 
 /** Show a gained or lost amount rising over the middle of the screen. */
 export function floatAmount(amount: number, loss: boolean): void {
   if (amount <= 0) return
-  floating.push({ amount, loss, born: Date.now() })
+  floating.push({ id: prochainId, amount, loss, born: Date.now() })
+  prochainId += 1
   if (floating.length > FLOAT_MAX) floating.shift()
 }
 
@@ -83,10 +105,10 @@ export function floatAmount(amount: number, loss: boolean): void {
  * Expiry happens here rather than on a system: the interface reads this once a frame anyway,
  * and a list nobody is drawing does not need a clock of its own.
  */
-export function liveAmounts(): Array<{ amount: number; loss: boolean; t: number; rank: number; born: number }> {
+export function liveAmounts(): Array<{ id: number; amount: number; loss: boolean; t: number; rank: number }> {
   const now = Date.now()
   while (floating.length > 0 && now - floating[0].born > FLOAT_MS) floating.shift()
-  return floating.map((f, i) => ({ amount: f.amount, loss: f.loss, t: (now - f.born) / FLOAT_MS, rank: i, born: f.born }))
+  return floating.map((f, i) => ({ id: f.id, amount: f.amount, loss: f.loss, t: (now - f.born) / FLOAT_MS, rank: i }))
 }
 
 

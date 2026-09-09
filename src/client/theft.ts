@@ -14,7 +14,7 @@ import { setSfx, replay } from './sfx'
 import { cue } from './ui-kit'
 
 export const theftView = {
-  alertes: [] as Array<{ t: string; c: string; ne: number; until: number }>,
+  alertes: [] as Array<{ id: number; t: string; c: string; ne: number; until: number }>,
   stealing: false,
   stealTarget: '',
   stealLeftMs: 0,
@@ -81,12 +81,24 @@ export function alerterEnFile(texte: string, color: string, durationMs: number =
   birth for the slide-in and its expiry for the fade-out; the legacy single-alert fields
   stay written so nothing else changes.
 */
+/*
+  The identity is a counter, and the birth instant stays for the slide-in.
+
+  Same defect as the floating numbers, same line, found while fixing them (9 Sep): the toast
+  was keyed on `ne`, its instant of birth, and two toasts raised in one frame share that
+  millisecond exactly (measured: five calls in a batch, one distinct `Date.now()` out of five).
+  Duplicate sibling keys are unsupported in the reconciler and leave an element nobody updates.
+  It is rarer here than on the numbers, because the list holds two and a twin refreshes rather
+  than stacking, but rare is not never and the fix is a field.
+*/
+let prochaineAlerte = 1
 export function alerter(texte: string, color: string, durationMs: number = TOAST.warning): void {
   const now = Date.now()
   // The same line again refreshes the one on screen instead of stacking a twin under it.
   const twin = theftView.alertes.find((a) => a.t === texte && a.until > now)
   if (twin !== undefined) { twin.until = now + durationMs; twin.c = color; return }
-  theftView.alertes.unshift({ t: texte, c: color, ne: now, until: now + durationMs })
+  theftView.alertes.unshift({ id: prochaineAlerte, t: texte, c: color, ne: now, until: now + durationMs })
+  prochaineAlerte += 1
   if (theftView.alertes.length > 2) theftView.alertes.length = 2
   theftView.alert = texte
   theftView.alertColor = color
@@ -101,7 +113,7 @@ export function alerter(texte: string, color: string, durationMs: number = TOAST
  * d'en dessous finissait ses huit secondes (proprietaire, 2 Sep, "il disparait pas"). On
  * balaie donc toute la liste, du bas vers le haut pour que les indices tiennent.
  */
-export function alertesVisibles(): Array<{ t: string; c: string; ne: number; until: number }> {
+export function alertesVisibles(): Array<{ id: number; t: string; c: string; ne: number; until: number }> {
   const now = Date.now()
   for (let i = theftView.alertes.length - 1; i >= 0; i--) {
     if (theftView.alertes[i].until <= now) theftView.alertes.splice(i, 1)

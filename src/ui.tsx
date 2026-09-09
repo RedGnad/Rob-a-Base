@@ -1824,12 +1824,13 @@ const uiComponent = () => {
       has to be read without being studied. Stacked by rank when several land at once.
     */}
     {/*
-      Keyed on the instant each number was born, never on its rank. Ranks shift when the
-      oldest expires, so a rank key made the next number inherit a stale element: one figure
-      sat frozen on screen and no new one was drawn (mobile tester, 3 Sep).
+      Keyed on a counter, never on a rank and never on a clock. Ranks shift when the oldest
+      expires, which made the next number inherit a stale element (mobile tester, 3 Sep); the
+      instant of birth then looked unique and is not, since several of these are created inside
+      one frame and share a millisecond (owner, 9 Sep). See the measurement in `juice.ts`.
     */}
     {liveAmounts().map((f) => (
-      <UiEntity key={`amt${f.born}`}
+      <UiEntity key={`amt${f.id}`}
         uiTransform={{
           positionType: 'absolute', width: strip(760).width, height: 64,
           position: { top: `${34 - f.t * 7 + f.rank * 6}%`, left: '50%' },
@@ -2462,7 +2463,7 @@ const uiComponent = () => {
           const lignes = Math.max(1, Math.ceil(estime / (w - 44)))
           const h = 52 + (lignes - 1) * Math.round(TYPE.body * 1.35)
           return (
-            <UiEntity key={`toast${a.ne}`}
+            <UiEntity key={`toast${a.id}`}
               uiTransform={{
                 width: w, height: h,
                 margin: { top: Math.round(-(1 - entree) * 14), bottom: STACK_GAP },
