@@ -242,39 +242,54 @@ export const TOAST = { result: 2500, warning: 4000, event: 6000 } as const
 */
 const ADVANCE = { upper: 0.68, lower: 0.44, digit: 0.58, space: 0.26, other: 0.36 }
 /*
-  THE PHONE HAS ITS OWN TABLE, because one factor cannot fit two typefaces.
+  THE PHONE IS MEASURED FROM ITS OWN FONT FILE, and the screenshots only check the factor.
 
   The table above was read off Unity desktop screenshots. The mobile client is another engine
-  with another typeface, and the two differ PER CLASS, not by a scalar. Measured on the three
-  testers' screenshots of 9 Sep (clients 1.12.1 and 1.14.0, eight known strings, pixels scanned
-  against the 1600-unit canvas): capitals and digits come out NARROWER than the desktop table,
-  "FREE BOX IN 5:20" at 21 px is 166 units for 189 estimated (0.88) and "RAID IN 8:26" 121 for
-  141 (0.86), while lowercase comes out WIDER, "Open your box" at 32 px is 220 for 179 (1.23)
-  and "walk into your base and put it on a stand" at 21 px 423 for 345 (1.23). The single 1.22
-  factor of build cc0b, fitted on the lowercase titles, made every capital timer plate a third
-  wider than it needs: "FREE BOX IN 5:20" got 261 units of plate for 166 of text (owner, 9 Sep:
-  "space to the right of the text").
+  with another typeface, and the two differ per glyph class, not by a scalar: on the testers'
+  screenshots of 9 Sep, capitals and digits came out NARROWER than the desktop table ("FREE
+  BOX IN 5:20" at 21 px: 166 units for 189 estimated) while lowercase came out WIDER ("Open
+  your box" at 32 px: 220 for 179). The single 1.22 factor of build cc0b, fitted on the
+  lowercase titles, made every capital timer plate a third wider than it needs (owner, 9 Sep:
+  "space to the right of the text"), and a per-class table fitted on eight strings was still
+  16 % short on the digit-heavy band line.
 
-  These are the per-class widths fitted by least squares on the eight strings, space and
-  punctuation held at the desktop values (too few of them to fit), then rounded UP a hundredth:
-  residuals between -6 % and +8 %, the two largest on one-word lowercase titles, which is the
-  spread of individual letters inside a class. Sizing keeps 15 units of air per side, so a 6 %
-  short estimate on a 200-unit line still leaves 3 units of pad. Every new tester screenshot
-  with a known string is one more calibration point: `tools/ui/measure-mobile-text.py`.
+  So the width comes from the source. The mobile client is open: `godot/assets/themes/
+  theme.tres` in decentraland/godot-explorer sets `default_font` to `Inter-Regular.ttf`, the
+  font its scene UI labels measure text with (`scene_ui.rs`, `get_theme_font("font")`). The
+  table below is that file's advance width for every printable ASCII glyph, in thousandths of
+  an em, read from its hmtx table. Checked against nine strings on three testers' screenshots
+  (clients 1.12.1 and 1.14.0): measured ink over advance sum runs 0.94 to 1.05, mean 0.97, on
+  timers, titles, hints and the band line alike; the ink of a line is a little short of its
+  advances because the first and last glyphs carry side bearings. That mean is the one
+  factor left, and each new screenshot with a known string re-checks it:
+  `tools/ui/measure-mobile-text.py`.
 */
-const ADVANCE_PHONE = { upper: 0.61, lower: 0.55, digit: 0.45, space: 0.26, other: 0.36 }
+const INTER_ADVANCE = [
+  281, 278, 403, 631, 638, 812, 639, 222, 362, 362, 500, 659, 280, 460, 276, 357, 625, 464, 605,
+  636, 642, 608, 624, 571, 616, 624, 276, 280, 659, 659, 659, 507, 936, 676, 651, 727, 719, 598,
+  587, 743, 740, 264, 543, 652, 562, 889, 753, 761, 635, 761, 639, 638, 642, 741, 676, 949, 642,
+  665, 625, 362, 357, 362, 469, 452, 497, 564, 621, 558, 621, 582, 361, 609, 591, 237, 237, 544,
+  237, 869, 585, 597, 609, 609, 372, 523, 364, 581, 557, 812, 540, 557, 541, 362, 327, 362, 659
+]
+const INTER_INK = 0.97
 let onPhone: boolean | null = null
 export function largeurTexte(t: string, taille: number): number {
   // The forced phone layout forces the phone's text width too, or the desktop check lies.
   if (onPhone === null) onPhone = isMobile() || FORCE_MOBILE_LAYOUT
-  const table = onPhone ? ADVANCE_PHONE : ADVANCE
   let em = 0
+  if (onPhone) {
+    for (const ch of t) {
+      const k = ch.charCodeAt(0) - 32
+      em += (k >= 0 && k < INTER_ADVANCE.length ? INTER_ADVANCE[k] : 600) / 1000
+    }
+    return Math.round(em * taille * INTER_INK)
+  }
   for (const ch of t) {
-    if (ch === ' ') em += table.space
-    else if (ch >= '0' && ch <= '9') em += table.digit
-    else if (ch >= 'A' && ch <= 'Z') em += table.upper
-    else if (ch >= 'a' && ch <= 'z') em += table.lower
-    else em += table.other
+    if (ch === ' ') em += ADVANCE.space
+    else if (ch >= '0' && ch <= '9') em += ADVANCE.digit
+    else if (ch >= 'A' && ch <= 'Z') em += ADVANCE.upper
+    else if (ch >= 'a' && ch <= 'z') em += ADVANCE.lower
+    else em += ADVANCE.other
   }
   return Math.round(em * taille)
 }

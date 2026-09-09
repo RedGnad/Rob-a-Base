@@ -16,9 +16,9 @@ Usage:
   text    the exact string drawn, fontSize its TYPE size (32 body, 21 caption)
   colour  orange (C.bonus titles, default), yellow (#ffd166 timers, money) or white (hints)
 
-Both tables of theme.ts are compared: the desktop one and ADVANCE_PHONE, fitted on 9 Sep from
-eight strings on three testers' screenshots. A ratio near 1.0 against the phone table means the
-fit still holds on this phone; a class that drifts shows up as one kind of string drifting.
+Both estimators of theme.ts are compared: the desktop class table and the phone's own font
+(Inter-Regular advances times the ink factor 0.97). A ratio near 1.0 against the phone estimate
+means the client still draws with that font at that factor.
 
 The screenshot must be a PNG (macOS screenshots are). The canvas is assumed to be the phone's
 1600-unit virtual width; the scale is the image width divided by 1600.
@@ -26,7 +26,19 @@ The screenshot must be a PNG (macOS screenshots are). The canvas is assumed to b
 import struct, zlib, io, colorsys, sys
 
 ADVANCE = {'upper': 0.68, 'lower': 0.44, 'digit': 0.58, 'space': 0.26, 'other': 0.36}
-ADVANCE_PHONE = {'upper': 0.61, 'lower': 0.55, 'digit': 0.45, 'space': 0.26, 'other': 0.36}
+# The phone's own font: Inter-Regular as shipped by decentraland/godot-explorer (theme.tres
+# default_font), advance per printable ASCII glyph in thousandths of an em, times the measured
+# ink factor 0.97. Same numbers as INTER_ADVANCE / INTER_INK in src/client/theme.ts.
+INTER_ADVANCE = [281,278,403,631,638,812,639,222,362,362,500,659,280,460,276,357,625,464,605,636,642,608,624,571,616,624,276,280,659,659,659,507,936,676,651,727,719,598,587,743,740,264,543,652,562,889,753,761,635,761,639,638,642,741,676,949,642,665,625,362,357,362,469,452,497,564,621,558,621,582,361,609,591,237,237,544,237,869,585,597,609,609,372,523,364,581,557,812,540,557,541,362,327,362,659]
+INTER_INK = 0.97
+
+
+def estimate_phone(text, size):
+    em = 0.0
+    for ch in text:
+        k = ord(ch) - 32
+        em += (INTER_ADVANCE[k] if 0 <= k < len(INTER_ADVANCE) else 600) / 1000
+    return em * size * INTER_INK
 
 # Text colours as the phone renders them, one test per named colour of the interface.
 COLOURS = {
@@ -109,7 +121,7 @@ def scan(path, y0, y1, xmin, text, size, colour='orange', canvas_w=1600):
     if navy:
         print('  plate right edge at %.0f units, text runs %.0f units past it' % (max(navy) / scale, (tx1 - max(navy)) / scale))
     print('  desktop table estimate @%d: %.0f units, ratio %.3f' % (size, est, virt / est))
-    tel = estimate(text, size, ADVANCE_PHONE)
+    tel = estimate_phone(text, size)
     print('  phone table estimate @%d: %.0f units, ratio %.3f' % (size, tel, virt / tel))
 
 

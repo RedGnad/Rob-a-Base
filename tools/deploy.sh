@@ -24,7 +24,11 @@ echo "bundle: $SIZE B, production"
 # script itself; the port comes back and the next attempt reuses it.
 npx sdk-commands deploy --target-content https://worlds-content-server.decentraland.org --no-browser --skip-version-checks --skip-build "$@" &
 LINKER=$!
-( sleep 330; if kill -0 "$LINKER" 2>/dev/null; then echo "signing window over (330 s): closing the linker"; kill "$LINKER" 2>/dev/null; fi ) &
+# A wall-clock deadline, not one long sleep: on 10 Sep a single `sleep 330` returned after 50 s
+# under the agent's shell and the linker was closed before anyone could sign. The loop re-checks
+# the clock every 5 s, so a shortened sleep only shortens a step, never the window.
+( START=$(date +%s); while [ $(( $(date +%s) - START )) -lt 330 ]; do sleep 5; done
+  if kill -0 "$LINKER" 2>/dev/null; then echo "signing window over ($(( $(date +%s) - START )) s): closing the linker"; kill "$LINKER" 2>/dev/null; fi ) &
 TIMER=$!
 wait "$LINKER"
 CODE=$?
