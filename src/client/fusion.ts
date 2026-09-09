@@ -1,13 +1,13 @@
 import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Entity, ColliderLayer, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
-import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE } from '../shared/schemas'
+import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE, FUSION_RANGE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/loot-table'
 import { plasticDe, plastic, vif, TOY } from './toy'
 import { carryView } from './carry'
 import { pushToFeed } from './theft'
 import { revealItem } from './box'
-import { openFuser } from './fusion-ui'
+import { openFuser, closeFuser, fuserPanelView } from './fusion-ui'
 import { clicMonde } from './monde'
 
 /**
@@ -197,6 +197,26 @@ export function setupFuser(): void {
     if (clicMonde(tambour)) {
       if (carryView.code < 0) openFuser()
       else void room.send('feedFusion', {})
+    }
+
+    /*
+      THE WINDOW FOLLOWS THE MACHINE, and closes when the player leaves it.
+
+      Nothing was closing it, so a player could open the panel, walk home, and press FUSE from
+      their own base (owner, 9 Sep). The economy was never exposed: the server measures the
+      distance itself before it fuses anything (`pres`, src/server/fusion.ts, refused with "walk
+      up to the fuser"). What was exposed is the interface, which offered a control that could
+      only be refused, and a panel that belongs to a machine has no business standing in front
+      of a base.
+
+      The range is the SERVER's constant, not a second copy of it: a window that closes on one
+      number while the fusion is granted on another would disagree with itself at the edge.
+    */
+    if (fuserPanelView.open && Transform.has(engine.PlayerEntity)) {
+      const p = Transform.get(engine.PlayerEntity).position
+      const dx = p.x - FUSION_POS.x
+      const dz = p.z - FUSION_POS.z
+      if (Math.sqrt(dx * dx + dz * dz) > FUSION_RANGE) closeFuser()
     }
 
     let f: { byName: string; rarity: number; count: number; lastName: string; lastCode: number; atMs: number } | null = null

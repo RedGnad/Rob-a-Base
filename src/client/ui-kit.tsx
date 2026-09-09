@@ -679,6 +679,16 @@ const DEFILE_ECART = 72
   but can never close: no line ever runs into the one behind it, which was the fault.
 */
 const DEFILE_LARGE = 1.12
+/*
+  The SAME measurement decides whether a line moves at all, and it used to be read raw.
+
+  `largeurTexte` is short by four to six percent, so a line whose true width was just over the
+  column read as fitting and stayed still while its tail was cut: a longer line above the others
+  that never moved (owner, 9 Sep). The decision now uses the centre of the measured spread,
+  1.06, while the box keeps the top of it: a line is judged by the width it probably has, and
+  laid out in a box wider than the width it could have.
+*/
+const DEFILE_REEL = 1.06
 
 export const Defilant = (props: {
   value: string
@@ -690,7 +700,7 @@ export const Defilant = (props: {
   depuis: number
 }) => {
   const texte = largeurTexte(props.value, props.fontSize)
-  if (texte <= props.width) {
+  if (texte * DEFILE_REEL <= props.width) {
     return (
       <Label value={props.value} fontSize={props.fontSize} color={props.color}
         uiTransform={{ width: props.width, height: props.height }}
