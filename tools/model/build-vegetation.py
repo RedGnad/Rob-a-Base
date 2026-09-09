@@ -105,8 +105,9 @@ def placer_arbres():
     arbres peuvent se serrer et deux grands non, ce qui est la regle qu'on veut: c'est la
     ramure, pas le tronc, qui decide de la lecture.
 
-    Le prix reste le meme qu'avant: la vegetation est fondue en DEUX objets rendus, donc un
-    arbre coute des triangles et du poids de fichier, jamais un appel de rendu ni un materiau.
+    A tree costs triangles and file weight, never a material: the trees are merged per cell of
+    `TREE_CELL` metres (one file, one draw call per cell, see `write_tree_clusters`), and the
+    bushes stay one object.
     """
     candidats = []
     # La phase se deduit du rang de la bande: une liste ecrite a cote se serait desynchronisee
@@ -344,17 +345,51 @@ def ecrire(nom, prims, atlas, regions):
           f'atlas {atlas.width}x{atlas.height}, {taille // 1024} Ko')
 
 
+# Side of the square cells the trees are written by, in metres: one file per occupied cell.
+#
+# All 114 trees were ONE object, 64,182 triangles, with a bounding box the size of the scene.
+# The client culls per object, so every frame drew every tree, the ones behind the camera
+# included: the single biggest item of the scene, 29 % of the visible triangles on 7 Sep, and
+# the one the culling could never touch. The trees stand within 10 m of the edge, so 48 m
+# cells give twelve files, the four corners L-shaped, each a renderer the client drops when
+# it is out of view. Twelve draw calls instead of one, against a mobile ceiling of 2,000.
+TREE_CELL = 48.0
+# The list of cluster files the client poses, written next to the client so it cannot drift
+# from what this tool produced.
+CLUSTERS_TS = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'client', 'vegetation-clusters.ts')
+
+
+def write_tree_clusters(arbre, img_arbre, places):
+    """One GLB per occupied cell, and the TypeScript list the client poses them from."""
+    cells = {}
+    for (x, y, z, sc, ry) in places:
+        q = instancier(arbre, x, y, z, sc, ry)
+        q['tuile'] = 0
+        cells.setdefault((int(x // TREE_CELL), int(z // TREE_CELL)), []).append(q)
+    names = []
+    for (gx, gz) in sorted(cells):
+        name = f'vegetation-trees-{gx}-{gz}.glb'
+        ecrire(name, cells[(gx, gz)], img_arbre, {0: (0.0, 0.0, 1.0, 1.0)})
+        names.append(name)
+    stale = os.path.join(OUT, 'vegetation-arbres.glb')
+    if os.path.exists(stale):
+        os.remove(stale)
+        print(f'-> removed {stale}: the trees are written per cell now')
+    with open(CLUSTERS_TS, 'w') as f:
+        f.write('// Written by tools/model/build-vegetation.py: the tree cluster files it produced,\n')
+        f.write('// one per occupied 48 m cell. Do not edit by hand; run the tool.\n')
+        f.write('export const TREE_CLUSTERS = [\n')
+        for name in names:
+            f.write(f"  'assets/Models/{name}',\n")
+        f.write(']\n')
+    print(f'-> {len(names)} tree clusters for {len(places)} trees, list written to {os.path.relpath(CLUSTERS_TS)}')
+
+
 if __name__ == '__main__':
     arbre, img_arbre = primitive_de(os.path.join(OUT, 'tree.glb'))
     # La couronne de la place est retiree: les arbres restent sur les bords, decision
     # du proprietaire une fois la vegetation enfin visible (3 Sep).
-    places = placer_arbres()
-    prims = []
-    for (x, y, z, sc, ry) in places:
-        q = instancier(arbre, x, y, z, sc, ry)
-        q['tuile'] = 0
-        prims.append(q)
-    ecrire('vegetation-arbres.glb', prims, img_arbre, {0: (0.0, 0.0, 1.0, 1.0)})
+    write_tree_clusters(arbre, img_arbre, placer_arbres())
 
     # Le semis des buissons repart de la graine: sans ca, toucher au tirage des arbres deplace
     # toute la vegetation basse par ricochet, et chaque retouche des arbres coute une relecture

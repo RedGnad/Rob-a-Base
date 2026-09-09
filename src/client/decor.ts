@@ -2,6 +2,7 @@ import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, M
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS } from '../shared/schemas'
 import { TOY, plastic } from './toy'
+import { TREE_CLUSTERS } from './vegetation-clusters'
 
 /**
  * The world's dressing: a toybox rim, a treeline, bushes, balloons.
@@ -124,16 +125,23 @@ export function setupDecor(): void {
   })
 
   /*
-    Toute la vegetation en DEUX objets, et son placement vit desormais dans l'outil.
+    The vegetation merged in the tool: the trees by cell, the bushes in one piece.
 
-    Quarante-quatre arbres et quarante-trois buissons faisaient quatre-vingt-sept objets
-    rendus, plus d'un tiers du decor, pour de l'ornement sans collider (mesure du 2 Sep). Ils
-    ne bougent jamais les uns par rapport aux autres: `tools/model/build-vegetation.py` les
-    fond en deux modeles a un materiau chacun, exactement comme les etages. Le placement, qui
-    etait ici et tirait sur le meme generateur que les ballons, est parti avec: le repliquer
-    dans l'outil ET dans le client aurait garanti la derive.
+    Forty-four trees and forty-three bushes were eighty-seven rendered objects, over a third
+    of the decor, for ornament without a collider (measured 2 Sep). They never move relative
+    to one another, so `tools/model/build-vegetation.py` merges them, one material each, the
+    way the storeys are; the placement moved into the tool with them, since keeping it here
+    AND there would have guaranteed drift.
+
+    One object for all the trees was a mistake of its own: 64,182 triangles under a bounding
+    box the size of the scene, and the client culls per object, so every frame drew every
+    tree, the ones behind the camera included (the single biggest item of the scene, 29 % of
+    the visible triangles on 7 Sep). The tool now writes one file per occupied 48 m cell,
+    twelve of them, and lists them in `vegetation-clusters.ts`; each is a renderer the client
+    drops when it is out of view. Twelve draw calls instead of one, against a mobile ceiling
+    of 2,000 (769 in the whole scene on 7 Sep).
   */
-  pose('assets/Models/vegetation-arbres.glb', 0, 0, 0, 1, 0)
+  for (const src of TREE_CLUSTERS) pose(src, 0, 0, 0, 1, 0)
   pose('assets/Models/vegetation-buissons.glb', 0, 0, 0, 1, 0)
 
   // Balloons: three bouquets around the plaza's fixtures, knee-high to head-high, and the
