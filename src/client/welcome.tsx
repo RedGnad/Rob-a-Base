@@ -73,7 +73,7 @@ export const WelcomePanel = () => {
           splashes cost.
         */}
         <UiEntity uiTransform={{ width: '100%', height: 60, justifyContent: 'center' }}>
-          <Glyphs value="BASE WAR" size={TYPE.hero} role="money" align="center" box={strip(900).width - 48} />
+          <Glyphs value="ROB A BASE" size={TYPE.hero} role="money" align="center" box={strip(900).width - 48} />
         </UiEntity>
         <Label
           uiTransform={{ width: '100%', height: 44 }}

@@ -203,7 +203,7 @@ function face(pivot: Entity): Face {
   const xg2 = xd1 + MARGE, xd2 = xg2 + moitie
   let y = haut - MARGE - 0.30
 
-  entete(pivot, 0, y, 4.2, '#ffd166', TextAlignMode.TAM_MIDDLE_CENTER, 'BASE WAR  ·  RECORDS')
+  entete(pivot, 0, y, 4.2, '#ffd166', TextAlignMode.TAM_MIDDLE_CENTER, 'ROB A BASE  ·  RECORDS')
   y -= 0.66
 
   entete(pivot, xg1, y, 3.4, HUE.money, TextAlignMode.TAM_MIDDLE_LEFT, 'TOP EARNERS')
