@@ -268,7 +268,8 @@ export function largeurTexte(t: string, taille: number): number {
     else if (ch >= 'a' && ch <= 'z') em += ADVANCE.lower
     else em += ADVANCE.other
   }
-  if (surTelephone === null) surTelephone = isMobile()
+  // The forced phone layout forces the phone's text width too, or the desktop check lies.
+  if (surTelephone === null) surTelephone = isMobile() || FORCE_MOBILE_LAYOUT
   return Math.round(em * taille * (surTelephone ? AVANCE_TELEPHONE : 1))
 }
 /** Lines after wrapping, counting the newlines already in the string. */

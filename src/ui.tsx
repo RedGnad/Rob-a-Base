@@ -274,18 +274,33 @@ const TOASTS_BAS = 240
   grows a line per line of hint, so a hint longer than the plate on a wide phone font is two
   lines rather than a spill. The cap stays: the corner column is a column.
 */
+/*
+  The chip has its own ceiling, wider than the column's, and a margin on the wrap decision.
+
+  Checked by arithmetic against both measured phone ratios (9 Sep): at the column's 440 the
+  fifth title, "Steal from a neighbour", needs 505 and would run 65 units past the plate on
+  every phone; and the fourth hint landed 0.4 unit from the inner edge, which is a coin toss
+  the client's own wrapping decides, and a second line it decides to draw would be cut by
+  the chip's clip. So the chip may grow to 560, anchored right so it grows into the empty
+  band beside the coin counter, and the wrap count is decided 24 units short of the inner
+  width: a borderline hint reserves two lines, and an empty second line costs nothing.
+*/
+const CHIP_W_MAX = 560
+const CHIP_WRAP_MARGIN = 24
 const stepChipW = (): number => {
   const s = STEP_TEXTS[tutoView.etape]
   if (s === undefined) return COIN_MIN
-  const rangee = 16 + 40 + 12 + largeurTexte(`${tutoView.etape + 1}/${tutoView.total}`, TYPE.caption) + 12 + largeurTexte(s.titre, TYPE.body) + 20
+  // Eight units of slack on the row: the estimate IS the measured phone width, so without
+  // slack the longest title sits on the edge to the rounding, and rounding is a coin toss.
+  const rangee = 16 + 40 + 12 + largeurTexte(`${tutoView.etape + 1}/${tutoView.total}`, TYPE.caption) + 12 + largeurTexte(s.titre, TYPE.body) + 20 + 8
   const aide = stepHintDue() && s.aide !== '' ? 16 + largeurTexte(s.aide, TYPE.caption) + 20 : 0
-  return Math.round(Math.min(COIN_W, Math.max(COIN_MIN, rangee, aide)))
+  return Math.ceil(Math.min(CHIP_W_MAX, Math.max(COIN_MIN, rangee, aide)))
 }
 /** Lines the hint takes inside the chip, 0 while it is not due. */
 const stepHintLines = (): number => {
   const s = STEP_TEXTS[tutoView.etape]
   if (s === undefined || s.aide === '' || !stepHintDue()) return 0
-  return lignesDeTexte(s.aide, TYPE.caption, stepChipW() - 36)
+  return lignesDeTexte(s.aide, TYPE.caption, stepChipW() - 36 - CHIP_WRAP_MARGIN)
 }
 /** The step chip grows a line once its hint is due, and one more per wrapped line of it. */
 const stepChipH = (): number => { const n = stepHintLines(); return n === 0 ? COIN_H[0] : 100 + (n - 1) * 30 }
