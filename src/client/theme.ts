@@ -242,35 +242,41 @@ export const TOAST = { result: 2500, warning: 4000, event: 6000 } as const
 */
 const ADVANCE = { upper: 0.68, lower: 0.44, digit: 0.58, space: 0.26, other: 0.36 }
 /*
-  THE PHONE DRAWS WIDER, and the table above was calibrated on the desktop.
+  THE PHONE HAS ITS OWN TABLE, because one factor cannot fit two typefaces.
 
-  The table's numbers were read off Unity screenshots. The mobile client is another engine
-  with another font, and it sets the same string wider. MEASURED on the testers' screenshots
-  of 9 Sep, by scanning the pixels of a known string against the 1600-unit canvas:
-  "Shelve your piece" at 32 px set 260 units for 236 estimated (1.10, client 1.12.1) and
-  "Open your box" set 220 for 179 (1.22, client 1.14.0). Two phones, two app versions, two
-  ratios, both above the 1.04 to 1.06 the desktop shows. Every plate sized from this function
-  was therefore short on a phone, and the tutorial chip overflowed its plate on all three
-  testers' screens.
+  The table above was read off Unity desktop screenshots. The mobile client is another engine
+  with another typeface, and the two differ PER CLASS, not by a scalar. Measured on the three
+  testers' screenshots of 9 Sep (clients 1.12.1 and 1.14.0, eight known strings, pixels scanned
+  against the 1600-unit canvas): capitals and digits come out NARROWER than the desktop table,
+  "FREE BOX IN 5:20" at 21 px is 166 units for 189 estimated (0.88) and "RAID IN 8:26" 121 for
+  141 (0.86), while lowercase comes out WIDER, "Open your box" at 32 px is 220 for 179 (1.23)
+  and "walk into your base and put it on a stand" at 21 px 423 for 345 (1.23). The single 1.22
+  factor of build cc0b, fitted on the lowercase titles, made every capital timer plate a third
+  wider than it needs: "FREE BOX IN 5:20" got 261 units of plate for 166 of text (owner, 9 Sep:
+  "space to the right of the text").
 
-  The factor is the larger of the two, so a plate is roomy on one client rather than short on
-  the other. It is a measurement with two points; each new tester screenshot with a known
-  string is one more (tools: the scan script in the memo, entry 561).
+  These are the per-class widths fitted by least squares on the eight strings, space and
+  punctuation held at the desktop values (too few of them to fit), then rounded UP a hundredth:
+  residuals between -6 % and +8 %, the two largest on one-word lowercase titles, which is the
+  spread of individual letters inside a class. Sizing keeps 15 units of air per side, so a 6 %
+  short estimate on a 200-unit line still leaves 3 units of pad. Every new tester screenshot
+  with a known string is one more calibration point: `tools/ui/measure-mobile-text.py`.
 */
-const AVANCE_TELEPHONE = 1.22
-let surTelephone: boolean | null = null
+const ADVANCE_PHONE = { upper: 0.61, lower: 0.55, digit: 0.45, space: 0.26, other: 0.36 }
+let onPhone: boolean | null = null
 export function largeurTexte(t: string, taille: number): number {
+  // The forced phone layout forces the phone's text width too, or the desktop check lies.
+  if (onPhone === null) onPhone = isMobile() || FORCE_MOBILE_LAYOUT
+  const table = onPhone ? ADVANCE_PHONE : ADVANCE
   let em = 0
   for (const ch of t) {
-    if (ch === ' ') em += ADVANCE.space
-    else if (ch >= '0' && ch <= '9') em += ADVANCE.digit
-    else if (ch >= 'A' && ch <= 'Z') em += ADVANCE.upper
-    else if (ch >= 'a' && ch <= 'z') em += ADVANCE.lower
-    else em += ADVANCE.other
+    if (ch === ' ') em += table.space
+    else if (ch >= '0' && ch <= '9') em += table.digit
+    else if (ch >= 'A' && ch <= 'Z') em += table.upper
+    else if (ch >= 'a' && ch <= 'z') em += table.lower
+    else em += table.other
   }
-  // The forced phone layout forces the phone's text width too, or the desktop check lies.
-  if (surTelephone === null) surTelephone = isMobile() || FORCE_MOBILE_LAYOUT
-  return Math.round(em * taille * (surTelephone ? AVANCE_TELEPHONE : 1))
+  return Math.round(em * taille)
 }
 /** Lines after wrapping, counting the newlines already in the string. */
 export function lignesDeTexte(t: string, taille: number, largeur: number): number {

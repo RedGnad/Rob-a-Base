@@ -236,7 +236,14 @@ const COIN_W = 440
  * un plancher pour qu'une ligne de trois mots reste une plaque, et le plafond de 440 qui
  * garde les trois quarts de l'ecran au jeu.
  */
-const COIN_MIN = 168
+/*
+  The floor was 168, set on the desktop where no row ever reached it. On a phone the raid
+  countdown measures 121 units of text at caption size ("RAID IN 8:26", tester screenshot,
+  9 Sep), 154 with its air, and the floor padded it to 168: sixteen units of air on the left,
+  thirty on the right, the one row of the column that was not sized to its words (owner, 9 Sep).
+  140 keeps a three-word line a plate and lets that row take the width it needs.
+*/
+const COIN_MIN = 140
 function coinW(...textes: string[]): number {
   let large = 0
   for (const t of textes) large = Math.max(large, largeurTexte(t, TYPE.caption))
@@ -858,8 +865,25 @@ const PadControls = () => {
         position: phone() ? { bottom: THUMB.bottom, right: THUMB.right } : { bottom: DESKTOP_PAD_BOTTOM, right: DESKTOP_PAD_RIGHT }
       }}
     >
-      {/* Sa propre ligne au-dessus de l'arc: sur la rangee elle chevauchait la bande d'avis. */}
-      <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: pad.boite + 12, right: 0 }, flexDirection: 'row' }}>
+      {/*
+        Beside the arc on a phone, above it on a desktop.
+
+        Above the arc it shared the right edge with the corner column, which grows DOWN from
+        the top (tutorial chip, rush, free box, raid, cloak: up to 376 units) while the pad
+        stack grows UP (50 + 308 + 12 + 80 = 450). The two do not fit in a 720-high canvas,
+        and on a tester's screen the free-box timer sat on the SELL button (9 Sep, measured:
+        timer plate down to 259 units from the top, SELL plate from 259). The desktop canvas
+        is 1080 high and the same sum leaves room, so nothing moves there.
+
+        On a phone the chip stands LEFT of the pad's box, its bottom on the top satellite's
+        bottom (196 up): its top is 394 units from the top of a 720 canvas, 18 clear of the
+        column at its fullest, 37 on the tester's taller canvas; 95 units separate its right
+        edge from the holster disc, and the sale stays out of the firing thumb's path.
+      */}
+      <UiEntity uiTransform={{
+        positionType: 'absolute', flexDirection: 'row',
+        position: phone() ? { bottom: pad.arc[2].bas, right: pad.boite + 12 } : { bottom: pad.boite + 12, right: 0 }
+      }}>
         <SellChip />
       </UiEntity>
 
