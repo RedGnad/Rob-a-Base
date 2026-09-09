@@ -39,6 +39,7 @@ import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue, stepVerb } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, formatSolde, prixDeRevente, crate } from './shared/loot-table'
+import { applyUiProbe } from './client/ui-probe'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
@@ -1811,6 +1812,7 @@ function CrateReveal(): ReactEcs.JSX.Element {
 
 
 const uiComponent = () => {
+  applyUiProbe()
   // The alert clock reads this: an alert behind a screen keeps for when the screen goes.
   // And the world reads `hudDepuis`: the press that closed a panel is still in flight in the
   // frame the HUD comes back, so a round went off on CLOSE (owner, 6 Sep). See monde.ts.

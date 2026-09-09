@@ -331,6 +331,17 @@ export const TAP = { height: 96, gap: 20, phone: 120, menu: 80, rangee: 100 } as
  * false.
  */
 export const FORCE_MOBILE_LAYOUT = false
+/*
+  A stress state for the interface, reviewed from a desktop window.
+
+  The owner reviews the phone layout without a phone (10 Sep), and the states that collide
+  cannot be summoned on demand: three toasts, the corner column at its fullest, the SELL
+  button, all at once. `'rush'` holds them on screen with the rush chip in the column,
+  `'raid'` with the raid countdown instead (the two never share the column). Pair it with
+  FORCE_MOBILE_LAYOUT. Applied by `applyUiProbe` at the top of every HUD render, after the
+  systems wrote their views. A compile-time constant, committed off: production never sees it.
+*/
+export const UI_PROBE: '' | 'rush' | 'raid' = ''
 
 /**
  * The skins, and why they exist at all.
