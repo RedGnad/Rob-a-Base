@@ -24,8 +24,15 @@ import { fuserView } from './fusion'
  * machine already holds for you, and fuses three of them from where they stand. The result
  * still lands in your hand, so the new toy is carried home like any other.
  */
-export const fuserPanelView = { open: false }
-export function openFuser(): void { fuserPanelView.open = true }
+/*
+  The panel remembers WHEN it opened, because its scrolling lines start from that instant.
+
+  A marquee phased on the wall clock is halfway through a pass whenever a player happens to
+  open the panel, so the head of every line had already gone by (owner, 9 Sep). The open
+  instant is the origin every `Defilant` in here is given.
+*/
+export const fuserPanelView = { open: false, ouvertA: 0 }
+export function openFuser(): void { fuserPanelView.open = true; fuserPanelView.ouvertA = Date.now() }
 export function closeFuser(): void { fuserPanelView.open = false }
 
 const RANG = 84
@@ -118,7 +125,8 @@ export const FusionPanel = () => {
         {m.hopper.length > 0 && (
           <UiEntity uiTransform={{ width: '100%', height: TAP.height + 8, flexDirection: 'row', alignItems: 'center' }}>
             <Defilant value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`}
-              fontSize={TYPE.caption} color={Color4.fromHexString('#ffd166ff')} width={600} height={TAP.height} />
+              fontSize={TYPE.caption} color={Color4.fromHexString('#ffd166ff')} width={600} height={TAP.height}
+              depuis={fuserPanelView.ouvertA} />
             <UiEntity uiTransform={{ width: 280, height: TAP.menu, justifyContent: 'flex-end' }}>
               <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { sendOrHold(() => { void room.send('takeBackFusion', {}) }); closeFuser() }} />
             </UiEntity>
@@ -149,7 +157,8 @@ export const FusionPanel = () => {
                   color={Color4.fromHexString(lisible(r.color) + 'ff')}
                   uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
                 <Defilant value={pris.length > 0 ? `${pris.map(nomCourt).join(' · ')}   ·   ${chances(pris)}` : 'none on your shelves'}
-                  fontSize={TYPE.caption} color={C.dim} width={COLONNE_TEXTE} height={30} />
+                  fontSize={TYPE.caption} color={C.dim} width={COLONNE_TEXTE} height={30}
+                  depuis={fuserPanelView.ouvertA} />
               </UiEntity>
               <UiEntity uiTransform={{ width: 380, height: TAP.menu, justifyContent: 'flex-end' }}>
                 <Btn label={!assez ? `${FUSION_NEEDS} NEEDED` : `FUSE  ${formatIncome(prix)}`}

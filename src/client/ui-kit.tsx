@@ -634,6 +634,12 @@ export function flashDe(cle: string): number {
   glyph crosses the window by construction, so a width estimate that falls short costs a few
   pixels of gap, never a hidden word.
 
+  IT STARTS AT THE BEGINNING, and that is why the caller has to say WHEN. The phase was taken
+  from the wall clock, so a panel opened at an arbitrary instant showed every one of its lines
+  already halfway through a pass: the head had gone by before the player had read a word (owner,
+  9 Sep, "on comprend rien"). The origin is therefore the moment the panel opened, passed in as
+  `depuis`, and at that instant every line reads from its first character.
+
   A line that fits its box does not move at all.
 */
 /*
@@ -680,6 +686,8 @@ export const Defilant = (props: {
   color: Color4
   width: number
   height: number
+  /** When the panel holding this line opened: the line starts from its head at that instant. */
+  depuis: number
 }) => {
   const texte = largeurTexte(props.value, props.fontSize)
   if (texte <= props.width) {
@@ -690,7 +698,7 @@ export const Defilant = (props: {
     )
   }
   const cycle = Math.round(texte * DEFILE_LARGE) + DEFILE_ECART
-  const decalage = Math.round((Date.now() / 1000 * DEFILE_PX_S) % cycle)
+  const decalage = Math.round((Math.max(0, Date.now() - props.depuis) / 1000 * DEFILE_PX_S) % cycle)
   const passage = (
     <Label value={props.value} fontSize={props.fontSize} color={props.color}
       uiTransform={{ width: cycle, height: props.height, flexShrink: 0 }}
