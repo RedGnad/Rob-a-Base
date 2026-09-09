@@ -10,6 +10,7 @@ import { applyFreeze, setCoil } from './locomotion'
 import { carryView } from './carry'
 import { TOAST } from './theme'
 import { cue } from './ui-kit'
+import { puff } from './impact'
 
 /**
  * Gear, client side: what the player holds, and what is lying on the floor.
@@ -94,6 +95,31 @@ export function tirerLaCape(): boolean {
 */
 /** Cloaks this client has already announced seeing through, so the line is said once per cloak. */
 const vusParRayons = new Set<number>()
+
+/*
+  A BURST WHERE A BODY WAS, because vanishing without one reads as a crash.
+
+  The hiding volume is binary: an avatar and its name tag are drawn on one frame and gone on
+  the next, with nothing in between. Every game with invisibility marks that instant, and for a
+  reason that is about reading rather than beauty: an observer who sees a player blink out with
+  no tell cannot tell "he cloaked" from "he disconnected", and the mechanic that just fired at
+  them is invisible in both senses (owner, 9 Sep).
+
+  So the moment an address enters this client's hidden list, a burst is drawn where that body
+  stood, at chest height and about as wide as an avatar. The colour is the same cyan the X-ray
+  glasses use for the one line they say, so the two things that speak about cloaks speak in one
+  colour. It costs nothing new: `puff` runs on three pooled sprites parked under the map.
+
+  ONE GUARD, and it is the difference between a tell and a leak: the list is seeded on the first
+  pass without drawing anything. Otherwise a player who was ALREADY invisible when this client
+  arrived would get a burst at their feet, which hands a newcomer the position of somebody who
+  paid for the opposite.
+*/
+const CAPE_HEX = '#4dd2ff'
+const CAPE_HAUTEUR = 1.0
+const CAPE_TAILLE = 1.7
+let capesVues: string[] = []
+let capesSemees = false
 
 let zoneCape: Entity
 
@@ -201,9 +227,14 @@ export function setupGear(): void {
 
     // Cloaks: one hiding volume per cloaked player, excluding everyone but them.
     const presentHere: string[] = []
-    for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
+    // Where each of them stands, taken on the same pass: the burst needs the body's last point.
+    const ouIls = new Map<string, Vector3>()
+    for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
       const a = id.address?.toLowerCase()
-      if (a) presentHere.push(a)
+      if (!a) continue
+      presentHere.push(a)
+      const t = Transform.getOrNull(e)
+      if (t !== null) ouIls.set(a, Vector3.create(t.position.x, t.position.y, t.position.z))
     }
     const cachees: string[] = []
     gearView.cloaked = false
@@ -228,6 +259,18 @@ export function setupGear(): void {
       }
       if (qui !== moi) cachees.push(qui)
     }
+    // The edge: an address that was visible last pass and is hidden on this one.
+    if (capesSemees) {
+      for (const a of cachees) {
+        if (capesVues.includes(a)) continue
+        const ou = ouIls.get(a)
+        if (ou === undefined) continue
+        puff(Vector3.create(ou.x, ou.y + CAPE_HAUTEUR, ou.z), CAPE_HEX, CAPE_TAILLE)
+      }
+    }
+    capesVues = cachees
+    capesSemees = true
+
     /*
       One list, rewritten only when it changes: everybody present except the cloaked players
       who are not me. A mutable write on an unchanged list is a serialise-and-compare every
