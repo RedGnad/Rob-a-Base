@@ -63,14 +63,19 @@ function choix(m: { hopper: number[]; etagere: number[] }, r: number): number[] 
 }
 
 /**
- * A toy named for a row that already says its rarity: the mutation, or "plain", and its
+ * A toy named for a row that already says its rarity: the mutation, or "Normal", and its
  * traits. "takes: Blood Uncommon, Gold Uncommon +1, Common" repeated the row's own word
- * three times and ran under the button (owner, 4 Sep); "Blood · Gold +1 · plain" fits.
+ * three times and ran under the button (owner, 4 Sep); "Blood · Gold +1 · Normal" fits.
+ *
+ * An unmutated toy is NORMAL, not plain, and only in this panel (owner, 9 Sep). It sits in a
+ * list where every other entry is a mutation's proper name, capitalised, and "plain" read as a
+ * qualifier rather than as one of the names.
  */
+const SANS_MUTATION = 'Normal'
 function nomCourt(code: number): string {
   const n = traitsDe(code)
   const mu = mutationDe(code)
-  const nom = mu > 0 ? (MUTATIONS[mu]?.name ?? 'plain') : 'plain'
+  const nom = mu > 0 ? (MUTATIONS[mu]?.name ?? SANS_MUTATION) : SANS_MUTATION
   return n > 0 ? `${nom} +${n}` : nom
 }
 

@@ -613,39 +613,32 @@ export function flashDe(cle: string): number {
 }
 
 /*
-  A line longer than its box, read whole instead of cut.
+  A line longer than its box, read whole by scrolling: one direction, constant speed, no end.
 
   The fuser names the three toys a fusion would eat and the odds each fed mutation passes on,
-  and that sentence is exactly as long as the data makes it: "Diamond . plain +1 . Yin Yang
-  . Diamond 22%, Yin Yang 18%" runs about sixty pixels past the five hundred left of the row,
-  so the end was simply gone (owner, 9 Sep). Shortening it would drop the half a player opens
-  the panel to read, so the window moves rather than the text.
+  and that sentence is exactly as long as the data makes it. Shortening it would drop the half
+  a player opens the panel to read, so the window moves instead.
 
-  ONE CLOCK FOR THE WHOLE INTERFACE. The offset is a pure function of the wall clock, so every
-  sliding line in a panel starts, glides and rests on the same beat. Six lines each on their
-  own timer read as noise; six moving as one reads as a single deliberate motion, and it costs
-  no state at all. A line that fits never moves.
+  THE FIRST VERSION WAS A PING-PONG AND IT WAS WRONG ON THREE COUNTS, all of them mine (owner,
+  9 Sep). It slid to the end and slid BACK, so half the time the text ran left to right, which
+  reads as a glitch. It gave every line the same DURATION rather than the same speed, so a line
+  overflowing by ninety pixels moved three times faster than one overflowing by thirty. And its
+  travel was the overflow, computed from an ESTIMATE of the text width, so wherever the estimate
+  fell short the tail never arrived.
 
-  The cycle rests at the head long enough to read the beginning, glides, rests at the tail,
-  and glides back. The glide is smoothstepped so neither end is a jerk, and every row shares
-  the same DURATION rather than the same speed: a row overflowing by ninety pixels and one
-  overflowing by thirty would otherwise drift apart within two cycles.
+  This is the ordinary marquee instead, and each of its properties answers one of those. The
+  text is drawn TWICE, each copy in a box one gap wider than itself, and the pair slides left by
+  one box per cycle: at the end of a cycle the second copy sits exactly where the first began,
+  so the loop has no seam and no return leg. Speed is in PIXELS PER SECOND and is the same
+  number for every line, so two lines side by side move together whatever they hold. And every
+  glyph crosses the window by construction, so a width estimate that falls short costs a few
+  pixels of gap, never a hidden word.
 
-  The travel is the overflow, from `largeurTexte`, the same estimate the panels are already
-  sized with. It errs wide by design, which here costs a few pixels of empty run at the tail
-  rather than a word still hidden.
+  A line that fits its box does not move at all.
 */
-const DEFILE = { repos: 1600, glisse: 1800 }
-/** Smoothstep, so the glide leaves and reaches rest without a jerk. */
-function adouci(t: number): number { return t * t * (3 - 2 * t) }
-function decalageDefile(trop: number): number {
-  const cycle = 2 * (DEFILE.repos + DEFILE.glisse)
-  const t = Date.now() % cycle
-  if (t < DEFILE.repos) return 0
-  if (t < DEFILE.repos + DEFILE.glisse) return trop * adouci((t - DEFILE.repos) / DEFILE.glisse)
-  if (t < 2 * DEFILE.repos + DEFILE.glisse) return trop
-  return trop * (1 - adouci((t - 2 * DEFILE.repos - DEFILE.glisse) / DEFILE.glisse))
-}
+const DEFILE_PX_S = 60
+/** The blank between the tail of one pass and the head of the next, so the loop reads as a loop. */
+const DEFILE_ECART = 72
 
 export const Defilant = (props: {
   value: string
@@ -654,19 +647,33 @@ export const Defilant = (props: {
   width: number
   height: number
 }) => {
-  const trop = Math.max(0, largeurTexte(props.value, props.fontSize) - props.width)
+  const texte = largeurTexte(props.value, props.fontSize)
+  if (texte <= props.width) {
+    return (
+      <Label value={props.value} fontSize={props.fontSize} color={props.color}
+        uiTransform={{ width: props.width, height: props.height }}
+        textAlign="middle-left" textWrap="nowrap" />
+    )
+  }
+  const cycle = texte + DEFILE_ECART
+  const decalage = Math.round((Date.now() / 1000 * DEFILE_PX_S) % cycle)
+  const passage = (
+    <Label value={props.value} fontSize={props.fontSize} color={props.color}
+      uiTransform={{ width: cycle, height: props.height, flexShrink: 0 }}
+      textAlign="middle-left" textWrap="nowrap" />
+  )
   return (
     <UiEntity uiTransform={{
       width: props.width, height: props.height,
       flexDirection: 'row', alignItems: 'center', overflow: 'hidden'
     }}>
-      <Label
-        value={props.value} fontSize={props.fontSize} color={props.color}
-        uiTransform={{
-          width: props.width + trop, height: props.height, flexShrink: 0,
-          margin: { left: trop === 0 ? 0 : -Math.round(decalageDefile(trop)) }
-        }}
-        textAlign="middle-left" textWrap="nowrap" />
+      <UiEntity uiTransform={{
+        width: cycle * 2, height: props.height, flexDirection: 'row',
+        flexShrink: 0, margin: { left: -decalage }
+      }}>
+        {passage}
+        {passage}
+      </UiEntity>
     </UiEntity>
   )
 }
