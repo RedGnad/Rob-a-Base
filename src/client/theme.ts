@@ -1,4 +1,5 @@
 import { Color4 } from '@dcl/sdk/math'
+import { isMobile } from '@dcl/sdk/platform'
 
 /**
  * The interface tokens, and the arithmetic behind them.
@@ -240,6 +241,24 @@ export const TOAST = { result: 2500, warning: 4000, event: 6000 } as const
   text metrics; err on the wide side, a plate a little roomy beats a word cut off.
 */
 const ADVANCE = { upper: 0.68, lower: 0.44, digit: 0.58, space: 0.26, other: 0.36 }
+/*
+  THE PHONE DRAWS WIDER, and the table above was calibrated on the desktop.
+
+  The table's numbers were read off Unity screenshots. The mobile client is another engine
+  with another font, and it sets the same string wider. MEASURED on the testers' screenshots
+  of 9 Sep, by scanning the pixels of a known string against the 1600-unit canvas:
+  "Shelve your piece" at 32 px set 260 units for 236 estimated (1.10, client 1.12.1) and
+  "Open your box" set 220 for 179 (1.22, client 1.14.0). Two phones, two app versions, two
+  ratios, both above the 1.04 to 1.06 the desktop shows. Every plate sized from this function
+  was therefore short on a phone, and the tutorial chip overflowed its plate on all three
+  testers' screens.
+
+  The factor is the larger of the two, so a plate is roomy on one client rather than short on
+  the other. It is a measurement with two points; each new tester screenshot with a known
+  string is one more (tools: the scan script in the memo, entry 561).
+*/
+const AVANCE_TELEPHONE = 1.22
+let surTelephone: boolean | null = null
 export function largeurTexte(t: string, taille: number): number {
   let em = 0
   for (const ch of t) {
@@ -249,7 +268,8 @@ export function largeurTexte(t: string, taille: number): number {
     else if (ch >= 'a' && ch <= 'z') em += ADVANCE.lower
     else em += ADVANCE.other
   }
-  return Math.round(em * taille)
+  if (surTelephone === null) surTelephone = isMobile()
+  return Math.round(em * taille * (surTelephone ? AVANCE_TELEPHONE : 1))
 }
 /** Lines after wrapping, counting the newlines already in the string. */
 export function lignesDeTexte(t: string, taille: number, largeur: number): number {

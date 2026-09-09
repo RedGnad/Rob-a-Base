@@ -2,7 +2,7 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP , SKIN} from './theme'
 import { Glyphs } from './glyphs'
-import { Btn } from './ui-kit'
+import { Btn, SURF } from './ui-kit'
 import { strip } from './layout'
 
 import { STRESS_BASES } from './stress'
@@ -24,33 +24,40 @@ export function decideWelcome(tutoEtape: number, tutoTotal: number): void {
 
 export const WelcomePanel = () => {
   if (!welcomeView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
+  /*
+    A VEIL AND A CARD, the way every other modal here is built. Second reversal, recorded.
+
+    The first version was a card on a black wash. On a phone the renderer insets the canvas
+    by the device's safe margins, so the wash stopped short of the edges and read as a second
+    dark rectangle around the card (tester, 7 Sep). The answer then was to paint the panel
+    skin over the whole canvas with no veil, so there would be one rectangle instead of two.
+
+    That traded one artefact for a worse one, and it took three testers' screenshots to see it
+    (9 Sep). The canvas is inset either way, so the full panel ALSO stops short of the edges;
+    and the client draws its own avatar, chat, joystick and emote controls in the corners, OVER
+    scene UI by design, so those icons sat on top of our "panel" and it read as broken. The
+    fusion and prestige panels never drew that complaint because their veil dims the world and
+    the client's icons land on the dimmed world, not on the card. Same shape here.
+
+    The inset frame itself is a renderer property, not a panel one: a veil that must reach the
+    physical edges needs its own renderer declared with `screenInset: 'none'`. That is the
+    next step, for every modal at once, once it can be looked at on a phone.
+  */
   return (
-    /*
-      Full bleed, and no veil behind it.
-
-      This was a panel floating on a sixty-two percent black wash of the whole screen. On a
-      desktop the wash covers everything and reads as a dimming; on a phone the renderer
-      insets the canvas by the device's safe margins, so the wash stops short of the edges
-      and turns into a second dark rectangle around the first. That is what looked like an
-      extra panel, and it was only ever visible on a handset because desktop insets are zero.
-
-      A wash that cannot reach the edges is not worth keeping, and a first screen has no
-      reason to be a window: it is the only thing there is at that moment. So it fills what
-      it is given, and the content inside is what gets a width.
-    */
     <UiEntity
       uiTransform={{
         width: '100%', height: '100%', positionType: 'absolute',
         justifyContent: 'center', alignItems: 'center'
       }}
-      uiBackground={SKIN.panel}
+      uiBackground={{ color: SURF.voile }}
       onMouseDown={closeWelcome}
     >
       <UiEntity
         uiTransform={{
-          width: strip(900).width, height: 380,
+          width: strip(900).width, height: 400,
           flexDirection: 'column', padding: 24, justifyContent: 'space-between'
         }}
+        uiBackground={SKIN.panel}
       >
         {/*
           A title card, not a lecture.
@@ -72,10 +79,12 @@ export const WelcomePanel = () => {
           uiTransform={{ width: '100%', height: 44 }}
           value="EARN. STEAL. DEFEND. Top the records board."
           fontSize={TYPE.body} color={C.bonus} textAlign="middle-center" />
+        {/* Shorter by thirteen characters, so it holds one line on the phone's wider font
+            instead of leaving "it." alone on a second one; and a box for two lines anyway. */}
         <Label
-          uiTransform={{ width: '100%', height: 36 }}
-          value="Your loot earns while it is on show, and while it is on show anyone can take it."
-          fontSize={TYPE.caption} color={C.dim} textAlign="middle-center" />
+          uiTransform={{ width: '100%', height: 56 }}
+          value="Your loot earns while on show, and while on show anyone can take it."
+          fontSize={TYPE.caption} color={C.dim} textAlign="middle-center" textWrap="wrap" />
         <UiEntity uiTransform={{ width: 340, height: TAP.height, alignSelf: 'center' }}>
           <Btn label="START" width={340} primary onClick={closeWelcome} />
         </UiEntity>

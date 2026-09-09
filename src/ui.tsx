@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP, SKIN, RAD, btn, lisible, largeurTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, RAD, btn, lisible, largeurTexte, lignesDeTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs, glyphWidth } from './client/glyphs'
 import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
@@ -260,8 +260,35 @@ const RUSH_CARD_H = 132
 */
 const TOASTS_MAX = 3
 const TOASTS_BAS = 240
-/** The step chip grows a line once its hint is due. */
-const stepChipH = (): number => stepHintDue() ? 100 : COIN_H[0]
+/*
+  THE CHIP IS AS WIDE AS ITS WIDEST LINE, MEASURED AT THE SIZE THAT LINE IS DRAWN.
+
+  Two arithmetic faults, wrong on the desktop and plain on every phone (three testers, 9 Sep):
+  `coinW` measured the title at caption size while the title is drawn at body size, so the
+  plate was sized for text half again narrower than the text it holds; and the width read
+  `min(COIN_W, X, max(X, hint))`, which is `min(COIN_W, X)` for every value of hint, so the
+  hint line never counted at all. Both came out as words running past the right edge.
+
+  The row is now summed member by member, at each member's own size: padding, icon, gap, step
+  counter, gap, title, padding. The hint takes the whole inner width and WRAPS, and the chip
+  grows a line per line of hint, so a hint longer than the plate on a wide phone font is two
+  lines rather than a spill. The cap stays: the corner column is a column.
+*/
+const stepChipW = (): number => {
+  const s = STEP_TEXTS[tutoView.etape]
+  if (s === undefined) return COIN_MIN
+  const rangee = 16 + 40 + 12 + largeurTexte(`${tutoView.etape + 1}/${tutoView.total}`, TYPE.caption) + 12 + largeurTexte(s.titre, TYPE.body) + 20
+  const aide = stepHintDue() && s.aide !== '' ? 16 + largeurTexte(s.aide, TYPE.caption) + 20 : 0
+  return Math.round(Math.min(COIN_W, Math.max(COIN_MIN, rangee, aide)))
+}
+/** Lines the hint takes inside the chip, 0 while it is not due. */
+const stepHintLines = (): number => {
+  const s = STEP_TEXTS[tutoView.etape]
+  if (s === undefined || s.aide === '' || !stepHintDue()) return 0
+  return lignesDeTexte(s.aide, TYPE.caption, stepChipW() - 36)
+}
+/** The step chip grows a line once its hint is due, and one more per wrapped line of it. */
+const stepChipH = (): number => { const n = stepHintLines(); return n === 0 ? COIN_H[0] : 100 + (n - 1) * 30 }
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
 const FIL_LIGNE = 26
 const COIN_GAP = STACK_GAP
@@ -942,7 +969,21 @@ function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }
  * plaque collee au pixel du bord se lit mal meme quand rien ne la gene.
  */
 const MARGE_BORD_MIN = 18
+/*
+  ON A PHONE THE COLUMN IGNORES THE CLIENT'S RIGHT BAND, exactly as the pad already does.
+
+  What `interactableArea.right` reports on a handset is the strip the client keeps for its
+  own action pad. That pad is hidden here (locomotion.ts, `TouchScreenControls.hide`) and ours
+  stands in its place, which is why the pad's own anchor deliberately never adds this value
+  (see the comment on its `position`). The column kept adding it, so on every tester's phone
+  its right edge landed on the pad's right edge, a full pad width in from the corner, and the
+  band above the pad stood empty (three testers, 9 Sep). Nothing of the client's lives in the
+  top-right corner of a handset: its four icons are top LEFT there. The 3 Sep rule above
+  stands, flush to the canvas edge, and the desktop keeps the client's value for the two icons
+  it does draw in that corner.
+*/
 function rightCornerMargin(): number {
+  if (phone()) return MARGE_BORD_MIN
   return Math.max(MARGE_BORD_MIN, Math.round(clientEdges().right))
 }
 
@@ -1914,32 +1955,33 @@ const uiComponent = () => {
     {hud() && tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          width: Math.min(COIN_W, coinW(STEP_TEXTS[tutoView.etape]?.titre ?? '') + 88,
-            Math.max(coinW(STEP_TEXTS[tutoView.etape]?.titre ?? '') + 88,
-              stepHintDue() ? coinW(STEP_TEXTS[tutoView.etape]?.aide ?? '') : 0)),
+          width: stepChipW(),
           height: stepChipH(), positionType: 'absolute', padding: { left: 16, right: 20 },
           position: { top: coinDroit(0), right: rightCornerMargin() },
-          flexDirection: 'column', justifyContent: 'center'
+          flexDirection: 'column', justifyContent: 'center', overflow: 'hidden'
         }}
         uiBackground={SKIN.panel}
       >
         <UiEntity uiTransform={{ height: 48, flexDirection: 'row', alignItems: 'center' }}>
           <UiEntity uiTransform={{ width: 40, height: 40, margin: { right: 12 } }}
             uiBackground={{ texture: { src: `assets/ui/icon-${STEP_TEXTS[tutoView.etape]?.verb ?? 'build'}.png` }, textureMode: 'stretch' }} />
+          {/* Every label owns its box: text intrinsic sizing is engine-dependent, and a
+              label without a width is sized from its glyphs on one client and to nothing on
+              another (build-ui, upstream rule). A box that is measured cannot spill. */}
           <Label
             value={`${tutoView.etape + 1}/${tutoView.total}`}
             fontSize={TYPE.caption} color={C.dim}
-            uiTransform={{ height: 32, margin: { right: 12 } }} textWrap="nowrap" />
+            uiTransform={{ width: largeurTexte(`${tutoView.etape + 1}/${tutoView.total}`, TYPE.caption), height: 32, margin: { right: 12 } }} textWrap="nowrap" />
           <Label
             value={STEP_TEXTS[tutoView.etape]?.titre ?? ''}
             fontSize={TYPE.body} color={C.bonus}
-            uiTransform={{ height: 40 }} textWrap="nowrap" />
+            uiTransform={{ width: largeurTexte(STEP_TEXTS[tutoView.etape]?.titre ?? '', TYPE.body), height: 40 }} textWrap="nowrap" />
         </UiEntity>
-        {stepHintDue() && (
+        {stepHintLines() > 0 && (
           <Label
             value={STEP_TEXTS[tutoView.etape]?.aide ?? ''}
             fontSize={TYPE.caption} color={C.name}
-            uiTransform={{ height: 30 }} textWrap="nowrap" />
+            uiTransform={{ width: '100%', height: 30 * stepHintLines() }} textWrap="wrap" />
         )}
       </UiEntity>
     )}
