@@ -8,6 +8,7 @@ import { toyImage } from './toy'
 import { formatIncome, RARITIES, nomDuCode, rarityOf, mutationDe, itemOdds } from '../shared/loot-table'
 import { prestigeTier, incomeMultiplier, REBIRTH_MAX } from '../shared/schemas'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
+import { chooseTab } from './menu'
 
 export const prestigeView = { open: false }
 export function openPrestige(): void { prestigeView.open = true }
@@ -257,7 +258,15 @@ export const PrestigePanel = () => {
         <UiEntity uiTransform={{ width: CARTE * 2 + AIR, height: TAP.height, flexDirection: 'row', justifyContent: 'center' }}>
           <Btn label={pret ? 'PRESTIGE' : manque} width={400} primary={pret}
             right={TAP.gap} onClick={() => { if (pret) { doPrestige(); closePrestige() } }} />
-          <Btn label="BACK" width={200} onClick={closePrestige} />
+          {/*
+            BACK goes back to the shop, not to the world.
+
+            The shop closes the whole menu before it opens this panel (shop-ui.tsx), so a plain
+            close here dropped the player on the plaza: they came from the shop and expected the
+            shop (owner, 9 Sep). The confirmed PRESTIGE keeps closing everything, because the base
+            it just reset is the thing to look at.
+          */}
+          <Btn label="BACK" width={200} onClick={() => { closePrestige(); chooseTab('shop') }} />
         </UiEntity>
       </UiEntity>
     </UiEntity>
