@@ -636,7 +636,21 @@ export function flashDe(cle: string): number {
 
   A line that fits its box does not move at all.
 */
-const DEFILE_PX_S = 60
+/*
+  Thirty pixels a second, halved because sixty left no time to read (owner, 9 Sep).
+
+  The eye is never the bottleneck at this rate: a reading unit of this line is about 54 px at
+  21 px type, so one crosses the window every 1.8 s, roughly 33 words a minute, against the
+  238 wpm Brysbaert's 2019 meta-analysis gives for silent reading of English non-fiction. The
+  binding constraint is not reading speed but TRACKING: text in motion cannot be fixated the
+  way static text can, so the margin has to be wide.
+
+  The price is the wait, and it is the whole trade-off of a marquee: the cycle is the text plus
+  the gap divided by the speed, so halving the speed doubles the wait for the tail to come round
+  again, here about twenty seconds on the longest fuser line. This one number is the only place
+  to move on that scale.
+*/
+const DEFILE_PX_S = 30
 /** The blank between the tail of one pass and the head of the next, so the loop reads as a loop. */
 const DEFILE_ECART = 72
 
