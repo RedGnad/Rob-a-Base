@@ -653,6 +653,26 @@ export function flashDe(cle: string): number {
 const DEFILE_PX_S = 30
 /** The blank between the tail of one pass and the head of the next, so the loop reads as a loop. */
 const DEFILE_ECART = 72
+/*
+  The box is deliberately WIDER than the estimate, because the gap is what is left of it.
+
+  Each pass is drawn in a box, the next pass starts where that box ends, so the blank a player
+  sees is `box - the width the client actually set`. Sizing the box on `largeurTexte` alone
+  therefore turns every error of that estimate into an error of the gap, and on the Mythics line
+  the gap all but vanished: "Normal" ran into the tail of the previous pass (owner, 9 Sep).
+
+  MEASURED on that screenshot, against the panel's known 940 px width: the estimate is SHORT,
+  and not by a fixed share. "Lava +1 . Lava 22%" 176 estimated for 187 set (1.062);
+  "Lava +1 . Cyber +1 . Lava 18%, Cyber 17%" 383 for 398 (1.039); "Normal +1 . Gold +1 .
+  Blood +1 . Gold 26%, Blood 20%" 488 for 506 (1.037). Reading pixel bounds off an image is
+  worth about five pixels, so the ratios are 1.04 to 1.06 give or take, and the spread across
+  strings is real: it depends on which characters the line holds.
+
+  Taking the TOP of that spread and adding margin, the box carries 1.12. The gap is then
+  `0.12 * estimate` above the blank plus the blank itself, so it varies with the line's length
+  but can never close: no line ever runs into the one behind it, which was the fault.
+*/
+const DEFILE_LARGE = 1.12
 
 export const Defilant = (props: {
   value: string
@@ -669,7 +689,7 @@ export const Defilant = (props: {
         textAlign="middle-left" textWrap="nowrap" />
     )
   }
-  const cycle = texte + DEFILE_ECART
+  const cycle = Math.round(texte * DEFILE_LARGE) + DEFILE_ECART
   const decalage = Math.round((Date.now() / 1000 * DEFILE_PX_S) % cycle)
   const passage = (
     <Label value={props.value} fontSize={props.fontSize} color={props.color}
