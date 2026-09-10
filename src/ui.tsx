@@ -2717,7 +2717,7 @@ const ModalLayer = () => (
 
 /** Whether the loading picture is up: the HUD draws nothing under it (see uiComponent). */
 function loadingShown(): boolean {
-  const pret = loadingView.assetsReady && theftView.walletRecu && view.serverAlive
+  const pret = loadingView.assetsReady && theftView.walletRecu && view.serverAlive && loadingView.placed
   return !pret && Date.now() - loadingView.since <= LOADING_CEILING_MS
 }
 

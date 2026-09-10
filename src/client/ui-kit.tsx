@@ -89,7 +89,12 @@ export function cue(fichier: string, volume = 0.8): void {
   replay(e)
 }
 
+/** When one of our own controls was last pressed: the phone's tap-to-fire reads it (combat.ts). */
+let dernierTicA = 0
+export function dernierTic(): number { return dernierTicA }
+
 export function tic(): void {
+  dernierTicA = Date.now()
   if (sonClic === null) {
     sonClic = engine.addEntity()
     Transform.create(sonClic, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })

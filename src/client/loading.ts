@@ -18,6 +18,8 @@ import { engine, GltfContainer, GltfContainerLoadingState, LoadingState } from '
  */
 export const loadingView = {
   assetsReady: false,
+  /** The arrival is settled (set down, taken home, or left alone): see travel.ts. */
+  placed: false,
   since: Date.now(),
   /** Watched models seen and finished, for the screen's counter. */
   watched: 0,

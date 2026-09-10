@@ -3,6 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, SCENE_SIDE, orientToBase, invalidReason, freeSpotNear, snapToGrid } from '../shared/schemas'
 import { moveTo } from './deplacer'
 import { poseView } from './pose'
+import { loadingView } from './loading'
 import { myClientAddress, theftView } from './theft'
 import { basesConnues } from './slots'
 import { alerter } from './theft'
@@ -86,6 +87,12 @@ function apparaitreChezSoi(): void {
   let attente = 0
   let fait = false
   let depart: Vector3 | null = null
+  /*
+    The loading picture stays up until this is settled (ui.tsx, `loadingShown`): the one move
+    of the arrival happens under it, and the player opens their eyes already where they stand,
+    never watching themselves jump (owner, 10 Sep).
+  */
+  const fini = (): void => { fait = true; loadingView.placed = true }
   engine.addSystem((dt: number) => {
     if (fait) return
     /*
@@ -97,7 +104,7 @@ function apparaitreChezSoi(): void {
       2 Sep, "j'ai pose ma base et j'ai eu MOVED tout de suite"). Il se tient deja exactement
       ou il a voulu.
     */
-    if (poseView.pending) { fait = true; return }
+    if (poseView.pending) { fini(); return }
     /*
       The twenty seconds run from the server's answer, not from the scene's first frame.
 
@@ -115,12 +122,12 @@ function apparaitreChezSoi(): void {
       else {
         const d = Vector3.distance(p, depart)
         if (d >= 30) depart = Vector3.create(p.x, p.y, p.z)
-        else if (d > 3) { fait = true; return }
+        else if (d > 3) { fini(); return }
       }
     }
     if (!theftView.walletRecu) return
     attente += dt
-    if (attente > 20) { fait = true; return }
+    if (attente > 20) { fini(); return }
     const chez = maBase()
     if (chez === null) {
       /*
@@ -143,11 +150,11 @@ function apparaitreChezSoi(): void {
       if (surPlace && invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, autres) === null) return
       const libre = freeSpotNear(cible.x, cible.z, SCENE_SIDE, autres)
       if (libre === null) return
-      fait = true
+      fini()
       moveTo(surPlace ? 'arrival on a free square' : 'arrival in the emptiest wedge', Vector3.create(libre.x, 0, libre.z), Vector3.create(CENTER.x, 1.6, CENTER.z))
       return
     }
-    fait = true
+    fini()
     moveTo('apparition', chez, Vector3.create(CENTER.x, 1.6, CENTER.z))
   })
 }

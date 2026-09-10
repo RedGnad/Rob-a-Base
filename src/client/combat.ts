@@ -11,7 +11,7 @@ import { raidView } from './raid'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter, theftView } from './theft'
-import { cue } from './ui-kit'
+import { cue, dernierTic } from './ui-kit'
 import { noterBascule } from './clics'
 import { mondeOuvert } from './monde'
 import { avantDeplacement } from './deplacer'
@@ -660,8 +660,11 @@ function gunSystem(dt: number): void {
   */
   // No round while a panel is up: the click that presses a menu button is the same click
   // the trigger listens to, and a drawn weapon fired at every tab (owner, 6 Sep).
+  // Read every frame on the phone while aiming, so the touch's down edge is never missed.
+  const tap = isMobile() && combatView.aiming ? tapSurLaVitre(now) : false
   const gachette = mondeOuvert() && (inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
-    || (!isMobile() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)))
+    || (!isMobile() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN))
+    || tap)
   if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
     //
@@ -772,6 +775,58 @@ function poserTierce(): void {
   if (a !== null) a.position = ZONE_EN_JOUE
   const b = Transform.getMutableOrNull(dehors)
   if (b !== null) b.position = ZONE_RANGEE
+}
+
+/*
+  TAP TO FIRE, on the phone, while aiming.
+
+  Reaching the cluster's button with the thumb while the other thumb steers the sight is the
+  awkward part of aiming on a phone (owner, 10 Sep). A tap on the glass is the natural
+  trigger, and it must be neither the drag that turns the camera nor a press on a control.
+  So a round goes out on the RELEASE of a touch that lasted under a quarter of a second and
+  turned the camera by less than a degree and a half: a drag lasts and turns. Our own
+  controls are told apart by `tic()`, the press sound every one of them plays: a release
+  that follows one of those presses is not a tap on the world. The client's cluster is told
+  apart by its actions: a jump, the menu, the sell key or the primary raised during the touch
+  make it a button press, not a tap. The cluster's own button keeps firing on IA_PRIMARY as
+  before, and a second event from the same press falls on the cadence. Holstering still goes
+  through the weapon disc; the release that follows it finds the weapon away and fires
+  nothing. Desktop keeps its click on the down edge, untouched.
+*/
+const TAP_MS = 250
+const TAP_DEG = 1.5
+let tapDepuis = 0
+let tapYaw = 0
+let tapBouton = false
+function cameraYaw(): number {
+  const t = Transform.getOrNull(engine.CameraEntity)
+  if (t === null) return 0
+  const r = t.rotation
+  return Quaternion.toEulerAngles(Quaternion.create(r.x, r.y, r.z, r.w)).y
+}
+function ecartDeg(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360
+  return d > 180 ? 360 - d : d
+}
+function tapSurLaVitre(now: number): boolean {
+  if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)) {
+    tapDepuis = now
+    tapYaw = cameraYaw()
+    tapBouton = false
+  }
+  if (tapDepuis !== 0) {
+    for (const a of [InputAction.IA_PRIMARY, InputAction.IA_SECONDARY, InputAction.IA_JUMP, InputAction.IA_ACTION_3, InputAction.IA_ACTION_4]) {
+      if (inputSystem.isTriggered(a, PointerEventType.PET_DOWN)) tapBouton = true
+    }
+  }
+  if (!inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_UP)) return false
+  const depuis = tapDepuis
+  tapDepuis = 0
+  if (depuis === 0 || tapBouton) return false
+  if (now - depuis > TAP_MS) return false
+  if (ecartDeg(cameraYaw(), tapYaw) > TAP_DEG) return false
+  if (dernierTic() >= depuis) return false
+  return true
 }
 
 /** The one aim area of the session, parented to the player: see `ZONE_VISEE` and `degainer`. */
