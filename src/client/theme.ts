@@ -392,8 +392,6 @@ const disc = (name: string) => ({
 
 export const SKIN = {
   panel: skin('panel'),
-  /** The panel's outline alone, orange, no fill: for a line that must not wall off the world behind it. */
-  frame: skin('frame'),
   card: skin('card'),
   inset: skin('inset'),
   primary: skin('primary'),

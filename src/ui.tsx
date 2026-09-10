@@ -2615,6 +2615,13 @@ const uiComponent = () => {
         Un liseré dans sa propre couleur la separe du fond sans lui donner l'air d'un bouton:
         elle informe, elle ne se presse pas.
 
+        The rim alone, no plate (owner, 10 Sep: "the text and the orange outline, it would let
+        the UI breathe"). The navy slab under this line was the one opaque thing left near the
+        middle of the screen, and it walled off the base it was talking about. The text has no
+        scrim now, so its contrast is the world's: about 10 to 1 on the plate, under 2 to 1 on
+        lit grass, measured on the owner's 10 Sep capture. Kept on their decision, to be judged
+        live; the plate is one line away (`uiBackground={SKIN.panel}`) if reading suffers.
+
         Au VRAI bas: `BAND.bottom` est le plancher de la mise en page, celui d'ou les rangees
         de commandes montent. Un nombre ajoute par-dessus serait un reglage a l'oeil, juste sur
         un format et faux sur le suivant; ce plancher, lui, est deja celui de tout le reste.
@@ -2627,7 +2634,6 @@ const uiComponent = () => {
             justifyContent: 'center', alignItems: 'center',
             borderWidth: 2, borderColor: C.bonus, borderRadius: RAD.card
           }}
-          uiBackground={SKIN.panel}
         >
           <Label value={hint()} fontSize={TYPE.label} color={C.bonus} textWrap="nowrap" />
         </UiEntity>
@@ -2656,15 +2662,7 @@ const uiComponent = () => {
             height: 52, padding: { left: 26, right: 26 },
             justifyContent: 'center', alignItems: 'center'
           }}
-          /*
-            An outline, not a plate. The navy slab under this one line was the one opaque
-            thing left near the middle of the screen, and it walled off the base it was
-            talking about (owner, 10 Sep: "the text and the orange outline, it would let the
-            UI breathe"). The text has no scrim now, so its contrast is the world's: about
-            10 to 1 on the plate, under 2 to 1 on lit grass, measured on the 10 Sep capture.
-            Kept on the owner's decision, to be judged live.
-          */
-          uiBackground={SKIN.frame}
+          uiBackground={SKIN.panel}
         >
           <Label value={barre()} fontSize={TYPE.label}
             color={combatView.aiming ? C.danger : C.name} textWrap="nowrap" />
