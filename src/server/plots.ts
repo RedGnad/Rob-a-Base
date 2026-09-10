@@ -295,6 +295,8 @@ function publish(b: Base, ici?: Set<string>): void {
 
 type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number; skin: number; mines: Mine[] }
 const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0, vols: 0, skin: 0, mines: [] }
+/** The shopfront of a base its owner carries in hand (folded while empty): put back by `placeBase`. */
+const vitrineEnMain = new Map<string, Vitrine>()
 
 /** Charges on a storey, zero when that storey has none and when the array is short. */
 export function chargesA(liste: number[] | undefined, etage: number): number {
@@ -574,6 +576,9 @@ async function loadBases(): Promise<void> {
         retour de son proprietaire.
       */
       .filter((l) => Date.now() - l.lastSeen < BASE_FRAICHEUR_MS)
+      // The standing rule of EMPTY_FOLD_MS applies at boot too, or every restart (each deploy,
+      // each cold start after two idle minutes) would raise the empty bases for a minute.
+      .filter((l) => !(occupe(l.items) === 0 && Date.now() - l.lastSeen > EMPTY_FOLD_MS))
       .sort((a, b) => b.lastSeen - a.lastSeen)
       /*
         On restaure tant que le BUDGET suit, pas jusqu'a un nombre fixe.
@@ -762,6 +767,29 @@ export async function welcome(address: string): Promise<void> {
   dirtyProfiles.add(address)
 
   const name = nameOf(address)
+  if (!bases.has(address)) {
+    const blob = await lireBase(address)
+    /*
+      What comes back with the owner: the shopfront always, the building only when it holds
+      something.
+
+      A base that left the field while EMPTY (folded, see EMPTY_FOLD_MS) comes back in its
+      owner's hand, not on its old square: they place it again, where the arrival set them
+      down, which is the emptiest eighth of the field (owner, 10 Sep: "on ne la renvoie pas
+      plutot dans sa main ?"). Nothing is lost by it: the shelves were bare, and the shopfront
+      (floors bought, sentries, mines, the prestige count) is kept aside here and put back on
+      the new square by `placeBase`. A base with loot on it only ever left under budget
+      pressure, and it comes back where it stood, as before.
+    */
+    if (blob?.vitrine) vitrineEnMain.set(address, blob.vitrine)
+    const vide = blob !== null ? occupe(blob.items) === 0 : occupe(items) === 0
+    if (profile.x !== undefined && profile.z !== undefined && vide) {
+      log(`${name}'s empty base comes back in their hand: placed again where they choose`)
+      profile.x = undefined
+      profile.z = undefined
+      dirtyProfiles.add(address)
+    }
+  }
   // Celui qui arrive est PRESENT: il passe devant tous les absents et retrouve sa base.
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
     makeRoom(address, BASE_FIXED_COST_FAR + STOREY_COST_FAR)
@@ -1856,7 +1884,9 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
 
   const items = [...p.items]
   // Moving a base moves its defence with it: the charges were paid for the building, not the spot.
-  const b = createBase(address, nameOf(address), items, Date.now(), x, z, previous ? vitrineDe(previous) : VITRINE_VIDE)
+  // A base placed again after a fold gets its shopfront back (see `welcome`), a first base an empty one.
+  const b = createBase(address, nameOf(address), items, Date.now(), x, z, previous ? vitrineDe(previous) : (vitrineEnMain.get(address) ?? VITRINE_VIDE))
+  vitrineEnMain.delete(address)
   if (b === null) return { ok: false, reason: 'cannot build there' }
   p.x = x
   p.z = z

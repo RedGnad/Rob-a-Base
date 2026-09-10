@@ -30,8 +30,10 @@ import { LISIBLE_3D } from './texte3d'
  */
 
 export const carryView = { code: -1, name: '', vole: false }
+/** The thief's column of light, in metres: above the tallest tower, under the boss's sixty. */
+const COLONNE_H = 50
 
-const vues = new Map<number, { corps: Entity; etiquette: Entity; anneau: Entity | null }>()
+const vues = new Map<number, { corps: Entity; etiquette: Entity; anneau: Entity | null; colonne: Entity | null }>()
 
 /*
   The marker that says where it will land, before it lands.
@@ -194,8 +196,40 @@ export function setupCarry(): void {
           AvatarAttach.create(anneau, { avatarId: c.holder, anchorPointId: AvatarAnchorPointType.AAPT_POSITION })
         }
 
+        /*
+          A column of light on the thief, read from anywhere on the field.
+
+          The ring at the feet says "thief" to whoever is already looking; nobody else knew a
+          theft was under way until the toast, and by then the carrier was out of sight
+          (owner, 10 Sep: the raid boss has its beam, a thief running home deserves the same).
+          The genre's answer is a beam you run towards, so this is the boss's column with the
+          differences that keep the two apart at a glance: in the carried item's own colour
+          rather than the raid red, thinner, and fifty metres where the boss stands sixty,
+          both above the tallest tower (thirty-four). Like the ring, only for goods that are
+          NOT the carrier's, and never on oneself: a beam through the player's own camera is a
+          wall, and the burden is already in their hand. Holder plus child, as the label: the
+          anchor writes the holder's transform, the child keeps its own height and scale.
+        */
+        let colonne: Entity | null = null
+        if (c.origin.toLowerCase() !== c.holder.toLowerCase() && c.holder.toLowerCase() !== moi) {
+          colonne = engine.addEntity()
+          Transform.create(colonne, { position: Vector3.Zero() })
+          AvatarAttach.create(colonne, { avatarId: c.holder, anchorPointId: AvatarAnchorPointType.AAPT_POSITION })
+          const faisceau = engine.addEntity()
+          Transform.create(faisceau, { parent: colonne, position: Vector3.create(0, COLONNE_H / 2, 0), scale: Vector3.create(0.7, COLONNE_H, 0.7) })
+          MeshRenderer.setCylinder(faisceau, 0.5, 0.5)
+          Material.setPbrMaterial(faisceau, {
+            albedoColor: Color4.create(teinte.r, teinte.g, teinte.b, 0.35),
+            emissiveColor: Color3.create(teinte.r, teinte.g, teinte.b),
+            emissiveIntensity: 1.6,
+            alphaTest: 0,
+            transparencyMode: 2,
+            roughness: 1
+          })
+        }
+
         // The holder is what is kept: removing it with its children takes the text along.
-        vues.set(id, { corps, etiquette: porteEtiquette, anneau })
+        vues.set(id, { corps, etiquette: porteEtiquette, anneau, colonne })
       }
     }
 
@@ -206,6 +240,7 @@ export function setupCarry(): void {
       engine.removeEntity(v.corps)
       engine.removeEntityWithChildren(v.etiquette)
       if (v.anneau !== null) engine.removeEntity(v.anneau)
+      if (v.colonne !== null) engine.removeEntityWithChildren(v.colonne)
       vues.delete(id)
     }
 
