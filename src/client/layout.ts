@@ -43,6 +43,15 @@ export function setReference(w: number, h: number): void { active.w = w; active.
  * sortait decalee et coupee de travers (proprietaire, 7 Sep). Sans information du client,
  * la reponse honnete est le canevas de reference.
  */
+/** The whole screen in our units, for a renderer declared with `screenInset: 'none'`. */
+export function zoneEcran(): { w: number; h: number } {
+  const info = UiCanvasInformation.getOrNull(engine.RootEntity)
+  if (info === null) return { w: active.w, h: active.h }
+  const scale = Math.min(info.width / active.w, info.height / active.h)
+  if (!(scale > 0)) return { w: active.w, h: active.h }
+  return { w: info.width / scale, h: info.height / scale }
+}
+
 export function zoneRenderer(): { w: number; h: number } {
   const info = UiCanvasInformation.getOrNull(engine.RootEntity)
   if (info === null) return { w: active.w, h: active.h }

@@ -12,7 +12,7 @@ export const MESSAGES = {
   collected: Schemas.Map({ gain: Schemas.Int64 }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
-  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int64, spared: Schemas.Int64, offlineGain: Schemas.Int64, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, offlineCapped: Schemas.Boolean, luckSec: Schemas.Int, luckPrice: Schemas.Int64, coins: Schemas.Int64, nextPrestige: Schemas.Int64, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int64, rechargeSec: Schemas.Int, pending: Schemas.Int64, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int64, silos: Schemas.Int, siloPrice: Schemas.Int64, offlineCapS: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
+  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int64, spared: Schemas.Int64, offlineGain: Schemas.Int64, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, offlineCapped: Schemas.Boolean, welcomed: Schemas.Boolean, luckSec: Schemas.Int, luckPrice: Schemas.Int64, coins: Schemas.Int64, nextPrestige: Schemas.Int64, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int64, rechargeSec: Schemas.Int, pending: Schemas.Int64, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int64, silos: Schemas.Int, siloPrice: Schemas.Int64, offlineCapS: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
 
   claimSlot: Schemas.Map({ x: Schemas.Float, z: Schemas.Float }),
   basePositions: Schemas.Map({ xs: Schemas.Array(Schemas.Float), zs: Schemas.Array(Schemas.Float) }),
@@ -33,6 +33,8 @@ export const MESSAGES = {
   setSkin: Schemas.Map({ mutation: Schemas.Int }),
   /** The player's own settings, kept with the profile: for now, whether sound effects are off. */
   setPrefs: Schemas.Map({ sfxOff: Schemas.Boolean }),
+  /** The title card was seen: it never shows again for this player. */
+  welcomeSeen: Schemas.Map({ seen: Schemas.Boolean }),
 
   quests: Schemas.Map({
     ids: Schemas.Array(Schemas.Int), progres: Schemas.Array(Schemas.Int),

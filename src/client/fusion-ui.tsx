@@ -104,7 +104,6 @@ export const FusionPanel = () => {
   return (
     <UiEntity
       uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center', pointerFilter: 'block' }}
-      uiBackground={{ color: SURF.voile }}
     >
       <UiEntity
         uiTransform={{ width: 940, height: 150 + fusibles.length * RANG + TAP.height + 40 + (m.hopper.length > 0 ? TAP.height + 8 : 0), flexDirection: 'column', alignItems: 'center', padding: 22 }}

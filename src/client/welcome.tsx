@@ -2,8 +2,9 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP , SKIN} from './theme'
 import { Glyphs } from './glyphs'
-import { Btn, SURF } from './ui-kit'
+import { Btn } from './ui-kit'
 import { strip } from './layout'
+import { room } from '../shared/messages'
 
 import { STRESS_BASES } from './stress'
 
@@ -15,11 +16,21 @@ import { STRESS_BASES } from './stress'
   Never on a measurement build: an instrument should not have to get past a door.
 */
 export const welcomeView = { open: false, decided: false }
-export function closeWelcome(): void { welcomeView.open = false }
-export function decideWelcome(tutoEtape: number, tutoTotal: number): void {
+export function closeWelcome(): void {
+  welcomeView.open = false
+  void room.send('welcomeSeen', { seen: true })
+}
+/*
+  Once per player, not once per session. It used to open on every session until the
+  tutorial's last step was done, so a returning tester who had played, earned and shelved
+  saw the title card again (10 Sep). The genre plays its intro once; an unfinished tutorial
+  resumes at its step, which the corner chip already does. The server keeps the flag with the
+  profile and sends it with the wallet; a profile from before the flag sees the card once.
+*/
+export function decideWelcome(tutoEtape: number, tutoTotal: number, welcomed: boolean): void {
   if (welcomeView.decided) return
   welcomeView.decided = true
-  welcomeView.open = STRESS_BASES <= 0 && tutoEtape < tutoTotal
+  welcomeView.open = STRESS_BASES <= 0 && !welcomed && tutoEtape <= tutoTotal
 }
 
 export const WelcomePanel = () => {
@@ -49,7 +60,6 @@ export const WelcomePanel = () => {
         width: '100%', height: '100%', positionType: 'absolute',
         justifyContent: 'center', alignItems: 'center'
       }}
-      uiBackground={{ color: SURF.voile }}
       onMouseDown={closeWelcome}
     >
       <UiEntity
@@ -83,7 +93,7 @@ export const WelcomePanel = () => {
             instead of leaving "it." alone on a second one; and a box for two lines anyway. */}
         <Label
           uiTransform={{ width: '100%', height: 56 }}
-          value="Your loot earns while on show, and while on show anyone can take it."
+          value="Your loot earns on show, and on show anyone can take it."
           fontSize={TYPE.caption} color={C.dim} textAlign="middle-center" textWrap="wrap" />
         <UiEntity uiTransform={{ width: 340, height: TAP.height, alignSelf: 'center' }}>
           <Btn label="START" width={340} primary onClick={closeWelcome} />

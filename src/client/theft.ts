@@ -61,6 +61,50 @@ export const theftView = {
   hudVisible: true,
   /** When the HUD last came back: the press that closed a panel must not also reach the world. */
   hudDepuis: 0,
+  /** The wall-clock instant the HUD went behind a screen, 0 while it shows. See setHudVisible. */
+  hudHiddenAt: 0,
+  /** When the single slot was last written, for the same shift as the plates. */
+  alerteDepuis: 0,
+}
+
+/*
+  THE FREEZE RUNS ON THE WALL CLOCK, not on the frame delta.
+
+  The first freeze (3832, 10 Sep) slid every durable plate's birth and expiry by `dt` on each
+  tick spent behind a screen, and the plate was still gone behind an eighteen-second menu on
+  the desktop client (probe, 10 Sep, third cycle after a cold load: an empty stack at close).
+  The sum of `dt` over a hidden stretch is not the length of the stretch: measured on a calm
+  desktop run at 96 to 98 percent of the wall clock (`hiddenClock`, three readings), and the
+  shortfall of the failed run, taken while the client was still loading, was not measured. A
+  freeze that thaws on `dt` is only as good as the tick rate; this one does not depend on it.
+
+  So the instant the HUD goes is written once, the durable plates are left alone while it is
+  hidden (`alertesVisibles` skips them), and when the HUD comes back each one is moved forward
+  by the time it actually spent hidden: the whole stretch for a plate born before it, the
+  part after its birth for one born behind the screen. Called by the interface once a frame.
+*/
+export function setHudVisible(visible: boolean): void {
+  if (visible === theftView.hudVisible) return
+  const now = Date.now()
+  theftView.hudVisible = visible
+  if (!visible) { theftView.hudHiddenAt = now; return }
+  theftView.hudDepuis = now
+  const hiddenAt = theftView.hudHiddenAt
+  theftView.hudHiddenAt = 0
+  if (hiddenAt === 0) return
+  for (const a of theftView.alertes) {
+    if (!a.keep) continue
+    const shift = now - Math.max(a.ne, hiddenAt)
+    if (shift > 0) { a.ne += shift; a.until += shift }
+  }
+  const slotShift = now - Math.max(theftView.alerteDepuis, hiddenAt)
+  if (slotShift > 0) theftView.alerteJusqua += slotShift
+}
+
+/* The two clocks of the current hidden stretch, for the probe: the sum of `dt` and the wall. */
+let hiddenDtMs = 0
+export function hiddenClock(): { dtMs: number; wallMs: number } {
+  return { dtMs: Math.round(hiddenDtMs), wallMs: theftView.hudHiddenAt === 0 ? 0 : Date.now() - theftView.hudHiddenAt }
 }
 
 let sonneur = 0 as unknown as ReturnType<typeof engine.addEntity>
@@ -107,13 +151,28 @@ let prochaineAlerte = 1
 export function alerter(texte: string, color: string, durationMs: number = TOAST.warning, keep: boolean = durationMs >= TOAST.event): void {
   const now = Date.now()
   // The same line again refreshes the one on screen instead of stacking a twin under it.
-  const twin = theftView.alertes.find((a) => a.t === texte && a.until > now)
-  if (twin !== undefined) { twin.until = now + durationMs; twin.c = color; return }
+  // A durable plate frozen behind a screen counts as alive, whatever the wall clock says.
+  const twin = theftView.alertes.find((a) => a.t === texte && (a.until > now || (a.keep && !theftView.hudVisible)))
+  if (twin !== undefined) {
+    twin.until = now + durationMs
+    twin.c = color
+    // Nobody sees the slide-in behind a screen: a fresh birth keeps the shift on return exact.
+    if (!theftView.hudVisible) twin.ne = now
+    return
+  }
   theftView.alertes.unshift({ id: prochaineAlerte, t: texte, c: color, ne: now, until: now + durationMs, keep })
   prochaineAlerte += 1
-  if (theftView.alertes.length > 2) theftView.alertes.length = 2
+  if (theftView.alertes.length > 2) {
+    // Two plates, and a durable one outlives the passing ones: a theft frozen behind a screen
+    // must not be pushed out by two states that came and went while the screen was up (the
+    // raid bell twice in one shop visit, 10 Sep). The newest plate always stays; among the
+    // older two, the perishable one goes first, the oldest otherwise.
+    const older = theftView.alertes.slice(1).map((a) => a.keep).lastIndexOf(false)
+    theftView.alertes.splice(older >= 0 ? older + 1 : theftView.alertes.length - 1, 1)
+  }
   theftView.alert = texte
   theftView.alertColor = color
+  theftView.alerteDepuis = now
   theftView.alerteJusqua = now + durationMs
 }
 /**
@@ -128,7 +187,10 @@ export function alerter(texte: string, color: string, durationMs: number = TOAST
 export function alertesVisibles(): Array<{ id: number; t: string; c: string; ne: number; until: number }> {
   const now = Date.now()
   for (let i = theftView.alertes.length - 1; i >= 0; i--) {
-    if (theftView.alertes[i].until <= now) theftView.alertes.splice(i, 1)
+    const a = theftView.alertes[i]
+    // A durable plate behind a screen waits for the screen to go, see setHudVisible.
+    if (a.keep && !theftView.hudVisible) continue
+    if (a.until <= now) theftView.alertes.splice(i, 1)
   }
   return theftView.alertes
 }
@@ -212,7 +274,7 @@ export function setupTheft(): void {
       : `${r.name.toUpperCase()} BACK HOME`, r.color, TOAST.result)
   })
   room.onMessage('itemPicked', (d) => {
-    pushToFeed(`${d.byName} picked up a ${rarity(d.rarity).name}`)
+    pushToFeed(`${d.byName} picked a ${rarity(d.rarity).name}`)
   })
   room.onMessage('reclaimed', (d) => {
     pushToFeed(`${d.byName} took back a ${rarity(d.rarity).name}`)
@@ -275,7 +337,7 @@ export function setupTheft(): void {
 
   room.onMessage('wallet', (d) => {
     tutoView.etape = d.tutoEtape
-    decideWelcome(d.tutoEtape, tutoView.total)
+    decideWelcome(d.tutoEtape, tutoView.total, d.welcomed === true)
     theftView.sentries = d.sentries
     theftView.sentryPrice = d.sentryPrice
     theftView.silos = d.silos
@@ -445,14 +507,12 @@ export function setupTheft(): void {
       the HUD is on screen, and the queue feeds the slot only then.
     */
     if (!theftView.hudVisible) {
-      theftView.alerteJusqua += dt * 1000
-      // The durable plates keep too: their birth and expiry slide with the hidden time, so a
-      // theft announced behind the shop is still there, sliding in, when the shop closes. The
-      // rule above was written on the single slot (27 Aug); the stack of 3 Sep had skipped it,
-      // and `alertesVisibles` prunes on the wall clock before the HUD is even consulted.
-      for (const a of theftView.alertes) if (a.keep) { a.ne += dt * 1000; a.until += dt * 1000 }
+      // The plates and the slot are moved forward when the HUD returns (setHudVisible); here
+      // only the probe's clock, which showed why sliding by `dt` on each tick was not enough.
+      hiddenDtMs += dt * 1000
       return
     }
+    hiddenDtMs = 0
     if (theftView.alert !== '' && Date.now() > theftView.alerteJusqua) theftView.alert = ''
     if (theftView.alert === '' && file.length > 0) {
       const n = file.shift()

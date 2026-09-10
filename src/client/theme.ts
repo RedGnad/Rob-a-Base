@@ -51,7 +51,19 @@ export const TYPE = {
   body: 32,     // 17 pt: buttons and anything the player must read while moving
   label: 26,    // 14 pt: secondary lines inside a panel
   caption: 21   // 11 pt: hints, the floor
-} as const
+}
+/*
+  THE PHONE'S CAPTION IS 24, one step above the platforms' floor.
+
+  21 units on a 1600-wide canvas is 1.85 to 2.0 mm of type on a 6.1 to 6.7 inch handset,
+  which is exactly the minimum both platforms allow (Material 12 sp = 1.9 mm, Apple 11 to
+  12 pt = 1.7 to 1.9 mm) and below the body size they default to (14 sp, 17 pt). A tester
+  read the corner timers, the streak chips and the title card's line as "a little too small"
+  (10 Sep, "maybe my old eyes"), which is what the floor feels like. 24 is 2.1 to 2.3 mm,
+  Material's body. Label and body already sit above the defaults and stay. Called once, at
+  setup, before anything is measured.
+*/
+export function setPhoneType(): void { TYPE.caption = 24 }
 
 /**
  * Colour carries meaning, and the same meaning everywhere.

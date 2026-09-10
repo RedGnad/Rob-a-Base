@@ -135,6 +135,8 @@ type Profil = {
   skin?: number
   /** Sound effects switched off from the menu. Absent means on. */
   sfxOff?: boolean
+  /** The title card has been seen once; it never shows again for this player. */
+  welcomed?: boolean
   /** The last offline sum cashed, carried in the wallet tick for a while so a late client still hears it. */
   annonceHL?: { gain: number; seconds: number; at: number; capped: boolean }
   /** Bought luck: every mutation's odds doubled until this instant. */
@@ -1491,6 +1493,14 @@ export function setSfxOff(address: string, off: boolean): void {
   dirtyProfiles.add(address)
 }
 
+/** The title card was seen: a returning player is never welcomed twice (tester, 10 Sep). */
+export function setWelcomed(address: string): void {
+  const p = profiles.get(address)
+  if (!p || p.welcomed === true) return
+  p.welcomed = true
+  dirtyProfiles.add(address)
+}
+
 export function choisirSkin(address: string, mut: number): { ok: boolean; reason?: string } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
@@ -2229,6 +2239,7 @@ export function startPlots(): void {
         bestRarity: occupe(p.items) === 0 ? -1 : Math.max(...p.items.filter((c) => c !== VIDE).map(rarityOf)),
         multiplier: incomeMultiplier(prestige),
         tutoEtape: etapeTuto(address),
+        welcomed: p.welcomed === true,
         sentries: p.sentries ?? 0,
         sentryPrice: sentryPrice(address),
         presents: ici.size,

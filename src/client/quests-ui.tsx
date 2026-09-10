@@ -148,9 +148,11 @@ const STREAK_H = 72
   tab now lands in one body: 3 x 92 + 90 + 34 + 72 = 472 for a body of 474.
 */
 const ROW = 84
-const ROW_GAP = 8
+// Six, not eight: the two units the streak header needed came out of these three gaps, since
+// the tab had two units of slack in a 474-unit body (10 Sep).
+const ROW_GAP = 6
 
-export const HAUTEUR_GOALS = 3 * (ROW + ROW_GAP) + (ROW + 6) + (26 + ROW_GAP) + STREAK_H
+export const HAUTEUR_GOALS = 3 * (ROW + ROW_GAP) + (ROW + 6) + (30 + ROW_GAP + 4) + STREAK_H
 
 export function QuestsContent(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
@@ -183,7 +185,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
     </UiEntity>
 
     <Label value="LOGIN STREAK" fontSize={TYPE.label} color={Color4.fromHexString('#4dd2ffff')}
-        uiTransform={{ width: '100%', height: 26, margin: { top: ROW_GAP } }} textAlign="middle-left" />
+        uiTransform={{ width: '100%', height: 30, margin: { top: ROW_GAP, bottom: 4 } }} textAlign="middle-left" />
       {/*
         Seven chips sized as a share of the width, so the row can never wrap.
 

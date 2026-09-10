@@ -7,7 +7,7 @@
   them, at the top of the HUD render, and overwrites what it needs. See UI_PROBE in theme.ts.
 */
 import { UI_PROBE } from './theme'
-import { alerter, pushToFeed } from './theft'
+import { alerter, pushToFeed, theftView, hiddenClock } from './theft'
 import { TOAST } from './theme'
 import { chooseTab, closeMenu } from './menu'
 import { welcomeView } from './welcome'
@@ -27,6 +27,8 @@ let t0 = 0
 let phase = -1
 const fired = new Set<string>()
 const once = (key: string, f: () => void): void => { if (!fired.has(key)) { fired.add(key); f() } }
+const plates = (now: number): string =>
+  theftView.alertes.map((a) => `${a.t.slice(0, 18)} ${Math.round((a.until - now) / 1000)}s keep=${a.keep}`).join(' | ') || '(none)'
 
 /*
   The timeline: five checks in forty seconds, each announced in the scene log so a script can
@@ -59,7 +61,7 @@ function timeline(): void {
     eventView.theme = -1
     gearView.cloakLeftS = 0
     raidView.nextS = 506
-    if (p === 0 && t >= 1) pushToFeed('Cyrus Nightwing picked up a Legendary')
+    if (p === 0 && t >= 1) pushToFeed('Cyrus Nightwing picked a Legendary')
   }
   if (p === 1) {
     // The three tabs in turn, for the owner's eye on their text alignment (10 Sep).
@@ -71,7 +73,18 @@ function timeline(): void {
       alerter('NOT ENOUGH COINS  ·  12.5K MORE', '#ffd166', TOAST.result)
     })
   }
-  if (p === 2) once(k('close'), () => closeMenu())
+  if (p === 1) {
+    // The two clocks and the stack at three points behind the menu: the measurement that
+    // says whether a frozen plate is still there and why the `dt` freeze lost it.
+    for (const at of [9, 16, 23]) if (t >= at) once(k(`clock${at}`), () => {
+      const c = hiddenClock()
+      console.log(`[PROBE] t=${at} hud=${theftView.hudVisible} hidden dt=${c.dtMs}ms wall=${c.wallMs}ms plates: ` + plates(now))
+    })
+  }
+  if (p === 2) once(k('close'), () => {
+    closeMenu()
+    console.log('[PROBE] plates at close: ' + plates(now))
+  })
   if (p >= 3) {
     const step = STEP_TEXTS.findIndex((s) => s.titre === 'Buy a box')
     tutoView.etape = step >= 0 ? step : 0
@@ -115,7 +128,7 @@ export function applyUiProbe(): void {
     alerter('SENTRY STOPPED CYRUS NIGHTWING  ·  2 left', '#4dd2ff', HOLD_MS)
     alerter('STOLEN BY CYRUS NIGHTWING  ·  sealed 8h', '#ff4dd2', HOLD_MS)
   }
-  pushToFeed('Cyrus Nightwing picked up a Legendary')
+  pushToFeed('Cyrus Nightwing picked a Legendary')
   // The longest hint, and old enough for the hint to be due: two lines on a phone.
   const step = STEP_TEXTS.findIndex((s) => s.titre === 'Buy a box')
   tutoView.etape = step >= 0 ? step : 0

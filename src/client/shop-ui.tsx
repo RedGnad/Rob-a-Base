@@ -210,7 +210,7 @@ export const ShopContent = () => {
       <Rang
         titre={silo > 0 ? `+1 SILO  (${theftView.silos}/${SILO_MAX})` : `SILOS MAXED  (${SILO_MAX}/${SILO_MAX})`}
         icone="ui-silo.png"
-        detail={`banks ${Math.round(theftView.offlineCapS / 60)} min while away${silo > 0 ? `, then ${Math.round((theftView.offlineCapS + SILO_STEP_S) / 60)}` : ''}`}
+        detail={`banks ${Math.round(theftView.offlineCapS / 60)} min away${silo > 0 ? `, then ${Math.round((theftView.offlineCapS + SILO_STEP_S) / 60)}` : ''}`}
         bouton="BUY" prix={silo}
         possible={silo > 0 && argent >= silo}
         refus={`need ${formatIncome(silo)} coins`}

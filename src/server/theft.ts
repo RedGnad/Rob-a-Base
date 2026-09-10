@@ -9,7 +9,7 @@ const BUILD_RANGE = 7
 import { room } from '../shared/messages'
 import { noter } from './records'
 import {
-advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, setSfxOff, reclamerQuotidienne, declareName
+advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, setSfxOff, setWelcomed, reclamerQuotidienne, declareName
 } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
@@ -473,6 +473,11 @@ export function startTheft(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     setSfxOff(a, d?.sfxOff === true)
+  })
+  room.onMessage('welcomeSeen', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    setWelcomed(a)
   })
 
   room.onMessage('hello', (d, ctx) => {

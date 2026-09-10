@@ -2,15 +2,15 @@ import { PRODUCTION_PER_RARITY } from './shared/economy'
 import { Color4 } from '@dcl/sdk/math'
 import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
-import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
+import ReactEcs, { Button, Label, ReactEcsRenderer, ScreenInsetArea, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP, SKIN, RAD, btn, lisible, largeurTexte, lignesDeTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, RAD, btn, lisible, largeurTexte, lignesDeTexte, FORCE_MOBILE_LAYOUT, setPhoneType } from './client/theme'
 import { Glyphs, glyphWidth } from './client/glyphs'
 import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneRenderer } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneEcran } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE, PENDING_CAP_S } from './shared/schemas'
 import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -20,7 +20,7 @@ import { toyImage } from './client/toy'
 import { noterEvenement, signalerMenu } from './client/clics'
 import { loadingView } from './client/loading'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, alertesVisibles, feedLine } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, alertesVisibles, feedLine, setHudVisible } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
 import { nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
@@ -37,7 +37,7 @@ import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './clien
 import { verb } from './client/verb'
 import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue, stepVerb } from './client/tutorial'
-import { WelcomePanel, welcomeView } from './client/welcome'
+import { WelcomePanel, welcomeView, closeWelcome } from './client/welcome'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, formatSolde, prixDeRevente, crate } from './shared/loot-table'
 import { applyUiProbe, probeStatus } from './client/ui-probe'
 
@@ -144,6 +144,7 @@ export function setupUi() {
     */
     const inset = 'device'
     setReference(phone ? 1600 : 1920, phone ? 720 : 1080)
+    if (phone) setPhoneType()
     // 1600x720 is what the client substitutes on a handset for a 16:9 request; asking for
     // it directly is what makes the desktop preview measure like a phone.
     ReactEcsRenderer.setUiRenderer(uiComponent, {
@@ -151,7 +152,18 @@ export function setupUi() {
     })
     // The build stamp lives in the log now: it sat under the purse in the menu, and a code
     // in a player's face is a developer's habit, not a control (owner, 5 Sep).
-    console.log(`[CLIENT] interface ${phone ? '1600x720 (phone)' : '1920x1080'}, screenInset '${inset}', build ${BUILD}`)
+    /*
+      A second renderer for what must reach the physical edges: the veils of the three
+      modals and the loading picture. The main renderer is inset by the device's safe
+      margins (notch, rounded corners), so a veil drawn in it stopped ~100 units short of
+      the edges and the world showed all around the title card and the loading picture
+      (tester, 10 Sep, both captures). This layer is declared with no inset, draws the veil
+      and the picture over the whole screen, and puts the cards back inside the safe area
+      with `ScreenInsetArea`, so a card never runs under a notch. It is registered after the
+      main renderer, so it draws over it; nothing of the HUD is drawn while a modal is open.
+    */
+    ReactEcsRenderer.addUiRenderer(modalRoot, ModalLayer, { screenInset: 'none' })
+    console.log(`[CLIENT] interface ${phone ? '1600x720 (phone)' : '1920x1080'}, screenInset '${inset}', modal layer 'none', build ${BUILD}`)
   }
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
   engine.addSystem(choose)
@@ -250,7 +262,9 @@ function coinW(...textes: string[]): number {
   for (const t of textes) large = Math.max(large, largeurTexte(t, TYPE.caption))
   // 30 d'air en tout, quinze de chaque cote: assez pour que le texte ne touche pas le
   // bord de la plaque, assez peu pour qu'une ligne courte ne flotte pas dedans.
-  return Math.round(Math.max(COIN_MIN, Math.min(COIN_W, large + 30)))
+  // The ceiling is the chip's (560), not the column's (440): a live raid line with a leader's
+  // name is the longest row of the column and ran past 440 on the phone's font (10 Sep).
+  return Math.round(Math.max(COIN_MIN, Math.min(CHIP_W_MAX, large + 30)))
 }
 /** The rush chip: how long it holds in the middle, then how long its flight to the corner takes. */
 const RUSH_HOLD_MS = 1500
@@ -1814,9 +1828,7 @@ const uiComponent = () => {
   // The alert clock reads this: an alert behind a screen keeps for when the screen goes.
   // And the world reads `hudDepuis`: the press that closed a panel is still in flight in the
   // frame the HUD comes back, so a round went off on CLOSE (owner, 6 Sep). See monde.ts.
-  const visible = hud()
-  if (visible && !theftView.hudVisible) theftView.hudDepuis = Date.now()
-  theftView.hudVisible = visible
+  setHudVisible(hud())
   // The trace needs to know whether a press landed inside an open panel (see client/clics.ts).
   signalerMenu(menuView.open)
   /*
@@ -1994,9 +2006,6 @@ const uiComponent = () => {
     <Prechauffe />
     
     <PadControls />
-    <WelcomePanel />
-    <PrestigePanel />
-    <FusionPanel />
     <MenuSheet />
     <MenuWindow />
 
@@ -2657,7 +2666,6 @@ const uiComponent = () => {
       </Centre>
     )}
 
-    <LoadingScreen />
   </UiEntity>
   )
 }
@@ -2673,6 +2681,27 @@ const uiComponent = () => {
  * the one thing every player has already seen before arriving.
  */
 const LOADING_CEILING_MS = 30_000
+const modalRoot = engine.addEntity()
+/** The veil under the modals and the loading picture: the layer that reaches the edges. */
+const ModalLayer = () => (
+  <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}>
+    {modale() && (
+      <UiEntity key="veil"
+        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, pointerFilter: 'block' }}
+        uiBackground={{ color: SURF.voile }}
+        onMouseDown={() => { if (welcomeView.open) closeWelcome() }} />
+    )}
+    <ScreenInsetArea>
+      <UiEntity uiTransform={{ width: '100%', height: '100%' }}>
+        <WelcomePanel />
+        <PrestigePanel />
+        <FusionPanel />
+      </UiEntity>
+    </ScreenInsetArea>
+    <LoadingScreen />
+  </UiEntity>
+)
+
 const LoadingScreen = () => {
   const pret = loadingView.assetsReady && theftView.walletRecu && view.serverAlive
   if (pret || Date.now() - loadingView.since > LOADING_CEILING_MS) return null
@@ -2692,7 +2721,7 @@ const LoadingScreen = () => {
     n'est pas toujours la largeur: on compare les deux rapports plutot que de supposer.
   */
   const RATIO = 1440 / 960
-  const z = zoneRenderer()
+  const z = zoneEcran()
   const iw = z.w / z.h > RATIO ? z.w : Math.round(z.h * RATIO)
   const ih = z.w / z.h > RATIO ? Math.round(z.w / RATIO) : z.h
   const haut = Math.round((z.h - ih) / 2)
