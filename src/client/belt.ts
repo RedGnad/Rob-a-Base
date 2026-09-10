@@ -247,7 +247,11 @@ export function setupBelt(): void {
     // A rarer crate stays a little longer, within the same window as every other moment on the
     // band: five to fifteen seconds read as a stuck banner next to toasts that leave in four
     // (owner, 5 Sep). The crate itself glows on the belt for as long as it rolls.
-    beltView.annonceJusqua = Date.now() + 3500 + d.crateTier * 500
+    // The extra time follows the RARITY RANK (0 to 5), never the crate id that `crateTier`
+    // carries (0 to 15): computed on the id, a Rainbow box held the banner for ten seconds
+    // and a Phantom for eleven (owner, 11 Sep). Ranks give 5 s themed, 5.5 s Legendary, 6 s
+    // Mythic, the event toast's own window.
+    beltView.annonceJusqua = Date.now() + 3500 + r.tier * 500
     // And it is HEARD. The band is at the top of the screen; a player at their own base is
     // looking the other way, which is the very reason the rush has a bell (owner, 5 Sep).
     replay(sonAnnonce)

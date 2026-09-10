@@ -1,5 +1,5 @@
 import { plasticDe, spinLoop } from './toy'
-import { engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer, InputAction, inputSystem, PointerEventType, AudioSource, Tween, EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode, CameraType, CameraModeArea, AvatarMask, timers, MaterialTransparencyMode } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer, InputAction, inputSystem, PointerEventType, AudioSource, Tween, EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode, CameraType, CameraModeArea, AvatarMask, timers, MaterialTransparencyMode, MeshCollider, ColliderLayer, pointerEventsSystem } from '@dcl/sdk/ecs'
 import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
@@ -343,6 +343,21 @@ function rafraichirVisibilite(): void {
 }
 
 export function setupCombat(): void {
+  /*
+    Desktop review only. The Explorer's automation clicks through the real reticle pipeline
+    and refuses a miss, so the tap-to-fire rule could not be exercised from the desk without
+    something clickable under the crosshair: a small pointer-only box that rides in front of
+    the player and does nothing when hit. It never exists in a shipped build: the switch is a
+    compile-time false there, and the deploy guard refuses the build when it is on.
+  */
+  if (FORCE_MOBILE_LAYOUT) {
+    const cible = engine.addEntity()
+    Transform.create(cible, { parent: engine.PlayerEntity, position: Vector3.create(0, 1.2, 2), scale: Vector3.create(0.3, 0.3, 0.3) })
+    MeshRenderer.setBox(cible)
+    MeshCollider.setBox(cible, ColliderLayer.CL_POINTER)
+    pointerEventsSystem.onPointerDown({ entity: cible, opts: { button: InputAction.IA_ANY, hoverText: 'PROBE TARGET' } }, () => {})
+    console.log(`[PROBE] click target up, entity ${cible}`)
+  }
 
 
 
@@ -825,11 +840,10 @@ function tapSurLaVitre(now: number): boolean {
   if (!inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_UP)) return false
   const depuis = tapDepuis
   tapDepuis = 0
-  if (depuis === 0 || tapBouton) return false
-  if (now - depuis > TAP_MS) return false
-  if (ecartDeg(cameraYaw(), tapYaw) > TAP_DEG) return false
-  if (dernierTic() >= depuis) return false
-  return true
+  const verdict = depuis !== 0 && !tapBouton && now - depuis <= TAP_MS && ecartDeg(cameraYaw(), tapYaw) <= TAP_DEG && dernierTic() < depuis
+  // The desktop review reads the decision in the scene log; never in a shipped build.
+  if (FORCE_MOBILE_LAYOUT) console.log(`[PROBE] tap up: held ${depuis === 0 ? 'none' : `${now - depuis} ms`}, turned ${depuis === 0 ? 0 : ecartDeg(cameraYaw(), tapYaw).toFixed(1)} deg, button ${tapBouton}, control ${depuis !== 0 && dernierTic() >= depuis} -> ${verdict ? 'FIRE' : 'no'}`)
+  return verdict
 }
 
 /** The one aim area of the session, parented to the player: see `ZONE_VISEE` and `degainer`. */
@@ -1002,6 +1016,7 @@ function tirer(now: number): boolean {
   const moiT = Transform.getOrNull(engine.PlayerEntity)
   if (cam === null || moiT === null) return false
   dernierTir = now
+  if (FORCE_MOBILE_LAYOUT) console.log('[PROBE] shot')
 
   const f = Vector3.rotate(Vector3.create(0, 0, 1), cam.rotation)
   const plat = Math.sqrt(f.x * f.x + f.z * f.z)
