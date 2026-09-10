@@ -1,5 +1,9 @@
 import { engine, UiCanvasInformation } from '@dcl/sdk/ecs'
-import { TAP } from './theme'
+import { TAP, FORCE_MOBILE_LAYOUT } from './theme'
+
+/** The dialog sheet: the width it takes when the screen allows it, and the padding inside it. */
+export const MENU_W = 1088
+export const MENU_PAD = 18
 
 /**
  * Where things are allowed to go, and why.
@@ -210,7 +214,10 @@ export function topBand(blocks: Array<[string, boolean, number]>): Record<string
  */
 export function strip(width: number): { width: number; margin: { left: number } } {
   const edge = clientEdges()
-  const usable = active.w - 2 * Math.max(edge.left, edge.right)
+  // The forced phone layout takes the floor the tester's phone hit (a sheet of 800 on 1600,
+  // measured 10 Sep): the desktop client reports no edges, and a sheet of 1088 hides what a
+  // sheet of 800 shows, the streak chips first.
+  const usable = FORCE_MOBILE_LAYOUT ? active.w * 0.5 : active.w - 2 * Math.max(edge.left, edge.right)
   const w = Math.min(width, Math.max(usable, active.w * 0.5))
   return { width: w, margin: { left: -w / 2 } }
 }

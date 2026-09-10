@@ -11,6 +11,7 @@ import { alerter, pushToFeed, theftView, hiddenClock } from './theft'
 import { TOAST } from './theme'
 import { chooseTab, closeMenu } from './menu'
 import { welcomeView } from './welcome'
+import { questsView } from './quests-ui'
 import { giftView, tutoView, STEP_TEXTS } from './tutorial'
 import { raidView } from './raid'
 import { gearView } from './gear'
@@ -116,6 +117,15 @@ function menuCycle(): void {
   const tab = t < 8 ? 'shop' : t < 16 ? 'index' : 'goals'
   status = `PROBE ${tab} c${cycle} t=${t.toFixed(0)}`
   fired.has(`${cycle}:${tab}`) || (fired.add(`${cycle}:${tab}`), chooseTab(tab))
+  // The welcome card would sit over the sheet for a player the server has not seen close it.
+  welcomeView.open = false
+  // The goals tab with today's chest waiting on day 3: the chip the owner asked about (10 Sep).
+  if (tab === 'goals') {
+    questsView.dailyDispo = true
+    questsView.prochainJour = 3
+    questsView.log = 2
+    if (questsView.joursPris.length !== 2) questsView.joursPris = [1, 2]
+  }
 }
 
 export function applyUiProbe(): void {

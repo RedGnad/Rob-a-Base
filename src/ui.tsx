@@ -10,7 +10,7 @@ import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneEcran } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneEcran, MENU_W, MENU_PAD } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE, PENDING_CAP_S } from './shared/schemas'
 import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -208,7 +208,6 @@ const Centre = (props: { top?: number; bottom?: number; decalage?: boolean; chil
   )
 }
 
-const MENU_W = 1088
 /** The strip at the right edge of a dialog body where the client draws its scrollbar. */
 const SCROLLBAR_COVER_W = 26
 
@@ -341,7 +340,6 @@ function coinDroit(rang: number): number {
   return y
 }
 
-const MENU_PAD = 18
 const MENU_ENTETE = TAP.height + 14
 
 /*

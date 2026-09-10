@@ -1,9 +1,9 @@
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { sendOrHold } from './intent'
-import { TYPE, TAP, C, RAD, lisible } from './theme'
+import { TYPE, TAP, C, RAD, lisible, largeurTexte } from './theme'
 import { Btn, Barre, SURF, pctAnime, flashDe, tic } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
-import { strip, BAND } from './layout'
+import { strip, BAND, MENU_W, MENU_PAD } from './layout'
 import { room } from '../shared/messages'
 import { QUESTS } from '../shared/quests'
 import { DAILY_REWARDS } from '../shared/schemas'
@@ -154,7 +154,27 @@ const ROW_GAP = 6
 
 export const HAUTEUR_GOALS = 3 * (ROW + ROW_GAP) + (ROW + 6) + (30 + ROW_GAP + 4) + STREAK_H
 
+/*
+  The chips' words at the size the chip can hold.
+
+  Seven chips share the row at 12.4 percent each, and the row is as wide as the sheet the
+  client allows: 94 units a chip on the tester's phone (sheet 800, measured 10 Sep), 130 on a
+  desktop. At caption 24 the longest word, CURSED, needs 95 of them and DAY 3 with its star
+  needed 96: both ran past the chip the moment the phone caption went from 21 to 24 (7b0db).
+  The size is chosen against the chip: the caption, or the first of its steps down that keeps
+  every word the row can show inside the chip with four units of air on each side.
+*/
+const CHIP_WORDS = [...DAILY_REWARDS.map((t) => crate(t).name.split(' ')[0].toUpperCase()), 'DAY 7', 'CLAIM']
+function chipTextSize(): number {
+  const chipW = (strip(MENU_W).width - 2 * MENU_PAD) * 0.124
+  for (const size of [TYPE.caption, 22, 21, 20]) {
+    if (CHIP_WORDS.every((w) => largeurTexte(w, size) <= chipW - 8)) return size
+  }
+  return 20
+}
+
 export function QuestsContent(): ReactEcs.JSX.Element | null {
+  const chipSize = chipTextSize()
   if (!questsView.open) return null
   const allDone = allQuestsDone()
   return (
@@ -231,13 +251,15 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
               // is not a Btn, so it borrows the same click the buttons make.
               onMouseDown={aReclamer ? (() => { tic(); claimDaily() }) : undefined}
             >
-              <Label value={aReclamer ? `DAY ${dayN}  ✦` : `DAY ${dayN}`} fontSize={TYPE.caption}
+              {/* No star beside the day: the green rim, the fill and the word CLAIM already say
+                  it, and the star was the character that pushed the line past the chip. */}
+              <Label value={`DAY ${dayN}`} fontSize={chipSize}
                 color={aReclamer ? Color4.fromHexString('#c8f0a0ff') : passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
               {/* One word: "Basic Crate" wrapped into a third line the card never budgeted,
                   which is the clipped text the photographs showed. Every reward here IS a
                   crate; the card only has to say which. */}
-              <Label value={aReclamer ? 'CLAIM' : crate(t).name.split(' ')[0].toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap"
+              <Label value={aReclamer ? 'CLAIM' : crate(t).name.split(' ')[0].toUpperCase()} fontSize={chipSize} textWrap="nowrap"
                 color={aReclamer ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString(lisible(crate(t).color) + 'ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
             </UiEntity>
