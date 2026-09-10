@@ -51,6 +51,37 @@ export function setupTravel(): void {
  * quelques instants apres l'entree, alors on l'attend, mais on ne teleporte jamais quelqu'un
  * qui a commence a jouer.
  */
+/*
+  A newcomer is set down in the emptiest eighth of the field.
+
+  One spawn on the north edge of the plaza, and a nudge to the nearest legal square when it
+  was taken: every newcomer built against the last one, and the field filled from the north by
+  accretion while three sides stayed empty (owner, 10 Sep, after a wave of testers). The ghost
+  sits at the player's feet, so where arrivals land is where bases go. The field is cut into
+  eight wedges around the centre; the wedge holding the fewest bases wins, the player's own on
+  a tie, and the arrival is the nearest legal square to that wedge's anchor on a ring just
+  outside the plaza: the spawn is 26 m north of the centre, the anchors sit on an ellipse of
+  38 by 30, clear of the reserved 27 by 22. An empty field changes nothing: the player's own
+  wedge wins the tie and a legal spawn square is kept as it is.
+*/
+const ARRIVAL_A = 38
+const ARRIVAL_B = 30
+const WEDGES = 8
+function wedgeOf(x: number, z: number): number {
+  const a = Math.atan2(z - CENTER.z, x - CENTER.x)
+  return Math.floor(((a + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI / WEDGES)) % WEDGES
+}
+function arrivalTarget(p: { x: number; z: number }, autres: Array<{ x: number; z: number }>): { x: number; z: number } {
+  const counts = new Array<number>(WEDGES).fill(0)
+  for (const b of autres) counts[wedgeOf(b.x, b.z)] += 1
+  const mine = wedgeOf(p.x, p.z)
+  let best = mine
+  for (let w = 0; w < WEDGES; w++) if (counts[w] < counts[best]) best = w
+  if (best === mine) return { x: p.x, z: p.z }
+  const angle = (best + 0.5) * (2 * Math.PI / WEDGES)
+  return { x: CENTER.x + ARRIVAL_A * Math.cos(angle), z: CENTER.z + ARRIVAL_B * Math.sin(angle) }
+}
+
 function apparaitreChezSoi(): void {
   let attente = 0
   let fait = false
@@ -84,11 +115,14 @@ function apparaitreChezSoi(): void {
       if (!theftView.walletRecu || theftView.basePosee) return
       if (!Transform.has(engine.PlayerEntity)) return
       const p = Transform.get(engine.PlayerEntity).position
-      if (invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, basesConnues()) === null) return
-      const libre = freeSpotNear(p.x, p.z, SCENE_SIDE, basesConnues())
+      const autres = basesConnues()
+      const cible = arrivalTarget(p, autres)
+      const surPlace = cible.x === p.x && cible.z === p.z
+      if (surPlace && invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, autres) === null) return
+      const libre = freeSpotNear(cible.x, cible.z, SCENE_SIDE, autres)
       if (libre === null) return
       fait = true
-      moveTo('arrivee sur une place libre', Vector3.create(libre.x, 0, libre.z), Vector3.create(CENTER.x, 1.6, CENTER.z))
+      moveTo(surPlace ? 'arrival on a free square' : 'arrival in the emptiest wedge', Vector3.create(libre.x, 0, libre.z), Vector3.create(CENTER.x, 1.6, CENTER.z))
       return
     }
     fait = true

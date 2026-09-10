@@ -152,6 +152,26 @@ const profiles = new Map<string, Profil>()
 const dirtyBases = new Set<string>()
 /** Une semaine sans venir et la base sort du terrain, sans rien perdre de son contenu. */
 const BASE_FRAICHEUR_MS = 7 * 24 * 60 * 60 * 1000
+/*
+  AN EMPTY BASE FOLDS AFTER SIX HOURS AWAY; a base with loot never folds on a clock.
+
+  The rule under `displayCost` stands: a base with something on its shelves is a target, and a
+  world without buildings is a dead world, so room is made under pressure only. An empty base
+  is not a target: nothing to steal, nothing produced, no pot. It only holds a square of twenty
+  metres, and the field was filling with squares held by testers who placed and left (owner,
+  10 Sep: bases on one side of the field, and that side tight). So an empty base whose owner
+  has been away this long leaves the field exactly as `makeRoom` retires one: memory only, the
+  record stays, and the owner who returns finds it rebuilt (see `welcome`). Six hours is a
+  knob: a session break keeps the base, a night away folds it.
+*/
+const EMPTY_FOLD_MS = 6 * 3600_000
+/*
+  The one-off pass the owner asked for on 10 Sep: every empty base already standing folds once,
+  at the first boot carrying this mark, whatever its owner's absence. A DATE, like the reset
+  mark, so it runs once and never again.
+*/
+const EMPTY_FOLD_MARK = '2026-09-10-fold-empty'
+const EMPTY_FOLD_KEY = 'fold-empty'
 const dirtyProfiles = new Set<string>()
 
 
@@ -376,6 +396,21 @@ function removeBase(address: string): void {
   bases.delete(address)
 }
 
+/** Folds the empty bases whose owner has been away longer than `absenceMs`; returns how many. */
+function foldEmptyBases(absenceMs: number): number {
+  const ici = presents()
+  const now = Date.now()
+  let n = 0
+  for (const [a, b] of [...bases]) {
+    if (ici.has(a) || occupe(b.items) > 0 || now - b.lastSeen <= absenceMs) continue
+    const heures = Math.round((now - b.lastSeen) / 3600_000)
+    log(`${b.name || a.slice(0, 8)}'s empty base folds (away ${heures} h): the square is free again`)
+    removeBase(a)
+    n += 1
+  }
+  return n
+}
+
 /**
  * La remise a zero du monde, executee une seule fois et jamais deux.
  *
@@ -583,6 +618,13 @@ async function loadBases(): Promise<void> {
       createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
     }
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
+    // The one-off pass over what just came back (see EMPTY_FOLD_MARK); the standing rule runs every minute.
+    const marque = readMarker(await Storage.get<string>(EMPTY_FOLD_KEY))
+    if (marque !== EMPTY_FOLD_MARK) {
+      const n = foldEmptyBases(0)
+      const pose = await Storage.set(EMPTY_FOLD_KEY, EMPTY_FOLD_MARK)
+      log(`fold-empty ${EMPTY_FOLD_MARK}: ${n} empty bases folded, marker set (${pose}), read before "${marque ?? 'none'}"`)
+    }
     // Each defended base's charges per storey, as restored: the one line that says whether a
     // storey's defence survived a restart or was already gone in the record (owner, 4 Sep).
     for (const l of loaded) {
@@ -731,10 +773,27 @@ export async function welcome(address: string): Promise<void> {
     // the defence (sentry charges, mines, thief count). Rebuilding from the profile brought
     // stolen items back and wiped every paid charge (audit, 4 Sep).
     const blob = await lireBase(address)
-    const b = createBase(address, name, blob?.items ?? items, Date.now(), profile.x, profile.z, blob?.vitrine ?? VITRINE_VIDE)
+    /*
+      The square is asked for again before the base stands on it.
+
+      A base that left the field (folded while empty, or retired under budget pressure) kept
+      its square in the record, not on the ground, and a newcomer may have built there since.
+      Two buildings in one square is the worst outcome there is (the melting walls, 1 Sep), so
+      the stored spot is re-checked and, when it is no longer legal, the base goes to the
+      nearest free square; the profile follows the base a few lines down. A spot still legal
+      does not move by a centimetre.
+    */
+    let x = profile.x
+    let z = profile.z
+    let deplacee = false
+    if (invalidReason(x, z, SCENE_SIDE, basePoints(address)) !== null) {
+      const proche = freeSpotNear(x, z, SCENE_SIDE, basePoints(address))
+      if (proche !== null) { x = proche.x; z = proche.z; deplacee = true }
+    }
+    const b = createBase(address, name, blob?.items ?? items, Date.now(), x, z, blob?.vitrine ?? VITRINE_VIDE)
     if (b !== null) {
       dirtyBases.add(address)
-      log(`base de ${name} reposee en ${profile.x},${profile.z}${blob ? '' : ' (no stored record, from the profile)'}`)
+      log(`base de ${name} reposee en ${x},${z}${deplacee ? ` (the recorded ${profile.x},${profile.z} was taken)` : ''}${blob ? '' : ' (no stored record, from the profile)'}`)
     }
   }
   const existing = bases.get(address)
@@ -2256,7 +2315,10 @@ export function startPlots(): void {
   timers.setInterval(() => { void save() }, SAUVE_MS)
   // Checkpoint for the pending pool and last-seen stamp of everyone present: a minute of
   // income is the most a server death can cost, against a write per player every five seconds.
-  timers.setInterval(() => { for (const a of presents()) if (profiles.has(a)) dirtyProfiles.add(a) }, 60_000)
+  timers.setInterval(() => {
+    for (const a of presents()) if (profiles.has(a)) dirtyProfiles.add(a)
+    foldEmptyBases(EMPTY_FOLD_MS)
+  }, 60_000)
   timers.setInterval(() => {
     const ici = presents()
     for (const b of bases.values()) publish(b, ici)
