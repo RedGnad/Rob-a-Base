@@ -79,6 +79,6 @@ export function setupTutorial(): void {
   })
   room.onMessage('giftProgress', (d) => { giftView.leftS = d.leftS; giftView.totalS = d.totalS })
   room.onMessage('timeGift', (d) => {
-    alerterEnFile(`${d.minutes} MINUTES PLAYED  ·  free ${crate(d.crate).name}`, '#ffd166', TOAST.event)
+    alerterEnFile(`${d.minutes} MIN PLAYED  ·  free ${crate(d.crate).name}`, '#ffd166', TOAST.event)
   })
 }

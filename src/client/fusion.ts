@@ -2,13 +2,13 @@ import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents,
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE, FUSION_RANGE } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/loot-table'
+import { RARITIES, rarityOf, mutationDe, itemName, itemColor, rarity } from '../shared/loot-table'
 import { plasticDe, plastic, vif, TOY } from './toy'
 import { carryView } from './carry'
-import { pushToFeed } from './theft'
 import { revealItem } from './box'
 import { openFuser, closeFuser, fuserPanelView } from './fusion-ui'
 import { clicMonde } from './monde'
+import { pushToFeed } from './theft'
 
 /**
  * The fusion machine, client side: a drum on a plinth beside the records board, three
@@ -174,7 +174,7 @@ export function setupFuser(): void {
     }
   })
   room.onMessage('fused', (d) => {
-    pushToFeed(`${d.byName} fused a ${itemName(d.rarity, d.mutation)}`)
+    pushToFeed(`${d.byName} fused a ${rarity(d.rarity).name}`)
   })
 
   let dessine = ''

@@ -1,13 +1,13 @@
 /*
   Holds the interface in its worst case, for a review of the phone layout from a desktop.
 
-  Three toasts of three lengths, the corner column at its fullest (a two-line tutorial hint,
+  The two longest real toasts, the corner column at its fullest (a two-line tutorial hint,
   the rush chip or the raid countdown, the free-box timer, the cloak countdown), and the SELL
   button beside the pad. The systems keep writing the real views every frame; this runs after
   them, at the top of the HUD render, and overwrites what it needs. See UI_PROBE in theme.ts.
 */
 import { UI_PROBE } from './theme'
-import { alerter } from './theft'
+import { alerter, pushToFeed } from './theft'
 import { giftView, tutoView, STEP_TEXTS } from './tutorial'
 import { raidView } from './raid'
 import { gearView } from './gear'
@@ -22,10 +22,11 @@ export function applyUiProbe(): void {
   if (UI_PROBE === '') return
   if (!seeded) {
     seeded = true
-    alerter('WELCOME BACK', '#ffd166', HOLD_MS)
-    alerter('Neo Frostborn stole a Rainbow Epic from your base', '#ff6b6b', HOLD_MS)
-    alerter('The RAINBOW RUSH is on: every box on the belt pays three times its price for ninety seconds', '#4dd2ff', HOLD_MS)
+    // Real lines with the longest name the board has shown; the stack keeps two, never more.
+    alerter('SENTRY STOPPED CYRUS NIGHTWING  ·  2 left', '#4dd2ff', HOLD_MS)
+    alerter('STOLEN BY CYRUS NIGHTWING  ·  sealed 8h', '#ff4dd2', HOLD_MS)
   }
+  pushToFeed('Cyrus Nightwing picked up a Legendary')
   // The longest hint, and old enough for the hint to be due: two lines on a phone.
   const step = STEP_TEXTS.findIndex((s) => s.titre === 'Buy a box')
   tutoView.etape = step >= 0 ? step : 0

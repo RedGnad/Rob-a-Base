@@ -20,7 +20,7 @@ import { toyImage } from './client/toy'
 import { noterEvenement, signalerMenu } from './client/clics'
 import { loadingView } from './client/loading'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, alertesVisibles, feedLine } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
 import { nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
@@ -208,7 +208,7 @@ const SCROLLBAR_COVER_W = 26
  * pixels apart, which reads as one panel that has split rather than two panels. One place
  * decides, and it leaves a real gap.
  */
-const COIN_H = [64, 40, 52, 40, 40, 62]
+const COIN_H = [64, 40, 52, 40, 40]
 /*
   ONE width for the whole corner column.
 
@@ -261,12 +261,11 @@ const RUSH_CARD_H = 132
 /*
   How much screen the toast column may ever take, and how many plates at once.
 
-  A third of the canvas height, measured from where the column starts, and three plates. The
+  A third of the canvas height, measured from where the column starts, and two plates. The
   reference this interface follows keeps transient messages out of the acting area; ours grew
   into it because nothing bounded the stack (6 Sep). Anything past the third is dropped rather
   than queued: a message worth reading twice is not a toast.
 */
-const TOASTS_MAX = 3
 const TOASTS_BAS = 240
 /*
   THE CHIP IS AS WIDE AS ITS WIDEST LINE, MEASURED AT THE SIZE THAT LINE IS DRAWN.
@@ -313,7 +312,6 @@ const stepHintLines = (): number => {
 /** The step chip grows a line once its hint is due, and one more per wrapped line of it. */
 const stepChipH = (): number => { const n = stepHintLines(); return n === 0 ? COIN_H[0] : 100 + (n - 1) * 30 }
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
-const FIL_LIGNE = 26
 const COIN_GAP = STACK_GAP
 
 function coinDroit(rang: number): number {
@@ -1873,6 +1871,16 @@ const uiComponent = () => {
     ['stealing', theftView.stealing, 76],
     ['carrying', carryView.code >= 0 && carryView.vole, 64],
   ])
+  /*
+    The line about the others: as wide as its words, one caption line, and it steps aside
+    rather than land on the pad. On a 720-high canvas the column at its fullest ends 42
+    units above the pad's box, which is exactly one such line; a taller column just waits.
+  */
+  const feed = feedLine()
+  const feedW = feed === null ? 0 : Math.min(COIN_W, largeurTexte(feed, TYPE.caption) + 32)
+  const feedTop = coinDroit(5)
+  const padTop = active.h - (phone() ? THUMB.bottom + arcPour(1).boite : DESKTOP_PAD_BOTTOM + arcPour(DESKTOP_PAD_SCALE).boite)
+  const feedFits = feed !== null && feedTop + 42 + COIN_GAP <= padTop
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
@@ -2343,33 +2351,6 @@ const uiComponent = () => {
       periphery. It stacks under the tutorial step in the same right-hand corner, and takes
       that corner over once the tutorial is done with it.
     */}
-    {hud() && filVisible().length > 0 && (
-      <UiEntity
-        uiTransform={{
-          /*
-            A row per line, a plate the size of the rows, and a left edge to read down.
-
-            Each line was a Label with a width and NO HEIGHT, inside a column. Everywhere else
-            in this interface a Label carries an explicit height, because text does not give
-            this layout engine a size to lay out with: three lines all resolved to nothing and
-            were painted at the same y, which is the illegible stack in the photograph. The
-            plate was a fixed sixty-two whatever it held, so one line sat in a box built for
-            three, and centring lines of different lengths turned a list into a shape.
-          */
-          width: COIN_W, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
-          position: { top: coinDroit(5), right: rightCornerMargin() },
-          padding: 8, flexDirection: 'column', alignItems: 'flex-start'
-        }}
-        uiBackground={{ color: SURF.voile }}
-      >
-        {filVisible().map((l, i) => (
-          <Label key={i} uiTransform={{ width: '100%', height: FIL_LIGNE }} textWrap="nowrap"
-            textAlign="middle-left"
-            value={l} fontSize={TYPE.caption} color={Color4.fromHexString('#b8c2d0ff')} />
-        ))}
-      </UiEntity>
-    )}
-
     {/*
       A crate worth crossing the room for. One in about thirteen now, rather than one in
       four, so it is allowed to be loud; it is not allowed to be wider than its sentence.
@@ -2514,9 +2495,22 @@ const uiComponent = () => {
       are as tall as their words: three of them during a firefight reached the middle of the
       screen and stood between the shooter and the target (testers, 6 Sep). The combat lines
       are gone from this channel entirely (see `direResultat` in combat.ts), and what is left
-      is capped: at most `TOASTS_MAX` on screen, the newest kept, and the column stops at
+      is capped: at most two on screen (`alerter` keeps two), the newest kept, and the column stops at
       `TOASTS_BAS` so it can never grow into the play area whatever arrives.
     */}
+    {hud() && feedFits && (
+      <UiEntity
+        uiTransform={{
+          width: feedW, height: 42, positionType: 'absolute', position: { top: feedTop, right: rightCornerMargin() },
+          padding: { left: 16, right: 16 }, flexDirection: 'row', alignItems: 'center'
+        }}
+        uiBackground={{ color: SURF.voile }}
+      >
+        <Label uiTransform={{ height: 42 }} value={feed ?? ''} fontSize={TYPE.caption} textAlign="middle-left" textWrap="nowrap"
+          color={Color4.fromHexString('#b8c2d0ff')} />
+      </UiEntity>
+    )}
+
     {alertesVisibles().length > 0 && hud() && (
       <UiEntity
         uiTransform={{
@@ -2525,7 +2519,7 @@ const uiComponent = () => {
           flexDirection: 'column', alignItems: 'center'
         }}
       >
-        {alertesVisibles().slice(-TOASTS_MAX).map((a) => {
+        {alertesVisibles().map((a) => {
           const now = Date.now()
           const entree = Math.min(1, (now - a.ne) / 160)
           const sortie = Math.min(1, Math.max(0, (a.until - now) / 250))
@@ -2540,11 +2534,26 @@ const uiComponent = () => {
             over the estimate and wraps explicitly, and the line count is taken on the same
             widened figure: a plate a little roomy beats a word outside it.
           */
-          const maxW = Math.round(active.w * 0.46)
-          const estime = Math.round(largeurTexte(a.t, TYPE.body) * 1.12)
+          /*
+            ONE LINE IS THE RULE, and the phone reads it at label size.
+
+            Two real lines stacked at body size on a 720-high canvas reached the middle of the
+            screen (owner, 10 Sep, forced phone layout: three-line plates for "X'S FLOOR 3 IS
+            DEFENDED  ·  frozen 8s, sealed 120s, your coins are on the floor"). Sizing could not
+            fix that: on the phone's own font the longest lines took three lines at any width.
+            So every emitter was cut to one line, headline in capitals and detail in lowercase,
+            the rarity carried by the colour rather than spelled out, and the second fact of a
+            long line became its own toast. The phone draws them at label size and lets the
+            plate reach 48 % of the canvas, so the longest real line with a fifteen-letter name
+            still fits on one; the desktop keeps body size at 46 % of a 1920 canvas, where the
+            same lines fit on one already. A stack of two is then 55 + 16 + 55 on a phone.
+          */
+          const taille = phone() ? TYPE.label : TYPE.body
+          const maxW = Math.round(active.w * (phone() ? 0.48 : 0.46))
+          const estime = Math.round(largeurTexte(a.t, taille) * 1.12)
           const w = Math.min(maxW, estime + 64)
           const lignes = Math.max(1, Math.ceil(estime / (w - 44)))
-          const h = 52 + (lignes - 1) * Math.round(TYPE.body * 1.35)
+          const h = (phone() ? 46 : 52) + (lignes - 1) * Math.round(taille * 1.35)
           return (
             <UiEntity key={`toast${a.id}`}
               uiTransform={{
@@ -2554,7 +2563,7 @@ const uiComponent = () => {
               }}
               uiBackground={SKIN.panel}
             >
-              <Label uiTransform={{ width: w - 44, height: h - 12 }} value={a.t} fontSize={TYPE.body} textAlign="middle-center" textWrap="wrap"
+              <Label uiTransform={{ width: w - 44, height: h - 12 }} value={a.t} fontSize={taille} textAlign="middle-center" textWrap="wrap"
                 color={(() => { const c = Color4.fromHexString(lisible(a.c) + 'ff'); return Color4.create(c.r, c.g, c.b, sortie * entree) })()} />
             </UiEntity>
           )

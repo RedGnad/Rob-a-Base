@@ -335,7 +335,7 @@ export const FORCE_MOBILE_LAYOUT = false
   A stress state for the interface, reviewed from a desktop window.
 
   The owner reviews the phone layout without a phone (10 Sep), and the states that collide
-  cannot be summoned on demand: three toasts, the corner column at its fullest, the SELL
+  cannot be summoned on demand: two toasts, the corner column at its fullest, the SELL
   button, all at once. `'rush'` holds them on screen with the rush chip in the column,
   `'raid'` with the raid countdown instead (the two never share the column). Pair it with
   FORCE_MOBILE_LAYOUT. Applied by `applyUiProbe` at the top of every HUD render, after the

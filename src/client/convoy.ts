@@ -32,10 +32,10 @@ const RETARD_S = 0.12
 
 export function setupConvoy(): void {
   room.onMessage('outbidWon', (d) => {
-    alerter(`YOU OUTBID ${d.fromName.toUpperCase()}  ·  ${crate(d.crateTier).name} for ${formatIncome(d.price)}`, '#8fe08f', TOAST.result)
+    alerter(`YOU OUTBID ${d.fromName.toUpperCase()}`, '#8fe08f', TOAST.result)
   })
   room.onMessage('outbidLost', (d) => {
-    alerter(`${d.byName.toUpperCase()} OUTBID YOU\\nrefunded ${formatIncome(d.rembourse)}`, '#ff6b6b', TOAST.warning)
+    alerter(`OUTBID BY ${d.byName.toUpperCase()}  ·  refunded`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('convoyArrived', (d) => {
     alerter(`${crate(d.crateTier).name.toUpperCase()} DELIVERED`, '#4dd2ff', TOAST.result)

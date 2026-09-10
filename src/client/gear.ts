@@ -157,26 +157,26 @@ export function setupGear(): void {
     cue('till.wav', 0.7)
   })
   room.onMessage('gearPlaced', (d) => {
-    alerter(`${GEARS[d.gear].name} SET  ·  ${d.held} left in your pocket`, '#4dd2ff', TOAST.result)
+    alerter(`${GEARS[d.gear].name} SET  ·  ${d.held} left`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('trapped', (d) => {
     applyFreeze(d.gelMs)
     alerter(d.mine
-      ? `${d.ownerName.toUpperCase()}'S MINE  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`
+      ? `${d.ownerName.toUpperCase()}'S MINE  ·  frozen ${Math.round(d.gelMs / 1000)}s`
       : `${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('tased', (d) => {
     applyFreeze(d.gelMs)
-    alerter(`${d.byName.toUpperCase()}'S TASER  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`, '#ff6b6b', TOAST.warning)
+    alerter(`TASED BY ${d.byName.toUpperCase()}  ·  ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('luckBought', (d) => {
     cue('till.wav', 0.7)
-    alerter(`LUCKY CHARM  ·  x2 on every mutation for ${Math.ceil(d.sec / 60)} min  ·  -${formatIncome(d.cost)}`, '#4dd2ff', TOAST.result)
+    alerter(`LUCKY CHARM  ·  x2 for ${Math.ceil(d.sec / 60)} min`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('bombed', (d) => {
     alerter(d.dropped
-      ? `${d.ownerName.toUpperCase()}'S BOMB  ·  you dropped what you carried`
-      : `${d.ownerName.toUpperCase()}'S BOMB went off next to you`, '#ff6b6b', TOAST.warning)
+      ? `${d.ownerName.toUpperCase()}'S BOMB  ·  you dropped it`
+      : `${d.ownerName.toUpperCase()}'S BOMB went off`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('trapSprung', (d) => {
     alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}`, '#4dd2ff', TOAST.warning)

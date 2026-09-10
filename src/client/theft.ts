@@ -15,6 +15,8 @@ import { cue } from './ui-kit'
 
 export const theftView = {
   alertes: [] as Array<{ id: number; t: string; c: string; ne: number; until: number }>,
+  /** The one line about what another player just did, or null. */
+  feed: null as { t: string; until: number } | null,
   stealing: false,
   stealTarget: '',
   stealLeftMs: 0,
@@ -46,7 +48,6 @@ export const theftView = {
   alert: '',
   alertColor: '#ffffff',
   alerteJusqua: 0,
-  fil: [] as Array<{ t: string; until: number }>,
   malusJusqua: 0,
   luckSec: 0,
   luckPrice: 0,
@@ -122,30 +123,29 @@ export function alertesVisibles(): Array<{ id: number; t: string; c: string; ne:
 }
 
 /*
-  Twelve seconds, because a feed that never forgets is a feed that is always in the way.
+  ONE LINE ABOUT THE OTHERS, four seconds, the newest replacing the last.
 
-  Lines used to sit there until four more pushed them out, so a quiet server kept a corner of
-  the screen spent on something that happened twenty minutes ago. With an expiry the panel is
-  absent most of the time, which is the only real way for it not to cost screen.
+  What other players do (a theft, a pickup, a fusion, an outbid, the boss, a trap) is the one
+  visible thread between players outside the records board, so it stays; but it stood as a
+  three-line plate of fixed width, twelve seconds a line, its texts ran past the plate, and
+  it was the row that pushed the corner column onto the pad on a phone (owner, 10 Sep: the
+  screen's legibility comes first). Now a single line sized to its words, four seconds, and
+  the column draws it only when there is room above the pad.
 */
-const FIL_MS = 12_000
+const FEED_MS = 4_000
 
-export function pushToFeed(ligne: string): void {
-  theftView.fil.unshift({ t: ligne, until: Date.now() + FIL_MS })
-  if (theftView.fil.length > 4) theftView.fil.pop()
+export function pushToFeed(line: string): void {
+  theftView.feed = { t: line, until: Date.now() + FEED_MS }
 }
 
-/** The lines still worth drawing, newest first, never more than three. */
-export function filVisible(): string[] {
-  const now = Date.now()
-  const out: string[] = []
-  for (const f of theftView.fil) {
-    if (f.until <= now) continue
-    out.push(f.t)
-    if (out.length === 3) break
-  }
-  return out
+/** The line about the others still worth drawing, or null. */
+export function feedLine(): string | null {
+  const f = theftView.feed
+  if (f === null) return null
+  if (f.until <= Date.now()) { theftView.feed = null; return null }
+  return f.t
 }
+
 
 export function setupTheft(): void {
   sonneur = engine.addEntity()
@@ -163,9 +163,9 @@ export function setupTheft(): void {
       safe. Only worth a line when it is long enough to matter; a minute is a chase, not a wall.
     */
     const abri = d.shieldSec >= 300
-      ? `\nyour base is sealed for ${d.shieldSec >= 3600 ? Math.round(d.shieldSec / 3600) + 'h' : Math.round(d.shieldSec / 60) + ' min'}`
+      ? `  ·  sealed ${d.shieldSec >= 3600 ? Math.round(d.shieldSec / 3600) + 'h' : Math.round(d.shieldSec / 60) + ' min'}`
       : ''
-    alerter(`${d.byName} STOLE YOUR ${r.name.toUpperCase()}!${abri}`, r.color, TOAST.event)
+    alerter(`STOLEN BY ${d.byName.toUpperCase()}${abri}`, r.color, TOAST.event)
     replay(sonneur)
     console.log(`[CLIENT] VOL SUBI: ${d.byName} -> ${r.name}`)
   })
@@ -197,11 +197,11 @@ export function setupTheft(): void {
   room.onMessage('itemHome', (d) => {
     const r = rarity(d.rarity)
     alerter(d.stocked
-      ? `YOUR ${r.name.toUpperCase()} IS BACK  ·  in your stock, open it at home`
-      : `YOUR ${r.name.toUpperCase()} CAME BACK HOME`, r.color, TOAST.result)
+      ? `${r.name.toUpperCase()} BACK  ·  in your stock`
+      : `${r.name.toUpperCase()} BACK HOME`, r.color, TOAST.result)
   })
   room.onMessage('itemPicked', (d) => {
-    pushToFeed(`${d.byName} picked a ${rarity(d.rarity).name} up off the floor`)
+    pushToFeed(`${d.byName} picked up a ${rarity(d.rarity).name}`)
   })
   room.onMessage('reclaimed', (d) => {
     pushToFeed(`${d.byName} took back a ${rarity(d.rarity).name}`)
@@ -220,28 +220,27 @@ export function setupTheft(): void {
       sum in the first, and naming the floor stays, since another storey may have nothing on it.
     */
     // The sum floats off the counter; the toast says what happened and what to do next.
-    const ramasser = d.lost > 0 ? ', your coins are on the floor' : ''
-    alerter(`${d.ownerName.toUpperCase()}'S FLOOR ${d.floor} IS DEFENDED  ·  frozen ${Math.round(d.gelMs / 1000)}s, sealed ${d.lockSec}s${ramasser}`, '#ff6b6b', TOAST.warning)
+    alerter(`DEFENDED  ·  frozen ${Math.round(d.gelMs / 1000)}s, sealed ${d.lockSec}s`, '#ff6b6b', TOAST.warning)
+    if (d.lost > 0) alerter('YOUR COINS ARE ON THE FLOOR', '#ff6b6b', TOAST.warning)
   })
   room.onMessage('sentryTriggered', (d) => {
-    const butin = d.taken > 0 ? `  ·  they dropped ${formatIncome(d.taken)}, go get it` : ''
-    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left${butin}`, '#4dd2ff', TOAST.warning)
+    alerter(`SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} left`, '#4dd2ff', TOAST.warning)
+    if (d.taken > 0) alerter(`THEY DROPPED ${formatIncome(d.taken)}  ·  go get it`, '#4dd2ff', TOAST.warning)
   })
   room.onMessage('sentryBought', (d) => {
     cue('till.wav', 0.7)
-    alerter(`FLOOR ${d.floor} DEFENDED  ·  ${d.charges} charges there  ·  -${formatIncome(d.cost)} coins`, '#4dd2ff', TOAST.result)
+    alerter(`FLOOR ${d.floor} DEFENDED  ·  ${d.charges} charges`, '#4dd2ff', TOAST.result)
   })
 
   room.onMessage('gaveItem', (d) => {
-    const r = rarity(d.rarity)
-    alerter(`GIFTED TO ${d.toName.toUpperCase()}: ${r.name.toUpperCase()}`, '#8fe08f', TOAST.result)
+    alerter(`GIFTED TO ${d.toName.toUpperCase()}`, '#8fe08f', TOAST.result)
   })
   room.onMessage('wasGifted', (d) => {
     const r = rarity(d.rarity)
-    alerter(`${d.byName} LEFT YOU A ${r.name.toUpperCase()}!`, r.color, TOAST.event)
+    alerter(`${d.byName.toUpperCase()} LEFT YOU A GIFT`, r.color, TOAST.event)
   })
   room.onMessage('outbidFeed', (d) => {
-    pushToFeed(`${d.byName} outbid a crate for ${d.price}`)
+    pushToFeed(`${d.byName} outbid a crate`)
   })
   room.onMessage('gifted', (d) => {
     pushToFeed(`${d.byName} gifted a ${rarity(d.rarity).name}`)
@@ -258,7 +257,7 @@ export function setupTheft(): void {
     alerter(`STEAL FAILED: ${d.reason.toUpperCase()}`, '#ff6b6b', TOAST.result)
   })
   room.onMessage('beingRobbed', (d) => {
-    alerter(`${d.byName.toUpperCase()} IS TAKING YOUR ${rarity(d.rarity).name.toUpperCase()}!`, '#ff6b6b', Math.min(TOAST.event, Math.max(TOAST.warning, d.restantMs)))
+    alerter(`${d.byName.toUpperCase()} IS ROBBING YOU`, '#ff6b6b', Math.min(TOAST.event, Math.max(TOAST.warning, d.restantMs)))
   })
 
   room.onMessage('wallet', (d) => {
@@ -293,14 +292,13 @@ export function setupTheft(): void {
     // The offline sum, read off the tick and said once per cash-in (see the server's wallet tick).
     if (d.offlineAt > 0 && d.offlineGain > 0 && d.offlineAt !== derniereAnnonceHL) {
       derniereAnnonceHL = d.offlineAt
-      const min = Math.max(1, Math.round(d.offlineSec / 60))
       // A full silo is the only part of this the player can act on, so it is the part that is
       // said: the genre's cap works by being READ, otherwise being capped is just a small number.
-      const plein = d.offlineCapped ? '  ·  silo full, build another' : ''
       // "banked" et non "earned": depuis le 7 Sep cette somme porte AUSSI la cagnotte laissee a
       // la deconnexion, donc elle couvre la fin de la session precedente autant que l'absence.
       // Un mot qui decrit ou l'argent etait, pas quand il a ete produit, est vrai des deux.
-      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} banked in ${min} min away${plein}`, '#ffd166', TOAST.event)
+      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} banked`, '#ffd166', TOAST.event)
+      if (d.offlineCapped) alerterEnFile('SILO FULL  ·  build another', '#ffd166', TOAST.event)
     }
   })
 
@@ -393,7 +391,7 @@ export function setupTheft(): void {
 
   room.onMessage('siloBought', (d) => {
     cue('till.wav', 0.7)
-    alerter(`SILO ${d.silos}  ·  ${Math.round(d.capS / 60)} min of production banked while away`, '#4dd2ff', TOAST.result)
+    alerter(`SILO ${d.silos}  ·  ${Math.round(d.capS / 60)} min banked while away`, '#4dd2ff', TOAST.result)
     console.log(`[CLIENT] silo ${d.silos} achete pour ${d.cost}, plafond ${d.capS}s`)
   })
 
@@ -433,7 +431,15 @@ export function setupTheft(): void {
       27 Aug: "no message telling me what I earned while away"). The clock runs only while
       the HUD is on screen, and the queue feeds the slot only then.
     */
-    if (!theftView.hudVisible) { theftView.alerteJusqua += dt * 1000; return }
+    if (!theftView.hudVisible) {
+      theftView.alerteJusqua += dt * 1000
+      // The stack keeps too: each plate's birth and expiry slide with the hidden time, so a
+      // theft announced behind the shop is still there, sliding in, when the shop closes. The
+      // rule above was written on the single slot (27 Aug); the stack of 3 Sep had skipped it,
+      // and `alertesVisibles` prunes on the wall clock before the HUD is even consulted.
+      for (const a of theftView.alertes) { a.ne += dt * 1000; a.until += dt * 1000 }
+      return
+    }
     if (theftView.alert !== '' && Date.now() > theftView.alerteJusqua) theftView.alert = ''
     if (theftView.alert === '' && file.length > 0) {
       const n = file.shift()

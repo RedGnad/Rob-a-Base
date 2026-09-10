@@ -142,10 +142,10 @@ export function setupRaid(): void {
     */
   })
   room.onMessage('raidWon', (d) => {
-    alerter(`YOU SLEW THE BOSS  ·  ${crate(d.crate).name.toUpperCase()} in your boxes`, '#ffd166', TOAST.event)
+    alerter(`BOSS DOWN  ·  ${crate(d.crate).name} is yours`, '#ffd166', TOAST.event)
   })
   room.onMessage('raidOver', (d) => {
-    pushToFeed(d.slain ? `${d.winner} slew the raid boss` : 'the raid boss left')
+    pushToFeed(d.slain ? `${d.winner} slew the boss` : 'the boss left')
   })
 
   let etaitActif = false
@@ -201,7 +201,7 @@ export function setupRaid(): void {
         place etait donc faux pour presque tout le monde, et faux publiquement. On annonce ce qui
         est vrai a tous les paliers, et le palier exact se decouvre en gagnant.
       */
-      alerter('RAID BOSS  ·  3 MIN  ·  TOP DAMAGE TAKES A CRATE', '#ff6b6b', TOAST.event)
+      alerter('BOSS UP  ·  top damage takes a crate', '#ff6b6b', TOAST.event)
       replay(son)
     }
     // Glide toward the last position the server wrote.
