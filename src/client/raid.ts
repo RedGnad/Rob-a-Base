@@ -201,7 +201,7 @@ export function setupRaid(): void {
         place etait donc faux pour presque tout le monde, et faux publiquement. On annonce ce qui
         est vrai a tous les paliers, et le palier exact se decouvre en gagnant.
       */
-      alerter('BOSS UP  ·  top damage takes a crate', '#ff6b6b', TOAST.event)
+      alerter('BOSS UP  ·  top damage takes a crate', '#ff6b6b', TOAST.event, false)
       replay(son)
     }
     // Glide toward the last position the server wrote.

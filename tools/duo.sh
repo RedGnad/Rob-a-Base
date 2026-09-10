@@ -22,6 +22,7 @@ RESET=0
 echo "==> on arrete tout ce qui traine"
 pkill -9 -f "MacOS/Explorer"  2>/dev/null
 pkill -9 -f "hammurabi"       2>/dev/null
+pkill -9 -f "friendzone/node_modules/typescript" 2>/dev/null
 for p in $(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | grep -E ":80[0-9][0-9]" | awk '{print $2}' | sort -u); do
   kill -9 "$p" 2>/dev/null
 done

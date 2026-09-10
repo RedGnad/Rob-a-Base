@@ -179,7 +179,7 @@ export function setupGear(): void {
       : `${d.ownerName.toUpperCase()}'S BOMB went off`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('trapSprung', (d) => {
-    alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}`, '#4dd2ff', TOAST.warning)
+    alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}`, '#4dd2ff', TOAST.warning, true)
     pushToFeed(`${d.byName} stepped on a trap`)
   })
 

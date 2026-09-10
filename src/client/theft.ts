@@ -14,7 +14,7 @@ import { setSfx, replay } from './sfx'
 import { cue } from './ui-kit'
 
 export const theftView = {
-  alertes: [] as Array<{ id: number; t: string; c: string; ne: number; until: number }>,
+  alertes: [] as Array<{ id: number; t: string; c: string; ne: number; until: number; keep: boolean }>,
   /** The one line about what another player just did, or null. */
   feed: null as { t: string; until: number } | null,
   stealing: false,
@@ -93,12 +93,23 @@ export function alerterEnFile(texte: string, color: string, durationMs: number =
   than stacking, but rare is not never and the fix is a field.
 */
 let prochaineAlerte = 1
-export function alerter(texte: string, color: string, durationMs: number = TOAST.warning): void {
+/*
+  `keep` says whether the line is still true later.
+
+  A plate raised while a screen hides the HUD is frozen and shown when the screen goes; that
+  is right for a fact that stays true (a theft suffered, a gift, a boss slain, a prestige, a
+  return) and wrong for a live state or an immediate answer (someone robbing you now, a freeze
+  of six seconds, a cloak nearby, a refused purchase): shown two minutes late, those lie
+  (owner, 10 Sep). The default follows the duration class: the six-second events are the
+  durable facts, the shorter classes are answers and states and expire on the wall clock, as
+  they always did. Two events are live in spite of their class and say so at the call site.
+*/
+export function alerter(texte: string, color: string, durationMs: number = TOAST.warning, keep: boolean = durationMs >= TOAST.event): void {
   const now = Date.now()
   // The same line again refreshes the one on screen instead of stacking a twin under it.
   const twin = theftView.alertes.find((a) => a.t === texte && a.until > now)
   if (twin !== undefined) { twin.until = now + durationMs; twin.c = color; return }
-  theftView.alertes.unshift({ id: prochaineAlerte, t: texte, c: color, ne: now, until: now + durationMs })
+  theftView.alertes.unshift({ id: prochaineAlerte, t: texte, c: color, ne: now, until: now + durationMs, keep })
   prochaineAlerte += 1
   if (theftView.alertes.length > 2) theftView.alertes.length = 2
   theftView.alert = texte
@@ -224,8 +235,10 @@ export function setupTheft(): void {
     if (d.lost > 0) alerter('YOUR COINS ARE ON THE FLOOR', '#ff6b6b', TOAST.warning)
   })
   room.onMessage('sentryTriggered', (d) => {
-    alerter(`SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} left`, '#4dd2ff', TOAST.warning)
-    if (d.taken > 0) alerter(`THEY DROPPED ${formatIncome(d.taken)}  ·  go get it`, '#4dd2ff', TOAST.warning)
+    // Facts about your own base, kept behind a screen: a thief stopped stays stopped, and
+    // coins on the floor stay worth a walk.
+    alerter(`SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} left`, '#4dd2ff', TOAST.warning, true)
+    if (d.taken > 0) alerter(`THEY DROPPED ${formatIncome(d.taken)}  ·  go get it`, '#4dd2ff', TOAST.warning, true)
   })
   room.onMessage('sentryBought', (d) => {
     cue('till.wav', 0.7)
@@ -257,7 +270,7 @@ export function setupTheft(): void {
     alerter(`STEAL FAILED: ${d.reason.toUpperCase()}`, '#ff6b6b', TOAST.result)
   })
   room.onMessage('beingRobbed', (d) => {
-    alerter(`${d.byName.toUpperCase()} IS ROBBING YOU`, '#ff6b6b', Math.min(TOAST.event, Math.max(TOAST.warning, d.restantMs)))
+    alerter(`${d.byName.toUpperCase()} IS ROBBING YOU`, '#ff6b6b', Math.min(TOAST.event, Math.max(TOAST.warning, d.restantMs)), false)
   })
 
   room.onMessage('wallet', (d) => {
@@ -433,11 +446,11 @@ export function setupTheft(): void {
     */
     if (!theftView.hudVisible) {
       theftView.alerteJusqua += dt * 1000
-      // The stack keeps too: each plate's birth and expiry slide with the hidden time, so a
+      // The durable plates keep too: their birth and expiry slide with the hidden time, so a
       // theft announced behind the shop is still there, sliding in, when the shop closes. The
       // rule above was written on the single slot (27 Aug); the stack of 3 Sep had skipped it,
       // and `alertesVisibles` prunes on the wall clock before the HUD is even consulted.
-      for (const a of theftView.alertes) { a.ne += dt * 1000; a.until += dt * 1000 }
+      for (const a of theftView.alertes) if (a.keep) { a.ne += dt * 1000; a.until += dt * 1000 }
       return
     }
     if (theftView.alert !== '' && Date.now() > theftView.alerteJusqua) theftView.alert = ''

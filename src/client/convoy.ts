@@ -35,7 +35,7 @@ export function setupConvoy(): void {
     alerter(`YOU OUTBID ${d.fromName.toUpperCase()}`, '#8fe08f', TOAST.result)
   })
   room.onMessage('outbidLost', (d) => {
-    alerter(`OUTBID BY ${d.byName.toUpperCase()}  ·  refunded`, '#ff6b6b', TOAST.warning)
+    alerter(`OUTBID BY ${d.byName.toUpperCase()}  ·  refunded`, '#ff6b6b', TOAST.warning, true)
   })
   room.onMessage('convoyArrived', (d) => {
     alerter(`${crate(d.crateTier).name.toUpperCase()} DELIVERED`, '#4dd2ff', TOAST.result)
