@@ -499,7 +499,9 @@ export const Btn = (props: {
     picture for all of them.
   */
   /*
-    The word follows the plate, whatever width the plate ends up with.
+    The word follows the plate, whatever width the plate ends up with; and the picture's gap
+    exists only when a word follows it, or a picture alone sits half a gap left of centre
+    (the sound toggle, owner, 10 Sep: 8 px against 14 in a 40 px plate).
 
     The label used to be centred in a box of `props.width`, absolute inside the plate. When
     a row gives the button a column narrower than that (the shop's 24 % column is 177 units
@@ -511,7 +513,7 @@ export const Btn = (props: {
   const contenu = (
     <UiEntity uiTransform={{ width: '100%', height, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
       {props.icon !== undefined && (
-        <UiEntity uiTransform={{ width: Math.round(size * 1.6), height: Math.round(size * 1.6), margin: { right: Math.round(size * 0.45) } }}
+        <UiEntity uiTransform={{ width: Math.round(size * 1.6), height: Math.round(size * 1.6), margin: props.label !== '' ? { right: Math.round(size * 0.45) } : undefined }}
           uiBackground={{ texture: { src: `assets/ui/${props.icon}` }, textureMode: 'stretch' }} />
       )}
       <UiEntity uiTransform={{ width: glyphWidth(props.label.toUpperCase(), size), height: size + 8 }}>
