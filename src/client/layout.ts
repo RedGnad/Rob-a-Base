@@ -259,12 +259,16 @@ export function noticeBand(blocks: Array<[string, boolean, number]>): Record<str
  * difference between the two insets, converted out of canvas pixels.
  */
 export function decalageCentre(): { x: number; y: number } {
-  const info = UiCanvasInformation.getOrNull(engine.RootEntity)
-  const zone = info?.screenInsetArea
-  if (info === undefined || info === null || zone === undefined) return { x: 0, y: 0 }
-  const scale = Math.min(info.width / active.w, info.height / active.h)
-  if (!(scale > 0)) return { x: 0, y: 0 }
-  return { x: (zone.right - zone.left) / (2 * scale), y: (zone.bottom - zone.top) / (2 * scale) }
+  /*
+    Zero, measured. The reasoning above assumed the renderer insets our rectangle by the
+    device's safe area; it does not, on two testers' phones (9 and 10 Sep): a plainly centred
+    line sits at 0.500 and 0.507 of the screen's width, where an inset of 104 px on the right
+    would have put it at 0.46. With the correction applied on top of that, the reel stood
+    52 px right of the middle (owner's phone, 10 Sep). The middle of our rectangle IS the
+    middle of the glass, and the difference stays nothing until a client is measured doing
+    otherwise; the reading of the inset is left out rather than kept and ignored.
+  */
+  return { x: 0, y: 0 }
 }
 
 /**

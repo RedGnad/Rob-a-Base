@@ -1826,9 +1826,18 @@ const uiComponent = () => {
   // The alert clock reads this: an alert behind a screen keeps for when the screen goes.
   // And the world reads `hudDepuis`: the press that closed a panel is still in flight in the
   // frame the HUD comes back, so a round went off on CLOSE (owner, 6 Sep). See monde.ts.
-  setHudVisible(hud())
+  /*
+    Nothing under the loading picture. The picture moved to a renderer of its own (7b0db, so
+    it reaches the screen's edges), and two renderers have no promised order: on the phone
+    the HUD came out on top of it, coins, chips, buttons and all (owner's photo, 10 Sep). So
+    while the picture is up this tree draws nothing, and the HUD counts as hidden for the
+    toast clock, which is what the picture already meant.
+  */
+  const chargement = loadingShown()
+  setHudVisible(!chargement && hud())
   // The trace needs to know whether a press landed inside an open panel (see client/clics.ts).
   signalerMenu(menuView.open)
+  if (chargement) return <UiEntity uiTransform={{ width: '100%', height: '100%' }} />
   /*
     The top band, resolved once per frame, in priority order.
 
@@ -2706,9 +2715,14 @@ const ModalLayer = () => (
   </UiEntity>
 )
 
-const LoadingScreen = () => {
+/** Whether the loading picture is up: the HUD draws nothing under it (see uiComponent). */
+function loadingShown(): boolean {
   const pret = loadingView.assetsReady && theftView.walletRecu && view.serverAlive
-  if (pret || Date.now() - loadingView.since > LOADING_CEILING_MS) return null
+  return !pret && Date.now() - loadingView.since <= LOADING_CEILING_MS
+}
+
+const LoadingScreen = () => {
+  if (!loadingShown()) return null
   /*
     La photo COUVRE l'ecran, elle n'est pas une carte posee sur un fond navy.
 

@@ -85,6 +85,7 @@ function arrivalTarget(p: { x: number; z: number }, autres: Array<{ x: number; z
 function apparaitreChezSoi(): void {
   let attente = 0
   let fait = false
+  let depart: Vector3 | null = null
   engine.addSystem((dt: number) => {
     if (fait) return
     /*
@@ -97,6 +98,27 @@ function apparaitreChezSoi(): void {
       ou il a voulu.
     */
     if (poseView.pending) { fait = true; return }
+    /*
+      The twenty seconds run from the server's answer, not from the scene's first frame.
+
+      A cold server answers after fifteen seconds and a phone loads for longer still: the
+      window had closed before the wallet came, and the newcomer was left on the spawn square,
+      in the crowded north, with a red ghost and an inert hammer (owner's phone, 10 Sep). The
+      rule that nobody who has begun to play is teleported is kept by another measure: a
+      player who has walked three metres from where they appeared is playing and is left be.
+      A jump of thirty metres or more is the client placing the avatar, not a walk: it resets
+      the mark instead of counting.
+    */
+    if (Transform.has(engine.PlayerEntity)) {
+      const p = Transform.get(engine.PlayerEntity).position
+      if (depart === null) depart = Vector3.create(p.x, p.y, p.z)
+      else {
+        const d = Vector3.distance(p, depart)
+        if (d >= 30) depart = Vector3.create(p.x, p.y, p.z)
+        else if (d > 3) { fait = true; return }
+      }
+    }
+    if (!theftView.walletRecu) return
     attente += dt
     if (attente > 20) { fait = true; return }
     const chez = maBase()

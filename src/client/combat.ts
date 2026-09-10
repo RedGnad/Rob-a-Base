@@ -389,7 +389,8 @@ export function setupCombat(): void {
     second, separate cue when the round LANDS, on the player, so fire and hit are told apart
     by ear: the hit marker's tick, the genre's convention.
   */
-  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 0.7 })
+  // Full volume and a touch lower: "un peu faiblard" on the phone (owner, 10 Sep), still a toy's pop.
+  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 1, pitch: 0.9 })
   hitmark = engine.addEntity()
   Transform.create(hitmark, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
   AudioSource.create(hitmark, { audioClipUrl: 'assets/sounds/hitmark.wav', playing: false, loop: false, volume: 0.7 })
@@ -738,6 +739,41 @@ function gunSystem(dt: number): void {
  * nothing: measured identical to the hundredth of a degree, before and after a 192 degree
  * turn. Holstering drops the area and the explorer restores the camera the player chose.
  */
+/*
+  On the phone, the way back to third person is an ENTER, never an EXIT.
+
+  Read in the phone client (camera_mode_area_detector.gd, player.gd, 10 Sep): a forced mode is
+  applied on entering an area, and the mode from before the first block is restored when the
+  last area is left; the phone has no camera toggle, and third person is its only mode outside
+  ours. The tester's phone stayed in first person after holstering (10 Sep): the exit of the aim
+  box, moved three hundred metres down, did not lift the mode there, for a reason the sources
+  do not show. So the remedy does not depend on exits. Holstering slides a THIRD-person box
+  onto the player, whose ENTER sets third person whatever the detector still holds; two such
+  boxes take turns so every holster is a fresh enter, and the aim box coming on top of them
+  wins the next draw by the same rule (the last area entered decides). Desktop keeps the plain
+  exit: it restores the mode the player chose there, and a forced third person would override
+  that choice.
+*/
+let zonesTierce: [Entity, Entity] | null = null
+let tourTierce = 0
+function poserTierce(): void {
+  if (!isMobile()) return
+  if (zonesTierce === null) {
+    zonesTierce = [engine.addEntity(), engine.addEntity()]
+    for (const z of zonesTierce) {
+      Transform.create(z, { parent: engine.PlayerEntity, position: ZONE_RANGEE, scale: ZONE_VISEE })
+      CameraModeArea.create(z, { area: ZONE_VISEE, mode: CameraType.CT_THIRD_PERSON })
+    }
+  }
+  const dedans = zonesTierce[tourTierce]
+  const dehors = zonesTierce[1 - tourTierce]
+  tourTierce = 1 - tourTierce
+  const a = Transform.getMutableOrNull(dedans)
+  if (a !== null) a.position = ZONE_EN_JOUE
+  const b = Transform.getMutableOrNull(dehors)
+  if (b !== null) b.position = ZONE_RANGEE
+}
+
 /** The one aim area of the session, parented to the player: see `ZONE_VISEE` and `degainer`. */
 function placerZone(ou: Vector3): void {
   if (zoneVisee === null) {
@@ -797,6 +833,7 @@ function degainer(on: boolean): void {
     // was started by an older build must still be stoppable.
     void stopEmote({})
     placerZone(ZONE_RANGEE)
+    poserTierce()
     // The cursor is NOT given back here any more. This used to release the capture on the
     // way out of first person, and since 27 Aug the desktop policy is the opposite: captured
     // while the HUD is on screen (setup.ts owns it). Releasing here undid that policy every
