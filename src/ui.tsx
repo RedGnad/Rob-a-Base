@@ -1909,6 +1909,30 @@ const uiComponent = () => {
     )}
 
     {/*
+      Invisible: the screen wears it.
+
+      The chip in the corner is read once and forgotten, and being invisible changes how the
+      whole venue treats you: it has to be felt while you play (owner, 5 Sep). So a cyan
+      vignette frames the screen, transparent where you are looking, breathing slowly while
+      the cloak holds and beating twice as fast over its last three seconds, which is the
+      genre's own way of saying a state is about to drop. The chip stays for the number.
+
+      Drawn right after the damage flash, for the same reason it sits first: the frame tints
+      the world, never the buttons or a plate. It used to come after the pad and the column
+      and tinted both (owner, 10 Sep, forced phone layout capture).
+    */}
+    {hud() && gearView.cloakLeftS > 0 && (
+      <UiEntity
+        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+        uiBackground={{
+          texture: { src: 'assets/ui/vignette.png' }, textureMode: 'stretch',
+          color: Color4.create(0.30, 0.82, 1.0,
+            (gearView.cloakLeftS <= 3 ? 0.34 : 0.24) +
+            (gearView.cloakLeftS <= 3 ? 0.20 : 0.08) * (0.5 + 0.5 * Math.sin(Date.now() / (gearView.cloakLeftS <= 3 ? 180 : 520))))
+        }} />
+    )}
+
+    {/*
       The quantity channel, above the centre so it never covers the avatar or the crosshair.
       Rises and fades in just over a second, the window the references give for a number that
       has to be read without being studied. Stacked by rank when several land at once.
@@ -2262,25 +2286,6 @@ const uiComponent = () => {
       progress towards something wanted. This one fails the first two and passes the third.
     */}
     {/* The next grand rush, as a chip: a standing fact, not an announcement. */}
-    {/*
-      Invisible: the screen wears it.
-
-      The chip in the corner is read once and forgotten, and being invisible changes how the
-      whole venue treats you: it has to be felt while you play (owner, 5 Sep). So a cyan
-      vignette frames the screen, transparent where you are looking, breathing slowly while
-      the cloak holds and beating twice as fast over its last three seconds, which is the
-      genre's own way of saying a state is about to drop. The chip stays for the number.
-    */}
-    {hud() && gearView.cloakLeftS > 0 && (
-      <UiEntity
-        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-        uiBackground={{
-          texture: { src: 'assets/ui/vignette.png' }, textureMode: 'stretch',
-          color: Color4.create(0.30, 0.82, 1.0,
-            (gearView.cloakLeftS <= 3 ? 0.34 : 0.24) +
-            (gearView.cloakLeftS <= 3 ? 0.20 : 0.08) * (0.5 + 0.5 * Math.sin(Date.now() / (gearView.cloakLeftS <= 3 ? 180 : 520))))
-        }} />
-    )}
 
     {/* Invisible, and for how much longer: a state with a clock says both, in the column
         where every other clock in this game is read (owner, 5 Sep: "on ne sait pas
