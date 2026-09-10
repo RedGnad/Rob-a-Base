@@ -1,4 +1,5 @@
 import { engine, GltfContainer, GltfContainerLoadingState, LoadingState } from '@dcl/sdk/ecs'
+import { TREE_CLUSTERS } from './vegetation-clusters'
 
 /**
  * Whether the world's heavy models are in, so the interface can hold a loading screen up
@@ -50,9 +51,12 @@ export const loadingView = {
   poids, c'est de savoir si l'entite existe deja quand l'ecran compte.
 */
 const WATCHED = [
-  // decor.ts: la ligne d'arbres, les buissons, le mur d'enceinte, l'anneau de la place,
-  // la spirale de ballons et les trois ballons qui l'entourent.
-  'assets/Models/vegetation-arbres.glb',
+  // decor.ts: the trees, one file per occupied cell since 10 Sep (entry 564), taken from the
+  // list the tool writes so the two cannot diverge. The old single-file name stayed here for
+  // a day after the split: no entity ever carried it, the count stalled at 8 of 9, and every
+  // load on every platform held the screen to the 25 s ceiling (owner, 11 Sep: "very long").
+  ...TREE_CLUSTERS,
+  // decor.ts: the bushes, the wall, the plaza ring, the balloon spiral and its three balloons.
   'assets/Models/vegetation-buissons.glb',
   'assets/Models/wall.glb',
   'assets/toy/plaza-ring.glb',
