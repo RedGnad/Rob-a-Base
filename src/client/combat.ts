@@ -404,7 +404,8 @@ export function setupCombat(): void {
     second, separate cue when the round LANDS, on the player, so fire and hit are told apart
     by ear: the hit marker's tick, the genre's convention.
   */
-  // Full volume and a touch lower: "un peu faiblard" on the phone (owner, 10 Sep), still a toy's pop.
+  // Loud and a touch lower in pitch, still a toy's pop: raised to full volume for the phone ("un peu
+  // faiblard", owner, 10 Sep), then back to 0.8 for the desktop ("un peu trop fort", 11 Sep).
   AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 0.8, pitch: 0.9 })
   hitmark = engine.addEntity()
   Transform.create(hitmark, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
