@@ -17,7 +17,7 @@ import { mondeOuvert } from './monde'
 import { avantDeplacement } from './deplacer'
 import { flashDamage, floatAmount, playHurt } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
-import { TOAST } from './theme'
+import { TOAST, FORCE_MOBILE_LAYOUT } from './theme'
 import { puff } from './impact'
 import { LISIBLE_3D } from './texte3d'
 
@@ -661,9 +661,12 @@ function gunSystem(dt: number): void {
   // No round while a panel is up: the click that presses a menu button is the same click
   // the trigger listens to, and a drawn weapon fired at every tab (owner, 6 Sep).
   // Read every frame on the phone while aiming, so the touch's down edge is never missed.
-  const tap = isMobile() && combatView.aiming ? tapSurLaVitre(now) : false
+  // The forced phone layout puts the mouse under the same rule, so the tap is reviewed on a
+  // desktop: a click fires on release, a drag does not, a click on a control does not.
+  const tactile = isMobile() || FORCE_MOBILE_LAYOUT
+  const tap = tactile && combatView.aiming ? tapSurLaVitre(now) : false
   const gachette = mondeOuvert() && (inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
-    || (!isMobile() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN))
+    || (!tactile && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN))
     || tap)
   if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
