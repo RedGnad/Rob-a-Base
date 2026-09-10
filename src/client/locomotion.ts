@@ -1,5 +1,6 @@
-import { engine, Transform, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
+import { engine, Transform, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers, inputSystem, PointerEventType, raycastSystem, RaycastQueryType, ColliderLayer } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
+import { Vector3 } from '@dcl/sdk/math'
 import { AIM_SPEED_SHARE, CARRY_STOLEN_SHARE, CARRY_OWN_SHARE, COIL_SHARE } from '../shared/schemas'
 
 /**
@@ -110,42 +111,78 @@ export function setAiming(active: boolean): void {
 }
 
 /**
- * The glide icon shows after the DOUBLE jump, until the ground, like the client's own button.
+ * The glide icon shows when the next press would open the glider, and stays until the feet
+ * touch the ground, like the client's own button.
  *
  * We draw our own jump disc, so it inherits none of the client's state, and the scene gets
- * no "grounded" flag. The first version guessed from height alone: any fall longer than a
- * tenth of a second turned the icon into a glider, so it flickered at the top of a single
- * jump and lit on a step down (owner, 4 Sep: "it blinks at random"). The native rule is
- * two clear states: jump icon on the ground and after ONE jump; glider after the SECOND
- * press in the air, held until the feet touch down. So we count jump presses since the
- * last landing, and a landing is a height that has stopped changing for a few frames.
+ * no "grounded" flag. The first version guessed from height alone and blinked at random
+ * (owner, 4 Sep). The second counted presses since a landing, and read a landing as a height
+ * that stopped changing for 0.16 s. But the client freezes the character 0.2 s IN THE AIR at
+ * the double jump (`AIR_JUMP_DELAY` in player.gd, `JumpState.AirJumpDelay` on the desktop),
+ * which that rule took for a landing: the counter reset and the icon fell back to the jump
+ * while the player was still up (owner, 11 Sep). The glider's own fall is capped at 1 m/s and
+ * its 0.5 s opening sat near the same threshold.
+ *
+ * So the ground is now MEASURED the way the client measures it, a ray straight down from the
+ * feet on the physics layer, which by contract never hits avatars (raycasting docs). On top
+ * of it, the client's rule, read in joypad.gd (`_update_jump_icon`) and player.gd
+ * (`get_jump_action`): on the floor, jump; in the air with the air jump still available, jump;
+ * in the air past the air jump, glider as soon as it can open, more than 1 m above the ground
+ * and 0.5 s after the last press; once shown, kept through the glider's closing until the feet
+ * touch down.
+ *
+ * The ledge case differs per client, and the disc follows the client it runs on. On the
+ * phone, player.gd says it in its own words, "we let a stepped-off-a-ledge player open glide
+ * without first double-jumping": the air jump needs `jump_count >= 1`, a walk off a ledge
+ * leaves it at 0, so the first press opens the glider and the icon shows it. On the desktop,
+ * ApplyJump.cs does the opposite, "falling down is considered as having jumped once": once
+ * the coyote window is over, the count is raised to 1, the press is an air jump, and only
+ * then can the glider open. Should the ray never answer, the disc keeps the jump icon.
  */
 export const volView = { descend: false }
-let viewHeight = -1
-let stableDepuis = 0
+/** Feet closer than this to the ground are on it: the controller rests 9 cm above a flat floor. */
+const SOL_M = 0.3
+/** The glider can open above this height: `GLIDE_MIN_GROUND_DISTANCE` in player.gd. */
+const PLANEUR_M = 1.0
+/** No glider before this long since the last press: `JUMP_TO_GLIDE_INTERVAL` in player.gd. */
+const PLANEUR_DELAI_MS = 500
+/** A press this recent does not count as landed, the feet may not have left the floor yet. */
+const DECOLLAGE_MS = 300
+/** Past this long in the air without a press, the desktop counts the fall as one jump (coyote window). */
+const COYOTE_MS = 150
+const SAUTS_AERIENS = 1
+let distanceSol = 0
 let sauts = 0
-let enLAir = false
-/** Height barely moving for this long is the ground (a jump apex lasts far less). */
-const SOL_S = 0.16
-const VITESSE_SOL = 0.35
+let dernierSaut = 0
+let enLAirDepuis = 0
 
 function followFall(): void {
-  engine.addSystem((dt: number) => {
-    const t = Transform.getOrNull(engine.PlayerEntity)
-    if (t === null) return
-    const y = t.position.y
-    if (viewHeight < 0) { viewHeight = y; return }
-    const vitesse = Math.abs(y - viewHeight) / Math.max(dt, 0.001)
-    viewHeight = y
+  const sonde = engine.addEntity()
+  Transform.create(sonde, { parent: engine.PlayerEntity, position: Vector3.create(0, 0.05, 0) })
+  raycastSystem.registerGlobalDirectionRaycast({
+    entity: sonde,
+    opts: { queryType: RaycastQueryType.RQT_HIT_FIRST, direction: Vector3.Down(), maxDistance: 30, continuous: true, collisionMask: ColliderLayer.CL_PHYSICS }
+  }, (r) => {
+    const hit = r.hits[0]
+    distanceSol = hit === undefined ? 30 : hit.length
+  })
+  engine.addSystem(() => {
+    const now = Date.now()
     if (inputSystem.isTriggered(InputAction.IA_JUMP, PointerEventType.PET_DOWN)) {
       sauts += 1
-      enLAir = true
-      stableDepuis = 0
+      dernierSaut = now
     }
-    if (vitesse < VITESSE_SOL) stableDepuis += dt
-    else { stableDepuis = 0; enLAir = true }
-    if (enLAir && stableDepuis > SOL_S) { enLAir = false; sauts = 0 }
-    volView.descend = enLAir && sauts >= 2
+    if (distanceSol <= SOL_M) {
+      if (now - dernierSaut > DECOLLAGE_MS) sauts = 0
+      enLAirDepuis = 0
+      volView.descend = false
+      return
+    }
+    if (enLAirDepuis === 0) enLAirDepuis = now
+    if (!isMobile() && sauts === 0 && now - enLAirDepuis > COYOTE_MS) sauts = 1
+    if (volView.descend) return
+    const sautAerienDisponible = sauts >= 1 && sauts <= SAUTS_AERIENS
+    if (!sautAerienDisponible && distanceSol > PLANEUR_M && now - dernierSaut >= PLANEUR_DELAI_MS) volView.descend = true
   })
 }
 
