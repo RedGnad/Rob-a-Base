@@ -94,9 +94,21 @@ function timeline(): void {
   welcomeView.open = p === 5
 }
 
+/* The three menu tabs in turn, eight seconds each, nothing else: for a look at their text. */
+function menuCycle(): void {
+  const now = Date.now()
+  if (t0 === 0) t0 = now
+  const cycle = Math.floor((now - t0) / 24_000)
+  const t = ((now - t0) / 1000) % 24
+  const tab = t < 8 ? 'shop' : t < 16 ? 'index' : 'goals'
+  status = `PROBE ${tab} c${cycle} t=${t.toFixed(0)}`
+  fired.has(`${cycle}:${tab}`) || (fired.add(`${cycle}:${tab}`), chooseTab(tab))
+}
+
 export function applyUiProbe(): void {
   if (UI_PROBE === '') return
   if (UI_PROBE === 'timeline') { timeline(); return }
+  if (UI_PROBE === 'menu') { menuCycle(); return }
   if (!seeded) {
     seeded = true
     // Real lines with the longest name the board has shown; the stack keeps two, never more.

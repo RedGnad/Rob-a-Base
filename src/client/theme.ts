@@ -342,7 +342,7 @@ export const FORCE_MOBILE_LAYOUT = false
   FORCE_MOBILE_LAYOUT. Applied by `applyUiProbe` at the top of every HUD render, after the
   systems wrote their views. A compile-time constant, committed off: production never sees it.
 */
-export const UI_PROBE: '' | 'rush' | 'raid' | 'timeline' = ''
+export const UI_PROBE: '' | 'rush' | 'raid' | 'timeline' | 'menu' = ''
 
 /**
  * The skins, and why they exist at all.
