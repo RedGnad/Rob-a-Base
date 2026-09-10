@@ -405,7 +405,7 @@ export function setupCombat(): void {
     by ear: the hit marker's tick, the genre's convention.
   */
   // Full volume and a touch lower: "un peu faiblard" on the phone (owner, 10 Sep), still a toy's pop.
-  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 1, pitch: 0.9 })
+  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 0.8, pitch: 0.9 })
   hitmark = engine.addEntity()
   Transform.create(hitmark, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
   AudioSource.create(hitmark, { audioClipUrl: 'assets/sounds/hitmark.wav', playing: false, loop: false, volume: 0.7 })
