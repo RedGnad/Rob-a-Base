@@ -498,8 +498,18 @@ export const Btn = (props: {
     glyph font, and one of them had no crate (owner, 4 Sep): one control, one font, one
     picture for all of them.
   */
+  /*
+    The word follows the plate, whatever width the plate ends up with.
+
+    The label used to be centred in a box of `props.width`, absolute inside the plate. When
+    a row gives the button a column narrower than that (the shop's 24 % column is 177 units
+    on the narrowest sheet, for a 200-unit button), the layout shrinks the plate and not the
+    box, so the word sits centred on 200 and lands right of the centre of 177: OPEN and BUY
+    visibly off to the right (owner, 10 Sep, forced phone layout). Full-width boxes centre
+    on the plate as drawn.
+  */
   const contenu = (
-    <UiEntity uiTransform={{ width: props.width, height, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+    <UiEntity uiTransform={{ width: '100%', height, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
       {props.icon !== undefined && (
         <UiEntity uiTransform={{ width: Math.round(size * 1.6), height: Math.round(size * 1.6), margin: { right: Math.round(size * 0.45) } }}
           uiBackground={{ texture: { src: `assets/ui/${props.icon}` }, textureMode: 'stretch' }} />
@@ -512,7 +522,7 @@ export const Btn = (props: {
   if (props.skin === 'disabled') {
     return (
       <Puce width={props.width} height={height} right={props.right}>
-        <UiEntity uiTransform={{ width: props.width, height, opacity: 0.62 }}>
+        <UiEntity uiTransform={{ width: '100%', height, opacity: 0.62 }}>
           {contenu}
         </UiEntity>
       </Puce>
@@ -533,7 +543,7 @@ export const Btn = (props: {
         noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.()
       }}
     >
-      <UiEntity uiTransform={{ width: props.width, height, positionType: 'absolute', position: { top: enfonce ? 3 : 0, left: 0 } }}>
+      <UiEntity uiTransform={{ width: '100%', height, positionType: 'absolute', position: { top: enfonce ? 3 : 0, left: 0 } }}>
         {contenu}
       </UiEntity>
       {enfonce && (
