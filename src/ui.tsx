@@ -39,7 +39,7 @@ import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue, stepVerb } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, formatSolde, prixDeRevente, crate } from './shared/loot-table'
-import { applyUiProbe } from './client/ui-probe'
+import { applyUiProbe, probeStatus } from './client/ui-probe'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
@@ -1901,7 +1901,7 @@ const uiComponent = () => {
       The texture is the one the cloak already uses, so this costs no new asset.
     */}
     {damageFlashAlpha() > 0 && (
-      <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+      <UiEntity key="damage-frame" uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
         uiBackground={{
           texture: { src: 'assets/ui/vignette.png' }, textureMode: 'stretch',
           color: Color4.create(1, 0.12, 0.12, damageFlashAlpha())
@@ -1922,7 +1922,7 @@ const uiComponent = () => {
       and tinted both (owner, 10 Sep, forced phone layout capture).
     */}
     {hud() && gearView.cloakLeftS > 0 && (
-      <UiEntity
+      <UiEntity key="cloak-frame"
         uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
         uiBackground={{
           texture: { src: 'assets/ui/vignette.png' }, textureMode: 'stretch',
@@ -2514,6 +2514,11 @@ const uiComponent = () => {
         <Label uiTransform={{ height: 42 }} value={feed ?? ''} fontSize={TYPE.caption} textAlign="middle-left" textWrap="nowrap"
           color={Color4.fromHexString('#b8c2d0ff')} />
       </UiEntity>
+    )}
+
+    {probeStatus() !== '' && (
+      <Label value={probeStatus()} fontSize={TYPE.title} color={Color4.White()}
+        uiTransform={{ positionType: 'absolute', position: { left: 200, top: 130 }, height: 50 }} textWrap="nowrap" />
     )}
 
     {alertesVisibles().length > 0 && hud() && (

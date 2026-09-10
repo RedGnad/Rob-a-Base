@@ -337,11 +337,12 @@ export const FORCE_MOBILE_LAYOUT = false
   The owner reviews the phone layout without a phone (10 Sep), and the states that collide
   cannot be summoned on demand: two toasts, the corner column at its fullest, the SELL
   button, all at once. `'rush'` holds them on screen with the rush chip in the column,
-  `'raid'` with the raid countdown instead (the two never share the column). Pair it with
+  `'raid'` with the raid countdown instead (the two never share the column); `'timeline'`
+  plays the five checks of memo 570 one after the other, logging `[PROBE] phase n`. Pair it with
   FORCE_MOBILE_LAYOUT. Applied by `applyUiProbe` at the top of every HUD render, after the
   systems wrote their views. A compile-time constant, committed off: production never sees it.
 */
-export const UI_PROBE: '' | 'rush' | 'raid' = ''
+export const UI_PROBE: '' | 'rush' | 'raid' | 'timeline' = ''
 
 /**
  * The skins, and why they exist at all.
