@@ -2656,7 +2656,15 @@ const uiComponent = () => {
             height: 52, padding: { left: 26, right: 26 },
             justifyContent: 'center', alignItems: 'center'
           }}
-          uiBackground={SKIN.panel}
+          /*
+            An outline, not a plate. The navy slab under this one line was the one opaque
+            thing left near the middle of the screen, and it walled off the base it was
+            talking about (owner, 10 Sep: "the text and the orange outline, it would let the
+            UI breathe"). The text has no scrim now, so its contrast is the world's: about
+            10 to 1 on the plate, under 2 to 1 on lit grass, measured on the 10 Sep capture.
+            Kept on the owner's decision, to be judged live.
+          */
+          uiBackground={SKIN.frame}
         >
           <Label value={barre()} fontSize={TYPE.label}
             color={combatView.aiming ? C.danger : C.name} textWrap="nowrap" />
