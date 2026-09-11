@@ -1540,4 +1540,11 @@ export function registerValidators(): void {
   Plot.validateBeforeChange(serverOnly)
   Convoy.validateBeforeChange(serverOnly)
   DroppedCoins.validateBeforeChange(serverOnly)
+  // The three that were missing (audit, 11 Sep): without a validator the SDK accepts a client
+  // PUT (`globalCb?.(value) ?? true`), and the carry sweep shelves whatever code a forged
+  // `Carried` names, at whatever origin it names. No client ever writes these legitimately:
+  // the client syncs no entity of its own.
+  Belt.validateBeforeChange(serverOnly)
+  Carried.validateBeforeChange(serverOnly)
+  DroppedItem.validateBeforeChange(serverOnly)
 }
