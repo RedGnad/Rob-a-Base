@@ -778,7 +778,13 @@ const PRECHAUFFE = [
   // here the moment it is created, which is the whole job of this list.
   'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close', 'ui-sound', 'ui-mute', 'vignette',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
-  'burst'
+  'burst',
+  // The pad's own discs, which the verb list does not cover: they are named directly rather
+  // than through `ico()`. They were the white squares of the first second on the handset
+  // (owner, 11 Sep), the only textures the HUD draws at frame one and did not preheat.
+  'icon-menu', 'icon-jump', 'icon-glide', 'icon-holster', 'icon-gun', 'icon-slap', 'icon-taser',
+  // The shop's silo row, first opened a few seconds later but on the same rule.
+  'ui-silo'
 ]
 /*
   Every interface texture referenced from the first frame: the icons, the five atlases and the
