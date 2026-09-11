@@ -1090,7 +1090,11 @@ function garnirBase(v: View): void {
     (owner, 5 Sep). The file carries a second, inward-facing shell. And a primitive costs the
     phone one material per base where a shared file costs one for every base at once.
   */
-  GltfContainer.create(v.door, { src: 'assets/Models/shield.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  // createOrReplace, not create: the door is KEPT across the level-of-detail flip and
+  // `depouillerBase` never removed this component, so the second dressing of a view that had
+  // gone far threw "GltfContainer for N already exists" on every tick and froze the scene
+  // (owner, 11 Sep, after moving his base; see memo 598).
+  GltfContainer.createOrReplace(v.door, { src: 'assets/Models/shield.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   MeshCollider.setBox(v.door)
   TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, ...LISIBLE_3D })
   MeshRenderer.setPlane(v.enseigne)
