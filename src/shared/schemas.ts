@@ -1477,6 +1477,16 @@ export const RAID_HP_PER_PLAYER = 50
  * leaving it visible in front of you, which is the whole point of a boss.
  */
 export const RAID_STANDOFF = 2.8
+/*
+  When nobody is within notice range the boss strolls around its spawn instead of standing
+  frozen: a new point within RAID_ROAM_RADIUS of home every few seconds, walked at a stroll
+  well under the chase speed, with a pause on arrival. Aggro overrides it at once (owner,
+  11 Sep: "qu'il paraisse vivant, un comportement de mob").
+*/
+export const RAID_ROAM_RADIUS = 6
+export const RAID_ROAM_SPEED = 1.1
+export const RAID_ROAM_PAUSE_MS = 2500
+export const RAID_ROAM_JITTER_MS = 3000
 /**
  * How much more damage a challenger must have dealt before the boss turns on them.
  *

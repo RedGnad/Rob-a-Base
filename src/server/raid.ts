@@ -6,7 +6,7 @@ import {
   RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
   RAID_SWIPE_CAP_S, RAID_RAIN_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN, RAID_STANDOFF, RAID_THREAT_SWITCH,
   SCENE_SIDE, forceDuTir
-, RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE} from '../shared/schemas'
+, RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE, RAID_ROAM_RADIUS, RAID_ROAM_SPEED, RAID_ROAM_PAUSE_MS, RAID_ROAM_JITTER_MS} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
 import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases, memeEspace, meilleureRarete } from './plots'
@@ -66,6 +66,8 @@ let targetAddr: string | null = null
 */
 const dernierCoup = new Map<string, number>()
 let spawnX = 0, spawnZ = 0
+/** The stroll waypoint near the spawn, and when to pick the next one (see RAID_ROAM_*). */
+let erranceX = 0, erranceZ = 0, prochaineErrance = 0
 
 /**
  * Keeps the boss OUT of the plots, sliding along a wall instead of walking through it.
@@ -182,6 +184,7 @@ function ouvrir(now: number, finMs?: number): void {
   // It must not appear inside a plot either.
   const depart = horsDesBases(spawnX, spawnZ)
   spawnX = depart.x; spawnZ = depart.z
+  erranceX = spawnX; erranceZ = spawnZ; prochaineErrance = 0
   m.x = spawnX
   m.z = spawnZ
   faceX = 0; faceZ = 1
@@ -344,7 +347,17 @@ export function startRaid(): void {
       }
       if (targetAddr !== null && vise !== null) log(`the raid boss locks onto ${displayName(targetAddr)}`)
     }
-    const vers = vise !== null ? { x: vise.x, z: vise.z } : { x: spawnX, z: spawnZ }
+    // No one in reach: stroll around the spawn so it reads as a living thing, not a statue.
+    // A fresh point near home every few seconds, walked at a stroll; between points it stands.
+    if (vise === null && now >= prochaineErrance) {
+      const ang = rnd() * Math.PI * 2
+      const ray = rnd() * RAID_ROAM_RADIUS
+      const but = horsDesBases(spawnX + Math.sin(ang) * ray, spawnZ + Math.cos(ang) * ray)
+      erranceX = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, but.x))
+      erranceZ = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, but.z))
+      prochaineErrance = now + RAID_ROAM_PAUSE_MS + rnd() * RAID_ROAM_JITTER_MS
+    }
+    const vers = vise !== null ? { x: vise.x, z: vise.z } : { x: erranceX, z: erranceZ }
     let vx = vers.x - m.x, vz = vers.z - m.z
     const vl = Math.hypot(vx, vz)
     if (vl > 0.05) {
@@ -371,7 +384,7 @@ export function startRaid(): void {
       const reste = vl - garde
       if (reste > 0.05) {
         // It walks to the ends of the map after its target; the map and the plots stop it.
-        const pas = Math.min(RAID_SPEED * ds, reste)
+        const pas = Math.min((vise !== null ? RAID_SPEED : RAID_ROAM_SPEED) * ds, reste)
         const libre = horsDesBases(m.x + vx * pas, m.z + vz * pas)
         m.x = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.x))
         m.z = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.z))
