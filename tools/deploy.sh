@@ -16,6 +16,8 @@ printf '/**\n * Which build you are looking at, written by tools/deploy.sh befor
 if grep -qE "FORCE_MOBILE_LAYOUT = true|UI_PROBE: [^=]*= '[a-z]" src/client/theme.ts; then
   echo "REFUSED: FORCE_MOBILE_LAYOUT or UI_PROBE is on in src/client/theme.ts"; exit 1
 fi
+# The signing page cannot work without the linker patch; refuse rather than find out in the window.
+node tools/patch-linker.js --strict
 npm run build:prod
 SIZE=$(stat -f %z bin/index.js)
 if grep -q 'sourceMappingURL=data' bin/index.js || [ "$SIZE" -gt 3000000 ]; then
