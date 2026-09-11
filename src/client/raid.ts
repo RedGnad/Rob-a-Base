@@ -150,6 +150,10 @@ export function setupRaid(): void {
 
   let etaitActif = false
   let vu = { x: 0, z: 0 }
+  /** One server tick of the boss mover (server/raid.ts, `acc`): the glide spans exactly one. */
+  const SERVER_TICK_MS = 500
+  /** The last server position taken as a target, the rendered spot the glide left from, and when. */
+  let glideTo = { x: 0, z: 0 }, glideFrom = { x: 0, z: 0 }, glideAt = 0
   let barText = ''
   let dernierePart = -1
   let flashOn = false
@@ -193,6 +197,7 @@ export function setupRaid(): void {
     if (!etaitActif) {
       etaitActif = true
       vu = { x: r.x, z: r.z }
+      glideTo = { x: r.x, z: r.z }; glideFrom = { x: r.x, z: r.z }; glideAt = now
       /*
         La caisse n'est plus la Legendary depuis le 2 Sep, et cette phrase le promettait encore.
 
@@ -204,8 +209,23 @@ export function setupRaid(): void {
       alerter('BOSS UP  ·  top damage takes a crate', '#ff6b6b', TOAST.event, false)
       replay(son)
     }
-    // Glide toward the last position the server wrote.
-    vu = { x: vu.x + (r.x - vu.x) * Math.min(1, dt * 6), z: vu.z + (r.z - vu.z) * Math.min(1, dt * 6) }
+    /*
+      A straight glide from where it stands to the last position the server wrote, over
+      exactly one server tick.
+
+      The server moves the boss every 0.5 s, so a client gets a new target twice a second:
+      0.55 m apart on a stroll, 1.5 m in a chase. The glide used to be an exponential pull at
+      6/s, which covered most of each step in 0.3 s and then stood still until the next one,
+      a walk stuttering at 2 Hz, hidden by the pace of a chase and plain on the stroll (owner,
+      11 Sep). A line from the rendered spot to the new target over SERVER_TICK_MS renders one
+      tick late, at the server's own speed, and never jumps: a late or early packet only bends
+      the speed, since every segment starts from where the boss is drawn.
+    */
+    if (r.x !== glideTo.x || r.z !== glideTo.z) {
+      glideFrom = { x: vu.x, z: vu.z }; glideTo = { x: r.x, z: r.z }; glideAt = now
+    }
+    const k = Math.min(1, (now - glideAt) / SERVER_TICK_MS)
+    vu = { x: glideFrom.x + (glideTo.x - glideFrom.x) * k, z: glideFrom.z + (glideTo.z - glideFrom.z) * k }
     const bob = Math.sin(now / 350) * 0.12
     t.position = Vector3.create(vu.x, HAUTEUR + bob, vu.z)
     // Face where the server says it looks: the carved face is on the model's -z, so +z points
