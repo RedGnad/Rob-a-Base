@@ -101,10 +101,10 @@ export function dernierTic(): number { return dernierTicA }
  * (11 Sep). A silent button must therefore still stamp, or that guard reopens on it. Callers
  * that want the sound too call `tic()`.
  */
-export function noterPresse(): void { dernierTicA = Date.now() }
+export function registerPress(): void { dernierTicA = Date.now() }
 
 export function tic(): void {
-  noterPresse()
+  registerPress()
   if (sonClic === null) {
     sonClic = engine.addEntity()
     Transform.create(sonClic, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
@@ -289,9 +289,9 @@ export const Pouce = (props: {
    * results in a sound", silence being the audio equivalent of white space; and the more often
    * an interaction happens, the less intrusive its feedback should be. Measured on 11 Sep, the
    * click is the quietest sound in the game, so the complaint it draws ("entetant, il est
-   * partout") is about the COUNT, not the level. The press is still registered (`noterPresse`).
+   * partout") is about the COUNT, not the level. The press is still registered (`registerPress`).
    */
-  muet?: boolean
+  silent?: boolean
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -357,9 +357,9 @@ export const Pouce = (props: {
         `Btn` and `CloseBtn` have played `tic()` since the panels were built; the thumb
         buttons, pressed every ten seconds, were silent, so the loudest control in the game
         gave the least feedback (owner, 5 Sep). Since 11 Sep the reverse was true of four of
-        them: jump, the weapon disc and the contextual disc carry `muet`, because the jump,
+        them: jump, the weapon disc and the contextual disc carry `silent`, because the jump,
         the draw, the holster and every contextual verb have a sound of their own, and a click
-        on top was the same act heard twice. They still stamp the press: see `noterPresse`.
+        on top was the same act heard twice. They still stamp the press: see `registerPress`.
       */
       /*
         Le gestionnaire est TOUJOURS pose, et c'est l'inertie qui est traitee dedans.
@@ -382,7 +382,7 @@ export const Pouce = (props: {
       onMouseDown={() => {
         if (props.disabled === true) return
         noterServi(cle); presse.set(cle, Date.now())
-        if (props.muet === true) noterPresse(); else tic()
+        if (props.silent === true) registerPress(); else tic()
         props.onClick?.()
       }}
     >

@@ -67,7 +67,7 @@ let targetAddr: string | null = null
 const dernierCoup = new Map<string, number>()
 let spawnX = 0, spawnZ = 0
 /** The stroll waypoint near the spawn, and when to pick the next one (see RAID_ROAM_*). */
-let erranceX = 0, erranceZ = 0, prochaineErrance = 0
+let roamX = 0, roamZ = 0, nextRoamAt = 0
 
 /**
  * Keeps the boss OUT of the plots, sliding along a wall instead of walking through it.
@@ -184,7 +184,7 @@ function ouvrir(now: number, finMs?: number): void {
   // It must not appear inside a plot either.
   const depart = horsDesBases(spawnX, spawnZ)
   spawnX = depart.x; spawnZ = depart.z
-  erranceX = spawnX; erranceZ = spawnZ; prochaineErrance = 0
+  roamX = spawnX; roamZ = spawnZ; nextRoamAt = 0
   m.x = spawnX
   m.z = spawnZ
   faceX = 0; faceZ = 1
@@ -332,7 +332,8 @@ export function startRaid(): void {
       abandoned a chase because of where it stood rather than where its prey was. Now it
       holds the one it picked until that player leaves, disconnects, or opens the drop
       distance; only then does it look for somebody else within its notice radius. With
-      nobody in reach it walks home, which is the only use the spawn point still has.
+      nobody in reach it strolls around its spawn point (RAID_ROAM_*), so the spawn is
+      where it lives, not where it stands.
     */
     let vise = targetAddr === null ? null : positionOf(targetAddr)
     if (vise !== null && Math.hypot(vise.x - m.x, vise.z - m.z) > RAID_DEAGGRO_RANGE) vise = null
@@ -349,15 +350,15 @@ export function startRaid(): void {
     }
     // No one in reach: stroll around the spawn so it reads as a living thing, not a statue.
     // A fresh point near home every few seconds, walked at a stroll; between points it stands.
-    if (vise === null && now >= prochaineErrance) {
+    if (vise === null && now >= nextRoamAt) {
       const ang = rnd() * Math.PI * 2
       const ray = rnd() * RAID_ROAM_RADIUS
       const but = horsDesBases(spawnX + Math.sin(ang) * ray, spawnZ + Math.cos(ang) * ray)
-      erranceX = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, but.x))
-      erranceZ = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, but.z))
-      prochaineErrance = now + RAID_ROAM_PAUSE_MS + rnd() * RAID_ROAM_JITTER_MS
+      roamX = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, but.x))
+      roamZ = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, but.z))
+      nextRoamAt = now + RAID_ROAM_PAUSE_MS + rnd() * RAID_ROAM_JITTER_MS
     }
-    const vers = vise !== null ? { x: vise.x, z: vise.z } : { x: erranceX, z: erranceZ }
+    const vers = vise !== null ? { x: vise.x, z: vise.z } : { x: roamX, z: roamZ }
     let vx = vers.x - m.x, vz = vers.z - m.z
     const vl = Math.hypot(vx, vz)
     if (vl > 0.05) {
@@ -378,7 +379,7 @@ export function startRaid(): void {
         spot: in first person the player was suddenly inside it and could not read what was
         happening (owner, 3 Sep). It swipes at four metres, so holding at RAID_STANDOFF keeps
         every swipe in range while leaving the boss visible in front of whoever it hunts.
-        The guard applies only to a chase; going home to its spawn still goes all the way.
+        The guard applies only to a chase; a stroll point near the spawn is walked all the way.
       */
       const garde = vise !== null ? RAID_STANDOFF : 0
       const reste = vl - garde

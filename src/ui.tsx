@@ -906,7 +906,7 @@ const PadControls = () => {
 
       {/* Silent: jumping is the most pressed button there is, and the client sounds the jump
           and the landing itself. A click on top of it carries nothing (owner, 11 Sep). */}
-      <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={pad.petit} muet
+      <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={pad.petit} silent
         bas={pad.arc[0].bas} droite={pad.arc[0].droite} actions={[InputAction.IA_JUMP]} touche={touche('SPACE')} />
       {/*
         Two different controls on one disc. Weapon away: the disc EMITS the secondary action,
@@ -916,7 +916,7 @@ const PadControls = () => {
         lights it in both states.
       */}
       {/* Silent: `degainer` plays draw.wav on the way out and holster.wav on the way back. */}
-      <Pouce icone={combatView.aiming ? 'icon-holster' : iconeArme(combatView.arme)} taille={pad.petit} muet
+      <Pouce icone={combatView.aiming ? 'icon-holster' : iconeArme(combatView.arme)} taille={pad.petit} silent
         bas={pad.arc[1].bas} droite={pad.arc[1].droite}
         primaire={combatView.aiming}
         actions={combatView.aiming ? undefined : [InputAction.IA_SECONDARY]}
@@ -943,14 +943,14 @@ const PadControls = () => {
         lift.wav, and aiming with the shot. The click was the same act heard twice.
       */}
       {a !== null ? (
-        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('place'))} taille={pad.gros} muet
+        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('place'))} taille={pad.gros} silent
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
           presseePar={tirDesktop}
           frames={!combatView.aiming && peutConstruireIci(a) ? posesDe(a.icon) : undefined}
           pulse={!combatView.aiming && stepExpects(a.id) && peutConstruireIci(a)}
           periodMs={cadenceDe(a.id)} touche={touche('E')} />
       ) : (
-        <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros} muet
+        <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros} silent
           bas={0} droite={0} primaire disabled={!combatView.aiming}
           actions={combatView.aiming ? [InputAction.IA_PRIMARY] : undefined}
           presseePar={tirDesktop} touche={touche('E')} />
