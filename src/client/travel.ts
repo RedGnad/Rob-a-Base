@@ -147,9 +147,12 @@ function apparaitreChezSoi(): void {
       const autres = basesConnues()
       const cible = arrivalTarget(p, autres)
       const surPlace = cible.x === p.x && cible.z === p.z
-      if (surPlace && invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, autres) === null) return
+      // Staying put IS a settled arrival. Without `fini()` here the loading picture waited for
+      // the 20 s window (or the 30 s ceiling) on the one path a first visitor to an empty
+      // field takes: their own square is legal, nothing moves, nothing said so (audit, 11 Sep).
+      if (surPlace && invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, autres) === null) { fini(); return }
       const libre = freeSpotNear(cible.x, cible.z, SCENE_SIDE, autres)
-      if (libre === null) return
+      if (libre === null) { fini(); return }
       fini()
       moveTo(surPlace ? 'arrival on a free square' : 'arrival in the emptiest wedge', Vector3.create(libre.x, 0, libre.z), Vector3.create(CENTER.x, 1.6, CENTER.z))
       return
