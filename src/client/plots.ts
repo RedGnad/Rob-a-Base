@@ -755,7 +755,7 @@ function tenirLePave(racine: Entity, lockedUntil: number, hex: string, skin: num
       tl.textColor = locked ? Color4.fromHexString('#7cd4ffff') : recharging ? Color4.fromHexString('#9aa3adff') : Color4.fromHexString('#a8e86eff')
     }
   }
-  if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, lockTap as Entity)) lockBase()
+  if (clicMonde(lockTap as Entity)) lockBase()
 }
 
 /** One pedestal: a small box under the floor until something stands on it, with the steal handle. */
@@ -1457,9 +1457,9 @@ export function setupPlots(): void {
     for (const v of views.values()) {
       if (v.loin) continue
       for (let k = 0; k < v.items.length; k++) {
-        if (
-          inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.items[k])
-        ) {
+        // Through the world-click gate like every other object: the raw read let a click
+        // beside an open panel start a theft, and fired the shelf while aiming (audit, 11 Sep).
+        if (clicMonde(v.items[k])) {
           /*
             One click, one meaning: take it.
 

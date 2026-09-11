@@ -13,7 +13,7 @@ import { formatIncome } from '../shared/loot-table'
 import { alerter, theftView } from './theft'
 import { cue, dernierTic } from './ui-kit'
 import { noterBascule } from './clics'
-import { mondeOuvert } from './monde'
+import { mondeOuvert, declarerVisee } from './monde'
 import { avantDeplacement } from './deplacer'
 import { flashDamage, floatAmount, playHurt } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
@@ -343,6 +343,7 @@ function rafraichirVisibilite(): void {
 }
 
 export function setupCombat(): void {
+  declarerVisee(() => combatView.aiming)
   /*
     Desktop review only. The Explorer's automation clicks through the real reticle pipeline
     and refuses a miss, so the tap-to-fire rule could not be exercised from the desk without

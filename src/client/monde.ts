@@ -25,6 +25,17 @@ export function mondeOuvert(): boolean {
   return theftView.hudVisible && Date.now() - theftView.hudDepuis > GRACE_MS
 }
 
+/*
+  A drawn weapon makes every pointer press a shot, and nothing else.
+
+  The trigger and every world click (a crate on the belt, a convoy, the fuser, the lift, a
+  pedestal, the lock post) read the same IA_POINTER down edge; no site asked whether the
+  weapon was out, so with the reticle on a crate one click fired AND bought (audit, 11 Sep).
+  Combat registers its own state here at setup, which keeps this module free of a cycle.
+*/
+let enVisee: () => boolean = () => false
+export function declarerVisee(f: () => boolean): void { enVisee = f }
+
 export function clicMonde(entity: Entity): boolean {
-  return mondeOuvert() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, entity)
+  return mondeOuvert() && !enVisee() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, entity)
 }
