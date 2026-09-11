@@ -1837,7 +1837,11 @@ const uiComponent = () => {
   setHudVisible(!chargement && hud())
   // The trace needs to know whether a press landed inside an open panel (see client/clics.ts).
   signalerMenu(menuView.open)
-  if (chargement) return <UiEntity uiTransform={{ width: '100%', height: '100%' }} />
+  // The preheat rides the loading picture: sixty 2 px quads at 3 % opacity that the client
+  // cannot see, so every texture the HUD needs is already in when the picture drops. Since
+  // 581 point 1 the empty root left them out, and the HUD asked for all of them in its first
+  // frame (empty discs, glyph-less counter on a cold load: audit, 11 Sep).
+  if (chargement) return <UiEntity uiTransform={{ width: '100%', height: '100%' }}><Prechauffe /></UiEntity>
   /*
     The top band, resolved once per frame, in priority order.
 
