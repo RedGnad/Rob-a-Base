@@ -1828,7 +1828,19 @@ export function setupPlots(): void {
       }
 
       // Meme regle pour le bouclier: sa taille ne change qu'a la seconde ou il se leve.
-      const lockedNow = p.lockedUntil > serverNow()
+      /*
+        The door reads the SAME clock as the plate and the lock post, `Date.now()`.
+
+        It read `serverNow()`, the offset measured on the server beat, and on the owner's
+        desktop the door stayed up and breathing for twenty minutes after the plate had
+        counted the lock down to zero, then folded for a blink and rose again on the next
+        try (owner, 11 Sep). The cause was not found in time; what is certain is that the
+        plate and the post, on `Date.now()`, told the truth every time. Whatever the beat
+        measurement does, the door now agrees with them by construction. The server writes
+        0 on arrival since 5 Sep, so the few seconds of real drift between two clocks can
+        only move a fold by those seconds, never leave a wall standing.
+      */
+      const lockedNow = p.lockedUntil > Date.now()
       const shieldState = `${lockedNow}|${p.floors}|${monBase}`
       const ptr = shieldState === v.vuBouclier ? null : Transform.getMutableOrNull(v.door)
       if (ptr !== null) {
