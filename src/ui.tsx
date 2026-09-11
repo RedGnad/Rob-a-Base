@@ -10,7 +10,7 @@ import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneEcran, MENU_W, MENU_PAD } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneEcran, zoneRenderer, MENU_W, MENU_PAD } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE, PENDING_CAP_S } from './shared/schemas'
 import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue, tic } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -1639,7 +1639,20 @@ function CrateReveal(): ReactEcs.JSX.Element {
   const REEL_HOLD_MS = 180
   const bandeVisible = !boxView.sansRoulette && (tourne || t < hold + REEL_HOLD_MS + REEL_FADE_MS)
   const bandeOpacite = tourne ? 1 : clamp01(1 - (t - hold - REEL_HOLD_MS) / REEL_FADE_MS) * sortie
-  const large = Math.min(active.w - 80, 1700)
+  /*
+    The band is cut to the ROOT of this renderer, not to the reference screen.
+
+    The renderer is declared with `screenInset: 'device'`, so its root is the safe area the
+    client publishes, narrower than the screen on a phone with insets (the tester's, 10 Sep:
+    about 6 % a side). A band wider than that root was shrunk by the layout (`flexShrink`
+    defaults to 1 in the SDK) while the absolute strip inside it kept its width, so the
+    marker and the winning card sat (band - root) / 2 to the right of the middle: "la
+    roulette est trop a droite" (owner, 11 Sep, phone only; a desktop root is wider than
+    the band, so nothing moved there). Bounded both ways: never wider than before, never
+    under 1000 (five cards), whatever the client reports; `zoneRenderer` falls back to the
+    reference when the client publishes nothing.
+  */
+  const large = Math.max(1000, Math.min(active.w - 80, zoneRenderer().w - 80, 1700))
   const bande = REEL_H + 12
   const pop = tourne ? 0 : easeOutBack(clamp01(t / 160))
 
