@@ -639,6 +639,7 @@ async function loadBases(): Promise<void> {
     */
     for (const l of loaded) {
       createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
+      if (l.lockedUntil > Date.now()) setLock(l.address, l.lockedUntil)
     }
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
     // The one-off pass over what just came back (see EMPTY_FOLD_MARK); the standing rule runs every minute.
@@ -689,7 +690,7 @@ async function loadBases(): Promise<void> {
 }
 
 /** Everything about a base that has to survive it, written in one place so nothing is dropped. */
-type BaseBlob = { address: string; name: string; items: number[]; lastSeen: number; x: number; z: number; vitrine: Vitrine | null }
+type BaseBlob = { address: string; name: string; items: number[]; lastSeen: number; x: number; z: number; vitrine: Vitrine | null; lockedUntil: number }
 
 /** A stored `base:` record read back, or null when it cannot be parsed. */
 function baseDepuisBlob(key: string, value: unknown): BaseBlob | null {
@@ -699,6 +700,10 @@ function baseDepuisBlob(key: string, value: unknown): BaseBlob | null {
     return {
       address: key.slice('base:'.length), name: v.name ?? '', items: Array.isArray(v.items) ? v.items : [],
       lastSeen: v.lastSeen ?? 0, x: v.x, z: v.z,
+      // The shield's end, kept since 11 Sep: a base robbed while its owner was away got up to
+      // eight hours of shield, and every restart (each deploy, two minutes after the venue
+      // empties) reloaded it at zero. Older records simply have none.
+      lockedUntil: typeof v.lockedUntil === 'number' ? v.lockedUntil : 0,
       // Left null on purpose when the blob predates these fields: null means "never written",
       // which is what tells the migration in the restore to go and find them.
       vitrine: v.floorsBought === undefined ? null : {
@@ -729,7 +734,8 @@ function blobDeBase(b: Base): string {
   return JSON.stringify({
     name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
     floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
-    given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0, mines: b.mines
+    given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0, mines: b.mines,
+    lockedUntil: Plot.getOrNull(b.entity)?.lockedUntil ?? 0
   })
 }
 
@@ -838,6 +844,7 @@ export async function welcome(address: string): Promise<void> {
     }
     const b = createBase(address, name, blob?.items ?? items, Date.now(), x, z, blob?.vitrine ?? VITRINE_VIDE)
     if (b !== null) {
+      if (blob !== null && blob.lockedUntil > Date.now()) setLock(address, blob.lockedUntil)
       dirtyBases.add(address)
       log(`base de ${name} reposee en ${x},${z}${deplacee ? ` (the recorded ${profile.x},${profile.z} was taken)` : ''}${blob ? '' : ' (no stored record, from the profile)'}`)
     }
