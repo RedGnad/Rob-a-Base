@@ -902,11 +902,17 @@ function degainer(on: boolean): void {
     placerZone(ZONE_EN_JOUE)
   } else {
     enRafale = false
-    // Unconditional: stopping an emote that is not playing costs nothing, and a pose that
-    // was started by an older build must still be stoppable.
-    void stopEmote({})
+    // The camera boxes FIRST, the emote last and only where emotes exist.
+    //
+    // `stopEmote` is not exported by the phone's `~system/RestrictedActions` (godot-explorer
+    // `lib/src/dcl/js/js_modules/RestrictedActions.js`: eight functions, not this one), so
+    // the call threw on every holster there and nothing below it ran: the first-person box
+    // stayed on the player, the "stuck in first person after holstering" of 581 point 5, and
+    // the third-person relay written to fix it never executed (audit, 11 Sep). Emotes are
+    // only ever started where `placeAvailable()` says so; stopping follows the same gate.
     placerZone(ZONE_RANGEE)
     poserTierce()
+    if (placeAvailable()) void stopEmote({})
     // The cursor is NOT given back here any more. This used to release the capture on the
     // way out of first person, and since 27 Aug the desktop policy is the opposite: captured
     // while the HUD is on screen (setup.ts owns it). Releasing here undid that policy every
