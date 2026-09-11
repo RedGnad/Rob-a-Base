@@ -1860,12 +1860,22 @@ export function setupPlots(): void {
         ptr.position = Vector3.create(0, h / 2, 0)
         const plein = Vector3.create(BASE_SIDE + 2 * SHIELD_MARGIN, h, BASE_SIDE + 2 * SHIELD_MARGIN)
         ptr.scale = locked ? plein : Vector3.create(0, 0, 0)
-        // A sealed wall BREATHES: a slow swell of three percent, back and forth, so the eye
-        // catches it from the plaza; a still translucent box read as a haze (owner, 5 Sep).
-        if (locked) {
-          Tween.setScale(v.door, plein, Vector3.create(plein.x * 1.03, plein.y * 1.02, plein.z * 1.03), 1400, EasingFunction.EF_EASESINE)
-          TweenSequence.createOrReplace(v.door, { sequence: [], loop: TweenLoop.TL_YOYO })
-        } else if (Tween.has(v.door)) { Tween.deleteFrom(v.door); TweenSequence.deleteFrom(v.door) }
+        /*
+          The wall does not breathe any more, and nothing is left on it to outlive an unlock.
+
+          Since 5 Sep the seal swelled by three percent in a yoyo loop, and the unlock deleted
+          the Tween and the TweenSequence in the tick that wrote scale zero. On the owner's
+          desktop the door then folded for one frame and stood back up, and it did so with the
+          server clock and with the plate's clock alike (11 Sep, builds eca7 and 9699), which is
+          what cleared the clock. The renderer explains the rest: when the sequence component
+          goes, its tweener is returned to a pool whose release action is Kill(true), complete
+          before killing (unity-explorer, TweenerPool.cs), so the door is sent to the tween's
+          end value after the scene's zero. A wall that never animates has no tween to be
+          completed: the scale written above is final. The two deletes stay for a client that
+          still carries a tween from an older bundle.
+        */
+        if (Tween.has(v.door)) Tween.deleteFrom(v.door)
+        if (TweenSequence.has(v.door)) TweenSequence.deleteFrom(v.door)
 
         /*
           The shield keeps thieves out. It must not keep the owner out.
