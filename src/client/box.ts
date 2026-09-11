@@ -218,10 +218,23 @@ export function setupBox(): void {
   sonBurst = emetteur('assets/sounds/burst.wav', 0.9)
   sonMutation = emetteur('assets/sounds/mutation.wav', 0.75)
   sonLand = emetteur('assets/sounds/land.wav', 0.8)
+  /*
+    The reveal ladder, set from a measurement rather than by ear (owner, 11 Sep: "rare and
+    above is too loud"). Integrated loudness of each file to ITU-R BS.1770, times the volume
+    below, gave: common -19.6, rare -15.4, big -13.5, huge -15.0 LUFS. Two faults. The ladder
+    was INVERTED, big louder than the rarest tier, because the huge file is intrinsically
+    quieter and carried a higher multiplier. And the top of the family sat at the level of the
+    theft alarm (-13.2), so opening a good box was as loud as being robbed. The numbers below
+    give a monotonic climb of about 1.2 dB a tier, anchored on the common reveal, which nobody
+    has complained about: -19.6, -18.4, -17.3, -16.0, every one under the alarm. They also
+    bring each file's peak to -2.6 dBFS or lower, where they were reaching -1.6: the standard
+    (ASWG-R001, portable titles) caps true peak at -1 dBTP, and a phone speaker is exactly
+    where inter-sample peaks turn into harshness. To move the whole family, scale all four.
+  */
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
-  sonRevealRare = emetteur('assets/sounds/reveal-rare.wav', 0.85)
-  sonRevealBig = emetteur('assets/sounds/reveal-big.wav', 0.85)
-  sonRevealHuge = emetteur('assets/sounds/reveal-huge.wav', 0.9)
+  sonRevealRare = emetteur('assets/sounds/reveal-rare.wav', 0.6)
+  sonRevealBig = emetteur('assets/sounds/reveal-big.wav', 0.55)
+  sonRevealHuge = emetteur('assets/sounds/reveal-huge.wav', 0.8)
   sonTic = emetteur('assets/sounds/reel.wav', 0.6)
   sonTic2 = emetteur('assets/sounds/reel.wav', 0.6)
   // Le refus se dit au son, pas au texte: un etage plein est une chose qu'on entend une fois
