@@ -472,6 +472,20 @@ async function worldReset(): Promise<Set<string>> {
   try {
     const fait = readMarker(await Storage.get<string>(RESET_KEY))
     if (fait === WORLD_RESET_MARK) return efface
+    /*
+      A null read never wipes anything.
+
+      `Storage.get` answers null for a key that is absent AND for any failed request (a 5xx,
+      a timeout, a dropped connection), with a console.error that never reaches the scene log
+      (audit, 11 Sep). Read as "never reset", one failed request at a cold start posed the
+      marker, listed every base and erased every account in the background: the whole world,
+      unrecoverable, on a network hiccup. A genuinely fresh world has nothing to clear, so the
+      only reset that still runs is a deliberate one: an OLD marker read back in full.
+    */
+    if (fait === null) {
+      log(`remise a zero: marqueur illisible ou absent, rien n'est efface`)
+      return efface
+    }
 
     /*
       Le marqueur AVANT le menage, jamais apres.
