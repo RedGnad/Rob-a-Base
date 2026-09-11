@@ -5,7 +5,7 @@ import { moveTo } from './deplacer'
 import { poseView } from './pose'
 import { loadingView } from './loading'
 import { myClientAddress, theftView } from './theft'
-import { basesConnues } from './slots'
+import { basesConnues, basesConnuesRecues } from './slots'
 import { alerter } from './theft'
 import { TOAST } from './theme'
 import { cue } from './ui-kit'
@@ -143,6 +143,11 @@ function apparaitreChezSoi(): void {
       */
       if (!theftView.walletRecu || theftView.basePosee) return
       if (!Transform.has(engine.PlayerEntity)) return
+      // The other bases travel on their own message (`basePositions`, every 2.5 s), not with
+      // the wallet. Settling before it has come once would read an empty field, call the spawn
+      // square legal with a base standing on it, and skip the emptiest wedge for good (the
+      // regression review of 11 Sep). The 20 s window above stays the fallback.
+      if (!basesConnuesRecues()) return
       const p = Transform.get(engine.PlayerEntity).position
       const autres = basesConnues()
       const cible = arrivalTarget(p, autres)

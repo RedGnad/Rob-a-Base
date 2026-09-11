@@ -23,6 +23,9 @@ let glyphes: Entity | null = null
 let autres: Array<{ x: number; z: number }> = []
 /** Where the other bases stand, as the server last said. Read by `travel.ts` on arrival. */
 export function basesConnues(): Array<{ x: number; z: number }> { return autres }
+/** Whether the server has said where the other bases are, at least once this session. */
+let basesRecues = false
+export function basesConnuesRecues(): boolean { return basesRecues }
 /** Vrai quand le marqueur s'est allume tout seul, faux quand le joueur l'a demande. */
 let auto = false
 
@@ -75,6 +78,7 @@ export function setupSlots(): void {
 
   room.onMessage('basePositions', (d) => {
     autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))
+    basesRecues = true
   })
 
   /*
