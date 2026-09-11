@@ -682,8 +682,13 @@ function gunSystem(dt: number): void {
   // desktop: a click fires on release, a drag does not, a click on a control does not.
   const tactile = isMobile() || FORCE_MOBILE_LAYOUT
   const tap = tactile && combatView.aiming ? tapSurLaVitre(now) : false
+  // A press on one of our own controls is not a trigger pull. The desktop trigger reads the
+  // GLOBAL pointer down edge, and the SDK counts a press on an interface element in it; the
+  // click that opens the menu, a chip or SELL therefore also fired the weapon (audit, 11 Sep).
+  // Every control plays `tic()` as it is pressed, before this system runs in the same frame.
+  const surControle = now - dernierTic() < CLIC_UI_MS
   const gachette = mondeOuvert() && (inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
-    || (!tactile && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN))
+    || (!tactile && !surControle && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN))
     || tap)
   if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
@@ -814,6 +819,8 @@ function poserTierce(): void {
   nothing. Desktop keeps its click on the down edge, untouched.
 */
 const TAP_MS = 250
+/** A control pressed this recently owns the pointer press: the desktop trigger ignores it. */
+const CLIC_UI_MS = 150
 const TAP_DEG = 1.5
 let tapDepuis = 0
 let tapYaw = 0

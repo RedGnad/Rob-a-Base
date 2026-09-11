@@ -12,7 +12,7 @@ import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, clientEdges, decalageCentre, setReference, zoneEcran, MENU_W, MENU_PAD } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE, PENDING_CAP_S } from './shared/schemas'
-import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue } from './client/ui-kit'
+import { Btn, CloseBtn, SoundBtn, Pouce, Barre, SURF, pctAnime, cue, tic } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
@@ -2150,7 +2150,7 @@ const uiComponent = () => {
           pointerFilter: 'block'
         }}
         uiBackground={SKIN.panel}
-        onMouseDown={() => openRushCard(false)}
+        onMouseDown={() => { tic(); openRushCard(false) }}
       >
         <UiEntity uiTransform={{ width: 28, height: 28, margin: { right: 10 } }}
           uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch', color: Color4.fromHexString(lisible(rushChip()?.color ?? '#ffffff') + 'ff') }} />
@@ -2496,7 +2496,7 @@ const uiComponent = () => {
             padding: { left: 20, right: 20 }, flexDirection: 'row', alignItems: 'center', pointerFilter: 'block'
           }}
           uiBackground={SKIN.panel}
-          onMouseDown={closeRushCard}
+          onMouseDown={() => { tic(); closeRushCard() }}
         >
           <UiEntity uiTransform={{ width: 84, height: 84, margin: { right: 18 } }}
             uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch', color: teinte }} />
