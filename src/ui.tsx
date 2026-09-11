@@ -904,7 +904,9 @@ const PadControls = () => {
         <SellChip />
       </UiEntity>
 
-      <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={pad.petit}
+      {/* Silent: jumping is the most pressed button there is, and the client sounds the jump
+          and the landing itself. A click on top of it carries nothing (owner, 11 Sep). */}
+      <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={pad.petit} muet
         bas={pad.arc[0].bas} droite={pad.arc[0].droite} actions={[InputAction.IA_JUMP]} touche={touche('SPACE')} />
       {/*
         Two different controls on one disc. Weapon away: the disc EMITS the secondary action,
@@ -913,7 +915,8 @@ const PadControls = () => {
         on no input reaching the scene (players stuck aiming, playtest of 6 Sep). The F plate
         lights it in both states.
       */}
-      <Pouce icone={combatView.aiming ? 'icon-holster' : iconeArme(combatView.arme)} taille={pad.petit}
+      {/* Silent: `degainer` plays draw.wav on the way out and holster.wav on the way back. */}
+      <Pouce icone={combatView.aiming ? 'icon-holster' : iconeArme(combatView.arme)} taille={pad.petit} muet
         bas={pad.arc[1].bas} droite={pad.arc[1].droite}
         primaire={combatView.aiming}
         actions={combatView.aiming ? undefined : [InputAction.IA_SECONDARY]}
@@ -933,16 +936,21 @@ const PadControls = () => {
         it and asked where the button went (mobile tester's screenshot, 3 Sep). With nothing
         to do here it stays, dimmed and inert, showing the verb the current step waits for:
         what the thumb will press once the beacon is reached.
+
+        It carries no click of its own either. Every verb it can hold answers for itself:
+        eleven sound on the press through `SON_DU_VERBE`, collect and sell ring the coin with
+        the amount that floats up (`playCash`), a pile answers with take.wav, the lift with
+        lift.wav, and aiming with the shot. The click was the same act heard twice.
       */}
       {a !== null ? (
-        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('place'))} taille={pad.gros}
+        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('place'))} taille={pad.gros} muet
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
           presseePar={tirDesktop}
           frames={!combatView.aiming && peutConstruireIci(a) ? posesDe(a.icon) : undefined}
           pulse={!combatView.aiming && stepExpects(a.id) && peutConstruireIci(a)}
           periodMs={cadenceDe(a.id)} touche={touche('E')} />
       ) : (
-        <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros}
+        <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros} muet
           bas={0} droite={0} primaire disabled={!combatView.aiming}
           actions={combatView.aiming ? [InputAction.IA_PRIMARY] : undefined}
           presseePar={tirDesktop} touche={touche('E')} />

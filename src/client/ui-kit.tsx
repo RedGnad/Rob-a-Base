@@ -93,8 +93,18 @@ export function cue(fichier: string, volume = 0.8): void {
 let dernierTicA = 0
 export function dernierTic(): number { return dernierTicA }
 
+/**
+ * Register a press without a sound.
+ *
+ * The press stamp is not decoration: `dernierTic()` is what tells the trigger that a pointer
+ * press belonged to one of our controls, so a click on the pad does not also fire the weapon
+ * (11 Sep). A silent button must therefore still stamp, or that guard reopens on it. Callers
+ * that want the sound too call `tic()`.
+ */
+export function noterPresse(): void { dernierTicA = Date.now() }
+
 export function tic(): void {
-  dernierTicA = Date.now()
+  noterPresse()
   if (sonClic === null) {
     sonClic = engine.addEntity()
     Transform.create(sonClic, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
@@ -272,6 +282,16 @@ export const Pouce = (props: {
    * Lighting and emitting are two different questions.
    */
   presseePar?: InputAction[]
+  /**
+   * No click on this disc, because the act it fires already says itself.
+   *
+   * Google Design, quoted in `tools/sounds/README.md` since 5 Sep: "not every button you press
+   * results in a sound", silence being the audio equivalent of white space; and the more often
+   * an interaction happens, the less intrusive its feedback should be. Measured on 11 Sep, the
+   * click is the quietest sound in the game, so the complaint it draws ("entetant, il est
+   * partout") is about the COUNT, not the level. The press is still registered (`noterPresse`).
+   */
+  muet?: boolean
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -332,9 +352,14 @@ export const Pouce = (props: {
       uiBackground={fond}
       uiInputBinding={props.actions !== undefined && props.disabled !== true ? { actions: props.actions } : undefined}
       /*
-        The pad clicks too. `Btn` and `CloseBtn` have played `tic()` since the panels were
-        built; the thumb buttons, which are the ones a player presses every ten seconds, were
-        silent, so the loudest control in the game gave the least feedback (owner, 5 Sep).
+        The pad clicks too, EXCEPT where the act answers for itself.
+
+        `Btn` and `CloseBtn` have played `tic()` since the panels were built; the thumb
+        buttons, pressed every ten seconds, were silent, so the loudest control in the game
+        gave the least feedback (owner, 5 Sep). Since 11 Sep the reverse was true of four of
+        them: jump, the weapon disc and the contextual disc carry `muet`, because the jump,
+        the draw, the holster and every contextual verb have a sound of their own, and a click
+        on top was the same act heard twice. They still stamp the press: see `noterPresse`.
       */
       /*
         Le gestionnaire est TOUJOURS pose, et c'est l'inertie qui est traitee dedans.
@@ -356,7 +381,9 @@ export const Pouce = (props: {
       */
       onMouseDown={() => {
         if (props.disabled === true) return
-        noterServi(cle); presse.set(cle, Date.now()); tic(); props.onClick?.()
+        noterServi(cle); presse.set(cle, Date.now())
+        if (props.muet === true) noterPresse(); else tic()
+        props.onClick?.()
       }}
     >
       {/*

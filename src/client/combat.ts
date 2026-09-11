@@ -810,8 +810,9 @@ function poserTierce(): void {
   trigger, and it must be neither the drag that turns the camera nor a press on a control.
   So a round goes out on the RELEASE of a touch that lasted under a quarter of a second and
   turned the camera by less than a degree and a half: a drag lasts and turns. Our own
-  controls are told apart by `tic()`, the press sound every one of them plays: a release
-  that follows one of those presses is not a tap on the world. The client's cluster is told
+  controls are told apart by the press STAMP every one of them writes (`noterPresse`, which
+  `tic` also calls when a control sounds; four discs are silent since 11 Sep and still stamp):
+  a release that follows one of those presses is not a tap on the world. The client's cluster is told
   apart by its actions: a jump, the menu, the sell key or the primary raised during the touch
   make it a button press, not a tap. The cluster's own button keeps firing on IA_PRIMARY as
   before, and a second event from the same press falls on the cadence. Holstering still goes
