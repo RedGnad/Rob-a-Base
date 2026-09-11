@@ -1,4 +1,5 @@
 import { plasticDe, caisse, FIT, TOY_DIR, spinLoop } from './toy'
+import { holster } from './combat'
 import { engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers, GltfContainer, TextShape, Billboard, BillboardMode } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { replay } from './sfx'
@@ -702,6 +703,9 @@ function setupCrateGhost(): void {
 }
 
 export function openCrate(crateTier: number): void {
+  // The smash is a world click, and world clicks are refused while the weapon is out (H4,
+  // 11 Sep); the E path was already refused. A crate is opened with the weapon away.
+  holster()
   if (boxView.phase !== 'idle') return
   if (!boxView.stock.includes(crateTier)) return
   if (!Transform.has(engine.PlayerEntity)) return
