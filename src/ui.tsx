@@ -1149,7 +1149,10 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     a moment ago, which is exactly what this button is for.
   */
   if (gearView.placing >= 0) return { id: 'poser-piege', label: `SET ${GEARS[gearView.placing].name} HERE`, icon: ico('build'), action: placeTrap }
-  if (!theftView.basePosee) return { id: 'construire-base', label: 'BUILD BASE', icon: ico('build'), action: togglePlacing }
+  // No base yet is only known once the profile has come; before that the server would answer
+  // "unknown profile" to a claim, in red, on a slow cold boot past the loading ceiling (judge
+  // path review, 11 Sep). Until the wallet, the disc offers nothing.
+  if (!theftView.basePosee) return theftView.walletRecu ? { id: 'construire-base', label: 'BUILD BASE', icon: ico('build'), action: togglePlacing } : null
   /*
     What the place offers, so the phone needs no interaction button at all.
 
@@ -2241,6 +2244,7 @@ const uiComponent = () => {
                   ? (attenteLongue() ? 'STILL STARTING, THIS ONE IS SLOW'
                     : intentEnAttente() ? 'STARTING UP, ACTION QUEUED' : 'STARTING UP')
                   : (intentEnAttente() ? 'RECONNECTING, ACTION QUEUED' : 'RECONNECTING'))
+            : !theftView.walletRecu ? 'LOADING YOUR PROFILE'
             : !theftView.basePosee ? 'PLACE YOUR BASE'
             : theftView.income === 0 ? 'OPEN A BOX TO EARN'
             /*
