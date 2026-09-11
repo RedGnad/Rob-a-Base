@@ -483,7 +483,11 @@ async function worldReset(): Promise<Set<string>> {
       only reset that still runs is a deliberate one: an OLD marker read back in full.
     */
     if (fait === null) {
-      log(`remise a zero: marqueur illisible ou absent, rien n'est efface`)
+      // The marker is still posted, so a later DELIBERATE reset (a new mark in the code) finds
+      // an old mark to compare with, on a fresh world or a rehearsal storage as in production.
+      // On a failed read this rewrites the value already there: a no-op.
+      const pose = await Storage.set(RESET_KEY, WORLD_RESET_MARK)
+      log(`remise a zero: marqueur illisible ou absent, rien n'est efface (marqueur pose: ${pose})`)
       return efface
     }
 
