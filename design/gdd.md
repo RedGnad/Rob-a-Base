@@ -61,7 +61,7 @@ The tycoon-and-steal loop is very fun and addictive, give a strong reason to ret
 
 ## 3. Core Loop
 
-| # | Step (verb) | What the player does (input, what they see or hear, what changes) | Why do it again? |
+| # | Step (verb) | What the player does | Why do it again? |
 |---|---|---|---|
 | 1 | Open | Tap the action button three times on a crate, the lid bursts and the item is revealed with its rarity and mutation, the item goes to your hands | The roll is different every time: 7 rarities and 14 mutations, and the rare rolls are what the street sees. |
 | 2 | Shelve | Tap SHELVE at a free slot, the item takes its place on the storey and a coin counter appears above it, your income per second rises | Income is cumulative and permanent, and every shelved item is also bait. |
