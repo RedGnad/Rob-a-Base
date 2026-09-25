@@ -28,15 +28,15 @@
 
 **One-line promise.**
 
-You are a tycoon on a public street. You display loot to earn while you sleep, and anyone can walk in and rob it.
+You have a base on a public street. You display loot to earn while you sleep, and anyone can walk in and rob it.
 
 **One familiar comparison.**
 
-It is an idle tycoon where the shelf is in public: your income is on display, and the other players are the risk.
+It is an idle tycoon where the shelf is in public: your income is on display, and the other players are the risk or the alliances.
 
 **Why this game.**
 
-The tycoon-and-steal loop is what millions of phone players already play every day, and Decentraland gives it the one thing Roblox instances cannot: a single persistent street where the thief is a real avatar with a name you will see again. We also wanted to prove that a full game, and not a demo, fits one thumb on the Decentraland mobile app.
+The tycoon-and-steal loop is very fun and addictive, give a strong reason to return for players, and social disctinctions. We also wanted to prove that a full game, and not a demo, fits one thumb on the Decentraland mobile app.
 
 ---
 
@@ -47,8 +47,8 @@ The tycoon-and-steal loop is what millions of phone players already play every d
 | **0 to 5 seconds after control** | You spawn on the plaza in front of a street of towers, each with its owner's name lit on the sign. The ground ahead of you is green, and your pad shows one button: PLACE. |
 | **5 to 10 seconds** | You tap PLACE. Your base lands where you stand, with a crate already waiting on the ground floor. |
 | **10 to 60 seconds** | Three taps break the crate open and an item rolls out with its rarity. You tap SHELVE, and the coin counter above it starts to climb. |
-| **1 to 3 minutes** | You tap COLLECT and the coins are yours. That is the loop: open, shelve, collect. The banner names the next goal, a second storey. |
-| **3 to 10 minutes** | A belt of crates runs past the plaza, so you buy one and it walks itself home while anyone watching can outbid you. Then a neighbour's shelf offers ROB: stay by it for six seconds, the owner is alerted by name, and the way out is a shootout. |
+| **1 to 3 minutes** | You tap COLLECT and the coins are yours. That is the loop: open, shelve, collect. The banner names the next goal, a second storey. Explore the map. Enter others base. |
+| **3 to 10 minutes** | A belt of crates runs past the plaza, so you buy one and it walks itself home while anyone watching can outbid you. Then a neighbour's shelf offers ROB: stay by it for six seconds, the owner is alerted by name, and the way out is a shootout. You see boss spawn and see you can fight it. You see daily rushes with environement changes. Shop and prestige.|
 | **Natural stopping point** | Your shelves keep earning while you are away, and the exit banner shows the offline clock filling plus today's step of the seven-day reward. |
 
 **Player-facing How to Play.**
