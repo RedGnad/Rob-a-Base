@@ -1,8 +1,8 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
-  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
-  SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, TASER_FREEZE_MS
+  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, SHOT_DROP_SHARE, LOOT_OWNER_LOCK_MS, forceDuTir,
+  LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, TASER_FREEZE_MS
 , MELEE_FORCE, SAME_STOREY} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
@@ -80,6 +80,27 @@ export function startCombat(): void {
     return best
   }
 
+  /** What a shooter may still shake loose: a tenth of their production, banked up to ten seconds of it. */
+  const SHOT_PAY_SHARE = 0.1
+  const SHOT_PAY_BURST_S = 10
+  /** Each repeat paying hit on the same player pays this much less; the count resets after a quiet minute. */
+  const REPEAT_STEP = 0.25
+  const REPEAT_RESET_MS = 60_000
+  const budgets = new Map<string, { coins: number; at: number }>()
+  const repeats = new Map<string, { n: number; at: number }>()
+  function shotBudget(a: string, now: number): number {
+    const rate = incomePerSecond(a) * SHOT_PAY_SHARE
+    const full = rate * SHOT_PAY_BURST_S
+    const b = budgets.get(a)
+    const coins = b === undefined ? full : Math.min(full, b.coins + rate * (now - b.at) / 1000)
+    budgets.set(a, { coins, at: now })
+    return coins
+  }
+  function spendBudget(a: string, amount: number): void {
+    const b = budgets.get(a)
+    if (b !== undefined) b.coins = Math.max(0, b.coins - amount)
+  }
+
   function frapper(a: string, d: { x: number; z: number }, portee: number, cooldown: number, pleineForce: boolean): void {
     const now = Date.now()
     if ((lastShot.get(a) ?? 0) + cooldown > now) return
@@ -144,37 +165,43 @@ export function startCombat(): void {
       : (butin === 'ebranle' || coupe === 'ebranle') ? 1
       : 0
 
-    // fortune to one shot, and floored by nothing: shooting a broke player yields nothing.
     /*
-      How much a shot is worth is decided by the SHOOTER's economy, not the target's.
-      
-      This was eight seconds of the target's income, which caps nothing from the attacker's
-      side: it scales with the victim. Measured, a brand-new account shooting a developed
-      base three times collected around two hundred and ninety-seven thousand coins, a
-      hundred and forty-seven Basic crates, without playing. A currency source that pays out
-      far beyond every other one is the definition of a faucet the sinks cannot answer, and
-      it makes the entire progression curve above it decorative.
-      
-      Scaled to the shooter it behaves: peers still take real money off each other, because
-      their incomes are alike, and a newcomer emptying a whale takes a nuisance rather than a
-      fortune. It also means the weapon levels up with the player's own base, without a single
-      new system to buy or explain: your gun is already as good as your tycoon.
-      
-      This part is reasoning rather than citation. The framing is documented, a faucet
-      outrunning its sinks inflates the economy; the specific rule of scaling a PvP yield to
-      the attacker is ours, and it is written here so it can be argued with later.
+      Shooting pays, but it is never worth more than playing (founder, 18 Nov 2026).
+
+      A hit was worth up to eight seconds of the shooter's own income, at four hits a second, with a
+      floor of 67 coins: a burst of fire earned up to thirty-two times what the shooter's shelves
+      made in the same time, and a brand-new account earned about 268 coins a second against seven
+      from its first piece. At the playtest of 17 Nov one new account landed 1,151 hits, 797 of them
+      on one player, for 35 M. Coins still drop, so a hit still means something; two rules keep the
+      gun a nuisance and never a job:
+      - over time, shooting pays at most a tenth of what the shooter's own base produces: a budget
+        that fills at that rate and holds ten seconds of it, so farming crates and stealing pieces
+        stay far ahead, and an account with nothing on its shelves earns nothing by shooting;
+      - hitting the same player again pays less each time, a quarter less per hit and nothing from
+        the fifth, until a minute passes without hitting them: harassing one victim stops paying,
+        and that victim loses a few small sums. This is the rule of World of Warcraft Classic's
+        honour, where killing the same player again gave 25 % less honour each time (10 % from patch
+        1.12), down to nothing for the day.
+      The starting values are to be measured at the next playtest.
     */
-    const cap = Math.max(SHOT_MIN_YIELD, Math.floor(incomePerSecond(a) * SHOT_DROP_CAP_S))
+    const key = `${a}|${best.addr}`
+    const seen = repeats.get(key)
+    const n = seen !== undefined && now - seen.at < REPEAT_RESET_MS ? seen.n : 0
+    const factor = Math.max(0, 1 - REPEAT_STEP * n)
+    const budget = shotBudget(a, now)
     // Pockets pay by the same rule: a shot from across the plaza shakes less loose.
-    const wanted = Math.floor(coinsOf(best.addr) * SHOT_DROP_SHARE * force)
-    const amount = Math.max(0, Math.min(wanted, cap))
+    const wanted = Math.floor(coinsOf(best.addr) * SHOT_DROP_SHARE * force * factor)
+    const amount = Math.max(0, Math.min(wanted, Math.floor(budget)))
+    // Every hit on that player keeps the count alive, paying or not: spamming never resets it.
+    repeats.set(key, { n: amount > 0 ? n + 1 : n, at: now })
+    if (amount > 0) spendBudget(a, amount)
     if (amount <= 0 || !spend(best.addr, amount)) {
       void room.send('shotResult', {
         hitName: displayName(best.addr), dropped: 0,
         reason: codeButin > 0 ? 'hit' : 'nothing to drop', loot: codeButin
       }, { to: [a] })
       if (codeButin > 0) void room.send('wasShot', { byName: displayName(a), lost: 0 }, { to: [best.addr] })
-      log(`${displayName(a)} hit ${displayName(best.addr)} for nothing, loot ${butin}`)
+      log(`${displayName(a)} hit ${displayName(best.addr)} for nothing (repeat ${n}), loot ${butin}`)
       return
     }
 
@@ -183,7 +210,7 @@ export function startCombat(): void {
       hitName: displayName(best.addr), dropped: amount, reason: 'hit', loot: codeButin
     }, { to: [a] })
     void room.send('wasShot', { byName: displayName(a), lost: amount }, { to: [best.addr] })
-    log(`${displayName(a)} hit ${displayName(best.addr)} for ${amount} dropped, loot ${butin}`)
+    log(`${displayName(a)} hit ${displayName(best.addr)} for ${amount} dropped (repeat ${n}), loot ${butin}`)
   }
 
   room.onMessage('shoot', (d, ctx) => {
