@@ -67,7 +67,9 @@ const WATCHED = [
   'assets/Models/balloon005.glb',
   'assets/Models/balloon006.glb',
   // belt.ts: the belt's frame, laid down at startup too.
-  'assets/Models/belt.glb'
+  'assets/Models/belt.glb',
+  // fusion.ts: the fuser's body, since 17 Nov 2026.
+  'assets/Models/fuser.glb'
 ]
 const TIMEOUT_MS = 25_000
 

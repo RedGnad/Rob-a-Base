@@ -58,7 +58,7 @@ import { FUSION_POS, FUSION_ECHELLE } from '../shared/schemas'
     write, two ticks before anything is drawn.
 */
 
-type Channel = 'steal' | 'crate' | 'zap' | 'fuse' | 'boss'
+type Channel = 'steal' | 'crate' | 'zap' | 'fuse' | 'boss' | 'steam'
 
 /*
   The shapes, all from Kenney's Particle Pack (CC0, `tools/vfx/build-particle-textures.py`).
@@ -86,6 +86,9 @@ type Shot = {
   wait: number
   /** The look the PLAYING write carries. */
   next: PBParticleSystem
+  /** When it was last fired, and how long that burst lives: an emitter still playing is not reused while another is free. */
+  firedAt: number
+  busyMs: number
 }
 
 /**
@@ -229,13 +232,34 @@ function rankedSpec(r: number, tint: string): Spec {
 */
 const ZAP: Spec = { count: 30, life: 0.55, size: [0.16, 0.34], end: 0.4, speed: [2.0, 4.5], gravity: 0.2, radius: 0.15, glow: true, colors: ['#ffffff', '#ffd84d'] }
 
-const shots = new Map<Channel, Shot>()
+/*
+  How many bursts of one kind can play at once.
+
+  One emitter per channel means a new burst restarts the one still playing, which is right for
+  a crate (the newer moment is the one being watched) and wrong at the fuser: on a busy plaza
+  several players fuse in the same seconds, each fusion is instant, and each one's stars and
+  puff must play out in full beside the others, never cut by them (founder, 17 Nov 2026: the
+  machine running flat out is the point; mixed colours are fine, cut bursts are not). Six of
+  each: only a seventh fusion inside two seconds would take over the oldest, and six Epic-sized
+  bursts stay far under the live-particle allowance.
+*/
+const POOL: Record<Channel, number> = { steal: 1, crate: 1, zap: 1, fuse: 6, boss: 1, steam: 6 }
+const shots = new Map<Channel, Shot[]>()
 /** Shapes setup has not named yet; the first crate burst ends the round, having named its own. */
 const warm = (Object.keys(SPRITES) as Sprite[]).filter((k) => k !== 'star')
 
 function fire(channel: Channel, at: Vector3, s: Spec): void {
-  const c = shots.get(channel)
-  if (c === undefined) return
+  const pool = shots.get(channel)
+  if (pool === undefined || pool.length === 0) return
+  const now = Date.now()
+  // A free emitter if there is one; otherwise the one fired longest ago.
+  let c = pool[0]
+  for (const x of pool) {
+    if (now - x.firedAt >= x.busyMs) { c = x; break }
+    if (x.firedAt < c.firedAt) c = x
+  }
+  c.firedAt = now
+  c.busyMs = Math.round((s.life + WAVE_GAP * ((s.waves ?? 1) - 1)) * 1000) + 200
   if (channel === 'crate') warm.length = 0
   const t = Transform.getMutableOrNull(c.e)
   if (t === null) return
@@ -349,12 +373,16 @@ function weatherLook(w: Weather): PBParticleSystem {
 }
 
 export function setupVfx(): void {
-  for (const channel of ['steal', 'crate', 'zap', 'fuse', 'boss'] as Channel[]) {
-    const e = engine.addEntity()
-    Transform.create(e, { position: PARKED })
-    const next = look(ZAP)
-    ParticleSystem.create(e, { ...next, playbackState: PBParticleSystem_PlaybackState.PS_STOPPED })
-    shots.set(channel, { e, wait: -1, next })
+  for (const channel of Object.keys(POOL) as Channel[]) {
+    const pool: Shot[] = []
+    for (let i = 0; i < POOL[channel]; i++) {
+      const e = engine.addEntity()
+      Transform.create(e, { position: PARKED })
+      const next = look(ZAP)
+      ParticleSystem.create(e, { ...next, playbackState: PBParticleSystem_PlaybackState.PS_STOPPED })
+      pool.push({ e, wait: -1, next, firedAt: 0, busyMs: 0 })
+    }
+    shots.set(channel, pool)
   }
 
   const g = engine.addEntity()
@@ -370,12 +398,12 @@ export function setupVfx(): void {
   // Names each shape once on the parked crate channel, one a tick, so both clients have every
   // texture before the first moment that wants it (see HOW A BURST IS FIRED).
   engine.addSystem(() => {
-    const crateShot = shots.get('crate')
+    const crateShot = shots.get('crate')?.[0]
     if (warm.length > 0 && crateShot !== undefined && crateShot.wait < 0) {
       const sprite = warm.shift()!
       ParticleSystem.createOrReplace(crateShot.e, { ...look({ ...ZAP, sprite }), playbackState: PBParticleSystem_PlaybackState.PS_STOPPED })
     }
-    for (const c of shots.values()) {
+    for (const c of [...shots.values()].flat()) {
       if (c.wait < 0) continue
       if (c.wait > 0) { c.wait -= 1; continue }
       c.wait = -1
@@ -409,13 +437,13 @@ export function zapBurst(at: Vector3): void {
   back around it, in the new piece's colour, more of them and in two waves as its rarity
   climbs, so a Legendary fused across the plaza is a thing people turn towards.
 
-  Born above the ball, not on the drum: from the drum they spent their whole life inside the
-  ball, which hid them from every side of the plaza (side capture, 3 Nov). Painted in the
-  rarity's full colour, never added light or white: from the plaza the machine stands against
-  the sky, and added white over a cloud showed nothing at all (third person capture, 3 Nov).
+  Born above the machine, not inside it: born inside, they spent their whole life hidden from
+  every side of the plaza (side capture, 3 Nov). Painted in the rarity's full colour, never
+  added light or white: from the plaza the machine stands against the sky, and added white over
+  a cloud showed nothing at all (third person capture, 3 Nov).
 */
-/** Just over the ball's highest float, in the machine's units: 3.08 plus its 0.65 radius (`fusion.ts`). */
-const FUSE_TOP = 3.85
+/** Just over the funnels' rims, in the machine's units (`tools/model/build-fuser.py`, FUNNEL_TOP 2.86). */
+const FUSE_TOP = 3.05
 
 export function fuseBurst(rarityId: number, hex: string): void {
   const r = Math.max(0, Math.min(6, rarityId))
@@ -427,6 +455,44 @@ export function fuseBurst(rarityId: number, hex: string): void {
     // A crown that opens wide and rains down the machine, not a jet: the records board hangs
     // over the machine, and from the belt side it cut a jet off a metre above the ball.
     speed: [2.2, 3.6], gravity: 0.6, fountain: 38, radius: 0.35, glow: false, colors: [hex, hex]
+  })
+}
+
+/*
+  The fuser's chimney breathes, all the time, a little.
+
+  The machine used to carry a floating ball whose movement was what caught the eye from the side
+  of the plaza: peripheral vision is poor at detail and colour and very good at motion. The steam
+  takes that job: a slow wisp, a few puffs a second, light grey on the sky. At a fusion the chimney
+  blows a real puff on top of it, on its own channel so the stars over the funnels are not cut.
+*/
+const STEAM_RATE = 3
+const STEAM_LIFE = 2.6
+export function startFuserSteam(at: Vector3): void {
+  const e = engine.addEntity()
+  Transform.create(e, { position: at, rotation: UP })
+  const sprite = SPRITES.puff
+  ParticleSystem.create(e, {
+    loop: true, rate: STEAM_RATE, maxParticles: Math.ceil(STEAM_RATE * STEAM_LIFE * 1.3), lifetime: STEAM_LIFE,
+    gravity: -0.06,
+    initialSize: { start: 0.18 * sprite.spark, end: 0.26 * sprite.spark },
+    sizeOverTime: { start: 1, end: 2.6 },
+    initialVelocitySpeed: { start: 0.35, end: 0.7 },
+    shape: ParticleSystem.Shape.Cone({ angle: 10, radius: 0.12 }),
+    initialColor: { start: rgba('#f5f5f2', 0.75), end: rgba('#dcdcd8', 0.6) },
+    colorOverTime: { start: rgba('#ffffff'), end: rgba('#ffffff', 0) },
+    texture: { src: sprite.src },
+    blendMode: PBParticleSystem_BlendMode.PSB_ALPHA,
+    billboard: true,
+    simulationSpace: PBParticleSystem_SimulationSpace.PSS_WORLD,
+    playbackState: PBParticleSystem_PlaybackState.PS_PLAYING
+  })
+}
+
+export function steamPuff(at: Vector3): void {
+  fire('steam', at, {
+    count: 22, life: 1.7, size: [0.35, 0.6], end: 2.4, speed: [1.6, 3.2], gravity: -0.25, fountain: 18, radius: 0.15,
+    colors: ['#ffffff', '#d9d9d4'], sprite: 'puff'
   })
 }
 

@@ -1,25 +1,26 @@
-import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Entity, ColliderLayer, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
-import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
-import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE, FUSION_RANGE } from '../shared/schemas'
+import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Entity, ColliderLayer, Tween, EasingFunction, GltfContainer } from '@dcl/sdk/ecs'
+import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
+import { Fusion, FUSION_POS, FUSION_NEEDS, FUSION_ECHELLE, FUSION_RANGE, CENTER } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { RARITIES, rarityOf, mutationDe, itemName, itemColor, rarity } from '../shared/loot-table'
-import { plasticDe, plastic, vif, TOY } from './toy'
+import { plasticDe, plastic, vif, TOY, remonter, demonter, spinLoop, itemFile } from './toy'
 import { carryView } from './carry'
 import { revealItem } from './box'
 import { openFuser, closeFuser, fuserPanelView } from './fusion-ui'
 import { clicMonde } from './monde'
 import { pushToFeed } from './theft'
-import { fuseBurst } from './vfx'
+import { fuseBurst, startFuserSteam, steamPuff } from './vfx'
 
 /**
- * The fusion machine, client side: a drum on a plinth beside the records board, three
- * sockets on its face and a dome on top.
+ * The fusion machine, client side: a small steam machine beside the records board, with three
+ * funnels, a pressure gauge, a porthole and a chimney (since 17 Nov 2026; it was a drum with
+ * three sockets and a floating ball).
  *
- * What it shows is decided by two sources. The sockets are YOURS: they light with what you
- * have fed so far, read from the per-player state the server sends. The dome is EVERYONE'S:
- * it takes the colour of the last thing that came out of the machine, for a while, so a
- * player crossing the plaza sees that somebody just made a Rare, which is the point of
- * putting the machine where people walk.
+ * What it shows is decided by two sources. The funnels, the gauge and the piece in the porthole
+ * are YOURS: they show what you have fed so far, read from the per-player state the server
+ * sends. The porthole's back light is EVERYONE'S: it takes the colour of the last thing that
+ * came out of the machine, for a while, so a player crossing the plaza sees that somebody just
+ * made a Rare, which is the point of putting the machine where people walk.
  */
 export const fuserView = { codes: [] as number[] }
 
@@ -73,98 +74,111 @@ function couleur(rarete: number, mut = 0): Color4 {
   return vif(itemColor(Math.max(0, Math.min(rarete, RARITIES.length - 1)), mut))
 }
 
+/*
+  The machine's body is one model (tools/model/build-fuser.py, a small steam machine). These are
+  the parts of it that move, placed with the numbers that file builds around: machine units,
+  front on -Z, before the root's `FUSION_ECHELLE`. Each moving part says one rule of the fusion
+  (founder, 17 Nov 2026): a lit ball drops into a funnel per piece fed, the gauge's needle climbs
+  a third per piece, the porthole spins the piece being fused, the chimney breathes steam.
+*/
+const FUNNEL_X = [-0.55, 0, 0.55]
+const FUNNEL_Z = -0.25
+const FUNNEL_BALL_Y = 2.88
+const FUNNEL_BALL = 0.34
+const FRONT = -0.85
+const GAUGE_Y = 1.6
+const PORTHOLE_Y = 0.85
+const PORTHOLE_DISC = 0.56
+const PIECE_SCALE = 0.42
+const CHIMNEY_TOP = Vector3.create(0, 3.34, 0.42)
+/** The gauge's marks, in degrees on the dial seen from the front: empty, one third, two thirds, full. */
+function needleDeg(fed: number): number { return 225 - 90 * Math.max(0, Math.min(FUSION_NEEDS, fed)) * (3 / FUSION_NEEDS) }
+
+/** The machine turns its front, porthole and gauge to the middle of the plaza, where people walk. */
+const FACING_DEG = Math.atan2(-(CENTER.x - FUSION_POS.x), -(CENTER.z - FUSION_POS.z)) * 180 / Math.PI
+
+/** A point of the machine, in the world: what a world-space effect needs. */
+function machinePoint(local: Vector3): Vector3 {
+  const a = FACING_DEG * Math.PI / 180
+  const x = local.x * Math.cos(a) + local.z * Math.sin(a)
+  const z = -local.x * Math.sin(a) + local.z * Math.cos(a)
+  return Vector3.create(FUSION_POS.x + x * FUSION_ECHELLE, local.y * FUSION_ECHELLE, FUSION_POS.z + z * FUSION_ECHELLE)
+}
+
 export function setupFuser(): void {
   const racine = engine.addEntity()
   Transform.create(racine, {
     position: Vector3.create(FUSION_POS.x, 0, FUSION_POS.z),
-    // Un tiers plus grande: tout est enfant de cette racine, donc le socle, le tambour, son
-    // collisionneur et les etiquettes suivent d'un seul nombre.
+    rotation: Quaternion.fromEulerDegrees(0, FACING_DEG, 0),
+    // Everything is a child of this root, so the body, its collider and the moving parts all
+    // follow one number.
     scale: Vector3.create(FUSION_ECHELLE, FUSION_ECHELLE, FUSION_ECHELLE)
   })
 
-  const socle = engine.addEntity()
-  Transform.create(socle, { parent: racine, position: Vector3.create(0, 0.15, 0), scale: Vector3.create(2.6, 0.3, 2.6) })
-  MeshRenderer.setBox(socle)
-  MeshCollider.setBox(socle)
-  Material.setPbrMaterial(socle, plastic(TOY.plinth))
+  const model = engine.addEntity()
+  Transform.create(model, { parent: racine })
+  GltfContainer.create(model, { src: 'assets/Models/fuser.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
 
-  const tambour = engine.addEntity()
-  Transform.create(tambour, { parent: racine, position: Vector3.create(0, 1.1, 0), scale: Vector3.create(1.8, 1.6, 1.8) })
-  MeshRenderer.setCylinder(tambour, 0.5, 0.5)
-  // Solid as well as clickable: the drum stands still on its plinth, so a body there costs
-  // nothing and stops a player walking through the machine (owner, 4 Sep).
-  MeshCollider.setCylinder(tambour, 0.5, 0.5, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
-  Material.setPbrMaterial(tambour, plastic(TOY.belt))
-  PointerEvents.create(tambour, {
+  // The body is solid and clickable through two plain colliders, not through the model's
+  // thousand triangles: the plinth, and a drum round the boiler.
+  const plinth = engine.addEntity()
+  Transform.create(plinth, { parent: racine, position: Vector3.create(0, 0.15, 0), scale: Vector3.create(2.6, 0.3, 2.6) })
+  MeshCollider.setBox(plinth)
+  const body = engine.addEntity()
+  Transform.create(body, { parent: racine, position: Vector3.create(0, 1.3, 0), scale: Vector3.create(1.8, 2.0, 1.8) })
+  // Solid as well as clickable: a body there stops a player walking through the machine (owner, 4 Sep).
+  MeshCollider.setCylinder(body, 0.5, 0.5, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
+  PointerEvents.create(body, {
     pointerEvents: [
       { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: `Fuse  ·  ${FUSION_NEEDS} of a kind become one better` } }
     ]
   })
 
   /*
-    La boule LEVITE, et c'est le canal qui manquait.
-
-    Elle est deja rouge, donc la couleur travaille. Ce qui manquait est le MOUVEMENT, et ce
-    n'est pas une preference: la peripherie de la retine voit mal les details et mal les
-    couleurs, mais elle est tres sensible au deplacement. Un objet rouge immobile au bord du
-    champ de vision est donc faible, le meme objet qui bouge est fort. C'est la raison precise
-    pour laquelle les testeurs pouvaient passer a cote sans le voir.
-
-    Le flottement est porte par un PARENT et non par le dome: une entite ne porte qu'un seul
-    tween, et le dome garde le sien, la secousse elastique de la fusion. Composer par le
-    parentage est la meme solution que pour la piece qui tombe en tournant.
+    The porthole's back light carries what the floating ball carried: it is EVERYONE'S. At rest
+    it breathes white, which the eye catches from the side of the plaza; after a fusion by
+    anybody it takes the new piece's colour for a while and takes the hit with an elastic
+    shake. The tube of the porthole hides whatever of the shake overflows the window.
   */
-  /*
-    Elle flotte AU-DESSUS du tambour, ce qui n'etait pas le cas.
-
-    Au bas de sa vague elle etait a 2,35 pour un rayon de 0,65: son equateur passait sous le
-    sommet du tambour, qui est a 1,90. Elle n'y levitait pas, elle y etait POSEE, et une boule
-    posee sur un tambour n'a pas de raison d'attirer l'oeil. Le repos monte a 2,70, ce qui
-    ouvre vingt centimetres de vide sous elle, et c'est le vide qui dit "elle flotte", pas le
-    mouvement. Les deux etiquettes montent d'autant: au sommet de la vague le dome atteignait
-    deja 3,37 alors que la ligne d'explication est a 3,10, donc la boule mangeait le milieu de
-    sa propre phrase.
-  */
-  const flotteur = engine.addEntity()
-  Transform.create(flotteur, { parent: racine, position: Vector3.create(0, 2.70, 0) })
-  Tween.create(flotteur, {
-    mode: Tween.Mode.Move({ start: Vector3.create(0, 2.70, 0), end: Vector3.create(0, 3.08, 0) }),
-    duration: 2100,
-    easingFunction: EasingFunction.EF_EASESINE
+  const glow = engine.addEntity()
+  const GLOW = Vector3.create(PORTHOLE_DISC, 0.02, PORTHOLE_DISC)
+  Transform.create(glow, {
+    parent: racine, position: Vector3.create(0, PORTHOLE_Y, FRONT - 0.045),
+    rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: GLOW
   })
-  // Une sequence VIDE en va-et-vient fait boucler le tween de base: c'est la forme documentee
-  // pour un mouvement qui respire, et elle ne coute pas une seconde entite.
-  TweenSequence.create(flotteur, { sequence: [], loop: TweenLoop.TL_YOYO })
+  MeshRenderer.setCylinder(glow, 0.5, 0.5)
+  Material.setPbrMaterial(glow, domeRepos(0))
 
-  const dome = engine.addEntity()
-  Transform.create(dome, { parent: flotteur, position: Vector3.Zero(), scale: Vector3.create(1.3, 1.3, 1.3) })
-  MeshRenderer.setSphere(dome)
-  Material.setPbrMaterial(dome, plastic(TOY.wallCream))
-  const lampe = engine.addEntity()
-  Transform.create(lampe, { parent: dome })
+  // The piece being fused is YOURS: the last one you fed turns in the porthole.
+  const piece = engine.addEntity()
+  Transform.create(piece, { parent: racine, position: Vector3.create(0, PORTHOLE_Y, FRONT - 0.17), scale: Vector3.create(PIECE_SCALE, PIECE_SCALE, PIECE_SCALE) })
+  spinLoop(piece, 6000)
 
-  const prises: Entity[] = []
+  // One ball per funnel, shown only for the pieces you have fed, in their rarity's colour.
+  const balls: Entity[] = []
   for (let i = 0; i < FUSION_NEEDS; i++) {
-    const p = engine.addEntity()
-    Transform.create(p, { parent: racine, position: Vector3.create((i - 1) * 0.5, 1.15, -0.92), scale: Vector3.create(0.3, 0.3, 0.3) })
-    MeshRenderer.setSphere(p)
-    Material.setPbrMaterial(p, plastic(TOY.beltRing))
-    prises.push(p)
+    const b = engine.addEntity()
+    Transform.create(b, { parent: racine, position: Vector3.create(FUNNEL_X[i % FUNNEL_X.length], FUNNEL_BALL_Y, FUNNEL_Z), scale: Vector3.Zero() })
+    MeshRenderer.setSphere(b)
+    balls.push(b)
   }
 
+  // The needle turns about the dial's centre: a pivot, and a bar that starts at it.
+  const needle = engine.addEntity()
+  Transform.create(needle, { parent: racine, position: Vector3.create(0, GAUGE_Y, FRONT - 0.135), rotation: Quaternion.fromEulerDegrees(0, 0, needleDeg(0)) })
+  const bar = engine.addEntity()
+  Transform.create(bar, { parent: needle, position: Vector3.create(0.075, 0, 0), scale: Vector3.create(0.16, 0.03, 0.012) })
+  MeshRenderer.setBox(bar)
+  Material.setPbrMaterial(bar, plastic('#b3261e'))
+
+  startFuserSteam(machinePoint(CHIMNEY_TOP))
+
   /*
-    PLUS AUCUN TEXTE AU-DESSUS DE LA MACHINE.
-
-    Il y en avait deux: l'enseigne FUSE et la phrase qui explique la regle. La phrase, personne
-    ne la lit: c'est une consigne posee en l'air au-dessus d'un objet, la forme meme du bruit
-    visuel. Et l'enseigne partait avec, sur le meme argument: la machine est deja signifiee par
-    le jeu lui-meme, un tambour rouge avec une boule qui levite et respire au milieu de la
-    place, plus le verbe FUSE sur le bouton contextuel des qu'on s'en approche (proprietaire,
-    7 Sep). Un repere qui se voit n'a pas besoin de se nommer.
-
-    Ce que ca rend: quatre plans de glyphe et leurs quatre materiaux, plus deux `TextShape` et
-    leurs deux draws. Petit, mais le compteur de materiaux est le seul qui approche son plafond
-    (366 sur 400 au champ plein, mesure du 7 Sep), et une primitive y compte pour un.
+    NO TEXT ABOVE THE MACHINE. There were two lines, the FUSE sign and the sentence explaining
+    the rule; nobody reads an instruction floating over an object, and the sign went with it:
+    the machine says itself, by its shape and its moving parts, and the contextual button says
+    FUSE as soon as you come near (owner, 7 Sep). One sign less is also four glyph planes and
+    their materials less, on the one counter that nears its ceiling.
   */
   room.onMessage('fusionState', (d) => {
     fuserView.codes = [...d.codes]
@@ -176,28 +190,21 @@ export function setupFuser(): void {
   })
   room.onMessage('fused', (d) => {
     pushToFeed(`${d.byName} fused a ${rarity(d.rarity).name}`)
-    // Everyone on the plaza sees it happen at the machine, not only in the feed.
+    // Everyone on the plaza sees it happen at the machine, not only in the feed: stars over
+    // the funnels, a puff out of the chimney.
     fuseBurst(d.rarity, itemColor(d.rarity, d.mutation))
+    steamPuff(machinePoint(CHIMNEY_TOP))
   })
 
-  let dessine = ''
-  /*
-    Le dome ENCAISSE le coup, au lieu de s'allumer doucement.
-
-    Il brillait quarante-cinq secondes apres une fusion, ce qui raconte "il s'est passe quelque
-    chose ici recemment", pas "ca vient d'arriver". Le fuser est le seul acte deterministe du
-    jeu, celui qu'on paie plus cher que le hasard pour l'obtenir, et il n'avait aucun instant.
-    Une secousse elastique d'une demi-seconde sur une entite qui existe deja, declenchee sur le
-    changement de `atMs`, donne l'impact sans un objet ni une interface de plus.
-  */
+  let drawn = ''
   let lastPulse = 0
-  let pulseVu = -1
-  const DOME = Vector3.create(1.3, 1.3, 1.3)
-  let vuFusion = 0
+  let pulseSeen = -1
+  let fusionSeen = 0
   let fusionLocal = -1e9
+  let needleAt = 0
   engine.addSystem(() => {
     // A toy in hand feeds the machine; empty hands open the panel that fuses from the shelves.
-    if (clicMonde(tambour)) {
+    if (clicMonde(body)) {
       if (carryView.code < 0) openFuser()
       else void room.send('feedFusion', {})
     }
@@ -206,14 +213,8 @@ export function setupFuser(): void {
       THE WINDOW FOLLOWS THE MACHINE, and closes when the player leaves it.
 
       Nothing was closing it, so a player could open the panel, walk home, and press FUSE from
-      their own base (owner, 9 Sep). The economy was never exposed: the server measures the
-      distance itself before it fuses anything (`pres`, src/server/fusion.ts, refused with "walk
-      up to the fuser"). What was exposed is the interface, which offered a control that could
-      only be refused, and a panel that belongs to a machine has no business standing in front
-      of a base.
-
-      The range is the SERVER's constant, not a second copy of it: a window that closes on one
-      number while the fusion is granted on another would disagree with itself at the edge.
+      their own base (owner, 9 Sep). The server measures the distance itself before it fuses
+      anything (src/server/fusion.ts), so the window closes on the server's own constant.
     */
     if (fuserPanelView.open && Transform.has(engine.PlayerEntity)) {
       const p = Transform.get(engine.PlayerEntity).position
@@ -225,58 +226,64 @@ export function setupFuser(): void {
     let f: { byName: string; rarity: number; count: number; lastName: string; lastCode: number; atMs: number } | null = null
     for (const [, v] of engine.getEntitiesWith(Fusion)) { f = v; break }
     const now = Date.now()
-    // Same rule as the boss flash: the stamp is the SERVER's clock, so the client watches it
-    // CHANGE and runs the window on its own clock. Subtracting two clocks either never opens
-    // the window or never closes it, depending which way the skew runs (owner, 5 Sep).
-    if (f !== null && f.atMs !== vuFusion) { vuFusion = f.atMs; if (f.atMs > 0) fusionLocal = now }
-    const brille = f !== null && f.lastCode >= 0 && now - fusionLocal < DOME_BRILLE_MS
-    // La respiration tourne hors de la cle: elle change tout le temps, la cle ne change presque
-    // jamais. Elle se tait pendant qu'une fusion tient le dome, qui a sa couleur a lui.
-    if (brille) pulseVu = -1
+    // The stamp is the SERVER's clock, so the client watches it CHANGE and runs the window on
+    // its own clock (owner, 5 Sep).
+    if (f !== null && f.atMs !== fusionSeen) { fusionSeen = f.atMs; if (f.atMs > 0) fusionLocal = now }
+    const lit = f !== null && f.lastCode >= 0 && now - fusionLocal < DOME_BRILLE_MS
+    // The breathing runs outside the key below: it changes all the time, the key almost never.
+    if (lit) pulseSeen = -1
     else {
-      const onde = 0.5 - 0.5 * Math.cos(((now % PULSE_MS) / PULSE_MS) * Math.PI * 2)
-      const pas = Math.round(onde * PULSE_PAS)
-      if (pas !== pulseVu) { pulseVu = pas; Material.setPbrMaterial(dome, domeRepos(pas / PULSE_PAS)) }
+      const wave = 0.5 - 0.5 * Math.cos(((now % PULSE_MS) / PULSE_MS) * Math.PI * 2)
+      const step = Math.round(wave * PULSE_PAS)
+      if (step !== pulseSeen) { pulseSeen = step; Material.setPbrMaterial(glow, domeRepos(step / PULSE_PAS)) }
     }
-    const mienne = fuserView.codes.length
-    const rareteMienne = mienne > 0 ? rarityOf(fuserView.codes[0]) : -1
-    // One string for everything drawn, rewritten only when it changes: a material or a light
-    // written every frame is a network update every frame.
+    const mine = fuserView.codes.length
+    const myRarity = mine > 0 ? rarityOf(fuserView.codes[0]) : -1
+    const myLast = mine > 0 ? fuserView.codes[mine - 1] : -1
     if (f !== null && f.atMs > lastPulse && f.lastCode >= 0) {
       lastPulse = f.atMs
-      // Une seule secousse, sans sequence: elle part large et revient a sa taille.
-      Tween.createOrReplace(dome, {
-        mode: Tween.Mode.Scale({ start: Vector3.create(DOME.x * 1.55, DOME.y * 1.55, DOME.z * 1.55), end: DOME }),
+      Tween.createOrReplace(glow, {
+        mode: Tween.Mode.Scale({ start: Vector3.create(GLOW.x * 1.3, GLOW.y, GLOW.z * 1.3), end: GLOW }),
         duration: 520,
         easingFunction: EasingFunction.EF_EASEOUTELASTIC
       })
     }
 
-    const cle = `${mienne}|${rareteMienne}|${brille ? f!.lastCode : -1}|${f?.count ?? 0}|${f?.rarity ?? -1}|${f?.byName ?? ''}`
-    if (cle === dessine) return
-    dessine = cle
+    // One string for everything drawn, rewritten only when it changes: a material written
+    // every frame is a network update every frame.
+    const key = `${mine}|${myRarity}|${myLast}|${lit ? f!.lastCode : -1}|${f?.count ?? 0}|${f?.rarity ?? -1}|${f?.byName ?? ''}`
+    if (key === drawn) return
+    drawn = key
 
-    for (let i = 0; i < prises.length; i++) {
-      const plein = i < mienne
-      Material.setPbrMaterial(prises[i], plein ? plasticDe(couleur(rareteMienne), 1.4) : plastic(TOY.beltRing))
+    for (let i = 0; i < balls.length; i++) {
+      const full = i < mine
+      const t = Transform.getMutable(balls[i])
+      t.scale = full ? Vector3.create(FUNNEL_BALL, FUNNEL_BALL, FUNNEL_BALL) : Vector3.Zero()
+      if (full) Material.setPbrMaterial(balls[i], plasticDe(couleur(myRarity), 1.4))
     }
-    if (brille && f !== null) {
+    if (mine > 0) remonter(piece, itemFile(myLast))
+    else demonter(piece)
+    if (mine !== needleAt) {
+      const from = needleDeg(needleAt)
+      needleAt = mine
+      Tween.createOrReplace(needle, {
+        mode: Tween.Mode.Rotate({ start: Quaternion.fromEulerDegrees(0, 0, from), end: Quaternion.fromEulerDegrees(0, 0, needleDeg(mine)) }),
+        duration: 450,
+        easingFunction: EasingFunction.EF_EASEOUTBACK
+      })
+    }
+    if (lit && f !== null) {
       const c = couleur(rarityOf(f.lastCode), mutationDe(f.lastCode))
       /*
-        NO LightSource here, and none anywhere else in this scene.
-
-        This lamp was created when the dome lit and deleted when it went out, and that pair
-        crashes the desktop client: `LightSourceApplyPropertiesSystem` dereferences a Unity
-        Light that the deletion already destroyed, throws a NullReferenceException and the
-        scene STOPS. Read in the client's own log at 14:31:41.503, the exact second the owner
-        fused three Legendaries and the game froze on him (5 Sep). The component is also
-        absent from the mobile client before its v1.13.0, so it was buying a crash to light
-        something a phone never saw. The emissive dome carries the whole effect.
+        NO LightSource here, and none anywhere else in this scene: creating then deleting one
+        crashed the desktop client (NullReferenceException in `LightSourceApplyPropertiesSystem`,
+        5 Sep), and the component did not exist on mobile before v1.13.0. The emissive back
+        light carries the whole effect.
       */
-      Material.setPbrMaterial(dome, plasticDe(Color4.create(c.r, c.g, c.b, 1), 1.6))
+      Material.setPbrMaterial(glow, plasticDe(Color4.create(c.r, c.g, c.b, 1), 1.6))
     } else {
-      // Rien a ecrire ici: la respiration reprend la main a l'image suivante et pose le repos.
-      pulseVu = -1
+      // Nothing to write: the breathing takes over on the next frame and sets the rest state.
+      pulseSeen = -1
     }
   })
 }
