@@ -1,8 +1,9 @@
 import { engine, Transform, MeshRenderer, Material, Entity } from '@dcl/sdk/ecs'
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
-import { Plot, CENTER, BELT_HEIGHT, BASE_SIDE, freeSpotNear } from '../shared/schemas'
+import { Plot, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { plastic } from './toy'
-import { tutoView } from './tutorial'
+import { currentStep } from './tutorial'
+import { nearestFreeSquare } from './slots'
 import { cratePosition } from './box'
 import { myClientAddress } from './theft'
 import { rushAgeS } from './events'
@@ -46,34 +47,31 @@ function cible(): Vector3 | null {
     beacon is the third voice, and it costs nothing that is not already built.
   */
   const rush = rushAgeS()
-  if (tutoView.etape >= tutoView.total) {
+  const step = currentStep()
+  if (step === null) {
     return rush >= 0 && rush < RUSH_BEACON_S ? Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z) : null
   }
-  if (tutoView.etape === 0) {
+  if (step === 'place') {
     /*
-      The first step pointed at nothing, on the theory that its target was a button. But
-      "place your base" is also a WHERE: the nearest square the rule would accept, computed
-      with the same search the server runs, so the beacon stands on ground the player can
-      actually take. Five times a second, on a grid walk: cheap.
+      "Place your base" is a WHERE: the square the hammer builds on, which is where the player
+      stands when that is legal and the nearest legal square otherwise (slots.ts). The press
+      builds exactly there (design page 1, point 2), so the beacon is the answer to "where will
+      it go". It used to search with the base's side as the scene's side, which made every
+      square "too close to the edge": the beacon never showed for this step.
     */
-    const ici = Transform.getOrNull(engine.PlayerEntity)
-    if (ici === null) return null
-    const autres: Array<{ x: number; z: number }> = []
-    for (const [e] of engine.getEntitiesWith(Plot)) {
-      const t = Transform.getOrNull(e)
-      if (t !== null) autres.push({ x: t.position.x, z: t.position.z })
-    }
-    const spot = freeSpotNear(ici.position.x, ici.position.z, BASE_SIDE, autres)
+    const spot = nearestFreeSquare()
     return spot === null ? null : Vector3.create(spot.x, 0, spot.z)
   }
-  if (tutoView.etape === 2) return maBase()
-  if (tutoView.etape === 1) {
+  if (step === 'open') {
     // The crate being opened; before it stands, home, where the OPEN button will put it.
     const caisse = cratePosition()
     return caisse !== null ? caisse : maBase()
   }
-  if (tutoView.etape === 3) return Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z)
-  if (tutoView.etape === 4) {
+  if (step === 'shelve') return maBase()
+  // Collecting is the button, and the button pulses with the amount on it: nowhere to go.
+  if (step === 'collect') return null
+  if (step === 'buy') return Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z)
+  if (step === 'steal') {
     // The nearest base that is not mine and has something on its shelves worth taking.
     const moi = myClientAddress()
     const ici = Transform.getOrNull(engine.PlayerEntity)
@@ -91,6 +89,15 @@ function cible(): Vector3 | null {
     return best
   }
   return null
+}
+
+/*
+  How high the chevron floats over its target. Over a square to build on it rides above the
+  marker's BUILD HERE, which stands at 2.4 m on the same spot: at the usual height the two
+  were drawn through each other.
+*/
+function chevronHeight(): number {
+  return currentStep() === 'place' ? 3.4 : 2.6
 }
 
 export function setupGuidage(): void {
@@ -131,7 +138,7 @@ export function setupGuidage(): void {
     c.scale = Vector3.create(souffle, 0.04, souffle)
     const bob = Math.sin(t / 320) * 0.35
     filage = (filage + 4.2) % 360
-    f.position = Vector3.create(ou.x, ou.y + 2.6 + bob, ou.z)
+    f.position = Vector3.create(ou.x, ou.y + chevronHeight() + bob, ou.z)
     f.scale = Vector3.create(0.9, 0.75, 0.9)
     const ft = Transform.getMutableOrNull(fleche as Entity)
     if (ft !== null) ft.rotation = Quaternion.fromEulerDegrees(0, filage, 0)

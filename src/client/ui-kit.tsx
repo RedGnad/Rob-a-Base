@@ -292,6 +292,12 @@ export const Pouce = (props: {
    * partout") is about the COUNT, not the level. The press is still registered (`registerPress`).
    */
   silent?: boolean
+  /**
+   * A sum written on the disc: the pot, while the disc is COLLECT. A plate across the top
+   * edge, in the money face, so the glyph keeps the middle and the number is read without
+   * looking away from the thumb.
+   */
+  amount?: string
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -415,6 +421,7 @@ export const Pouce = (props: {
             uiBackground={{ texture: { src: `assets/ui/${f}.png` }, textureMode: 'stretch' }} />
         ))
       )}
+      {props.amount !== undefined && <AmountPlate value={props.amount} disc={d} />}
       {props.touche !== undefined && (
         <UiEntity
           uiTransform={{
@@ -447,6 +454,31 @@ export const Pouce = (props: {
             uiBackground={{ color: Color4.fromHexString('#ff4d6dff') }} />
         </UiEntity>
       )}
+    </UiEntity>
+  )
+}
+
+/*
+  The plate that carries a sum on a thumb disc, centred on the disc's top edge.
+
+  Half of it rides above the disc, where the arc leaves a gap of about 84 units on a phone
+  before the next satellite (layout.ts, THUMB), and half on the rim, clear of the glyph. Its
+  size follows the disc, so the desktop's larger pad carries a larger number.
+*/
+const AmountPlate = (props: { value: string; disc: number }) => {
+  const h = Math.round(props.disc * 0.3)
+  const size = Math.round(h * 0.72)
+  const w = Math.round(glyphWidth(props.value, size) + h * 0.8)
+  return (
+    <UiEntity
+      uiTransform={{
+        width: w, height: h, positionType: 'absolute',
+        position: { top: -Math.round(h * 0.55), left: Math.round((props.disc - w) / 2) },
+        borderRadius: Math.round(h / 2)
+      }}
+      uiBackground={{ color: C.plate }}
+    >
+      <Glyphs value={props.value} size={size} role="money" align="center" box={w} top={Math.round((h - size) / 2)} shadow />
     </UiEntity>
   )
 }

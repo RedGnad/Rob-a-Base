@@ -9,9 +9,10 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce, eventTheme } from './loot'
 import { tempoDuTapis } from './events'
-import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf, MAX_CRATES } from './plots'
+import { displayName, spend, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf, MAX_CRATES, takeFirstCrateFloor } from './plots'
 import { remettreEnMain, carriesFor } from './carry'
-import { tutoFait } from './onboarding'
+import { stepDone } from './onboarding'
+import { bankToCover, shortOf } from './collect'
 import { startConvoy } from './convoy'
 import { CRATES, encoder, itemName } from '../shared/loot-table'
 
@@ -144,8 +145,9 @@ export function startBelt(): void {
       void room.send('actionRejected', { action: 'purchase', reason: `your box stock is full (${MAX_CRATES}), open some first`, antiCheat: false }, { to: [a] })
       return
     }
-    if (!spend(a, art.price)) {
-      void room.send('actionRejected', { action: 'purchase', reason: `you need ${art.price - coinsOf(a)} more coins`, antiCheat: false }, { to: [a] })
+    // A short balance is topped up from the pot when the pot covers it (see `bankToCover`).
+    if (!bankToCover(a, art.price, `to buy a ${CRATES[art.crateTier].name}`) || !spend(a, art.price)) {
+      void room.send('actionRejected', { action: 'purchase', reason: `you need ${shortOf(a, art.price)} more coins`, antiCheat: false }, { to: [a] })
       return
     }
 
@@ -153,7 +155,7 @@ export function startBelt(): void {
       addCrate(a, art.crateTier)
       void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     }
-    tutoFait(a, 3)
+    stepDone(a, 'buy')
     advanceQuest(a, 'acheter')
     pushQuests(a)
     art.vendu = true
@@ -197,10 +199,13 @@ export function startBelt(): void {
       void room.send('actionRejected', { action: 'opening', reason: 'you do not have that box', antiCheat: true }, { to: [a] })
       return
     }
-    tutoFait(a, 1)
+    stepDone(a, 'open')
     advanceQuest(a, 'ouvrir')
     if (d.crateTier >= 1) advanceQuest(a, 'ouvrirRare')
-    const rarity = rollCrate(d.crateTier)
+    // A brand-new account's first opening never lands a Common (design page 1, point 5).
+    const floored = takeFirstCrateFloor(a)
+    const rarity = rollCrate(d.crateTier, floored ? 1 : 0)
+    if (floored) log(`${displayName(a)} opens their first crate with the floor on Common`)
     const mut = rollMutation(d.crateTier, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1)
     // During a rush a crate has the reference's chance of coming out marked by it.
     const traits = eventTheme >= 0 && Math.random() < RUSH_TRAIT_CHANCE ? 1 : 0

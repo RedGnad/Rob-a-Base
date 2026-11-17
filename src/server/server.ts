@@ -3,7 +3,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startPlots, plotsPrets, welcome, auRevoir, cashOfflineEarnings, pushQuests, presents as presentsAvecGrace } from './plots'
-import { arrivee, depart, checkGift } from './onboarding'
+import { onArrival, depart, checkGift } from './onboarding'
 import { runConvoys, sweepConvoys } from './convoy'
 import { startCombat } from './combat'
 import { startCarry } from './carry'
@@ -78,7 +78,7 @@ export function startServer(): void {
         // The daily is no longer handed over on join; the player claims it from the day strip,
         // which is a red dot worth chasing (tester, 28 Aug). We only nudge that it is waiting.
         pushQuests(address)
-        arrivee(address)
+        onArrival(address)
         lockOnArrival(address)    // grace period on arrival
         arrivalDone(address)      // the away report and the revenge list, once the client listens
         replayLog(address)

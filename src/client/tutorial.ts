@@ -2,6 +2,7 @@ import { room } from '../shared/messages'
 import { crate } from '../shared/loot-table'
 import { alerter, alerterEnFile } from './theft'
 import { TOAST } from './theme'
+import { TUTORIAL_STEPS, TutorialStep, stepAt } from '../shared/tutorial'
 
 /*
   Each step, with the one verb it waits for.
@@ -13,12 +14,12 @@ import { TOAST } from './theme'
   follows (a single pointer on the one control to press) and what keeps a cue from becoming
   noise (owner, 3 Sep, after testers saying "I don't know what to do").
 */
-export const STEP_TEXTS: ReadonlyArray<{ titre: string; aide: string; verb: string; actions: readonly string[] }> = [
+const TEXTS: Record<TutorialStep, { titre: string; aide: string; verb: string; actions: readonly string[] }> = {
   // No hint at all. A red ghost is read without being told, the arrival is placed on a legal
   // square (travel.ts), and the world already carries the floating PLACE YOUR BASE, the ghost
   // and the hammer. An empty `aide` simply draws no second line (owner, 6 Sep).
-  { titre: 'Place your base', aide: '', verb: 'build', actions: ['construire-base', 'poser-base'] },
-  { titre: 'Open your box', aide: 'walk to your box and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
+  place: { titre: 'Place your base', aide: '', verb: 'build', actions: ['construire-base', 'poser-base'] },
+  open: { titre: 'Open your box', aide: 'walk to your box and smash it 3 times', verb: 'crate', actions: ['smash', 'ouvrir-caisse'] },
   /*
     L'etape qui disait "tap COLLECT at your base" nommait un bouton introuvable, et en plus
     une contrainte inexistante: l'encaissement n'avait aucune condition de distance. Le
@@ -26,10 +27,29 @@ export const STEP_TEXTS: ReadonlyArray<{ titre: string; aide: string; verb: stri
     piece sur une etagere, qui n'etait enseigne nulle part alors que c'est la source de tout
     l'argent du jeu.
   */
-  { titre: 'Shelve your piece', aide: 'walk into your base and put it on a stand', verb: 'place', actions: ['poser-objet'] },
-  { titre: 'Buy a box', aide: 'tap a box on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
-  { titre: 'Steal from a neighbour', aide: 'tap an item, hold on, run it home', verb: 'steal', actions: ['voler'] }
-]
+  shelve: { titre: 'Shelve your piece', aide: 'walk into your base and put it on a stand', verb: 'place', actions: ['poser-objet'] },
+  /*
+    Collect is a step of its own, between shelving and buying (design page 1, point 3).
+
+    Testers took a long time to see that a shelved piece earns, and COLLECT was one of the
+    main criticisms of the 17 Nov playtest: the two steps that pulse (open, shelve) were done
+    in 8 to 25 s, and COLLECT never had that treatment. Here it does: the button pulses and
+    carries the pot's amount, growing every second. No hint line: the amount on the button is
+    the explanation. The title is the server's old name for this step, kept until the lexicon
+    page sets the words.
+  */
+  collect: { titre: 'Collect your coins', aide: '', verb: 'collect', actions: ['encaisser'] },
+  buy: { titre: 'Buy a box', aide: 'tap a box on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
+  steal: { titre: 'Steal from a neighbour', aide: 'tap an item, hold on, run it home', verb: 'steal', actions: ['voler'] }
+}
+/** The steps in the server's order, from the one shared list: the two cannot disagree. */
+export const STEP_TEXTS: ReadonlyArray<{ id: TutorialStep; titre: string; aide: string; verb: string; actions: readonly string[] }> =
+  TUTORIAL_STEPS.map((id) => ({ id, ...TEXTS[id] }))
+
+/** The step the player is on, or null once the tutorial is finished. */
+export function currentStep(): TutorialStep | null {
+  return tutoView.etape < tutoView.total ? stepAt(tutoView.etape) : null
+}
 
 /** `since`: when the current step began, on this clock; the hint line waits on it. */
 export const tutoView = { etape: 0, total: STEP_TEXTS.length as number, since: Date.now() }

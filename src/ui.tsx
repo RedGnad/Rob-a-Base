@@ -20,7 +20,7 @@ import { toyImage } from './client/toy'
 import { noterEvenement, signalerMenu } from './client/clics'
 import { loadingView } from './client/loading'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, alertesVisibles, feedLine, setHudVisible } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, collectPending, pendingShown, cancelSteal, alertesVisibles, feedLine, setHudVisible } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
 import { nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
@@ -85,7 +85,7 @@ const ETATS: Record<string, () => string> = {
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
   plein: () => 'your base is full  ·  make room'
 }
-import { slotView, togglePlacing, placeHere } from './client/slots'
+import { slotView, togglePlacing, placeHere, nearestFreeSquare } from './client/slots'
 import { ico, ICONES_VERBES } from './client/icones'
 import { carryView, placeDown, dropCarried, vendre } from './client/carry'
 import { baseIci, padEnFace, agirSurPad, elevatorInReach, monterIci, lockPostInReach } from './client/plots'
@@ -756,7 +756,8 @@ function sonDuVerbe(icone: string | undefined): void {
 function peutConstruireIci(a: { id: string } | null): boolean {
   if (a === null) return false
   if (a.id !== 'construire-base' && a.id !== 'poser-base') return true
-  return slotView.active && slotView.valid
+  // On a refused square the marker lit by itself, the strike lands too: on the nearest free square.
+  return slotView.active && (slotView.valid || (slotView.auto && nearestFreeSquare() !== null))
 }
 
 /* Les verbes qui SE BALANCENT sur le bouton: le maillet nu pour batir, le maillet sur une
@@ -949,7 +950,8 @@ const PadControls = () => {
           presseePar={tirDesktop}
           frames={!combatView.aiming && peutConstruireIci(a) ? posesDe(a.icon) : undefined}
           pulse={!combatView.aiming && stepExpects(a.id) && peutConstruireIci(a)}
-          periodMs={cadenceDe(a.id)} touche={touche('E')} />
+          periodMs={cadenceDe(a.id)} touche={touche('E')}
+          amount={combatView.aiming ? undefined : a.amount} />
       ) : (
         <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros} silent
           bas={0} droite={0} primaire disabled={!combatView.aiming}
@@ -1073,13 +1075,13 @@ function announceBackdrop(): Color4 {
  * when pressed is worse than an absent one, and the reference games put those states in
  * the world or in a line of text instead. What cannot be tapped now goes to `hint`.
  */
-function nextAction(): { id: string; label: string; action: () => void; icon?: string } | null {
+function nextAction(): { id: string; label: string; action: () => void; icon?: string; amount?: string } | null {
   const choix = choisirAction()
   verb.id = choix?.id ?? ''
   return choix
 }
 
-function choisirAction(): { id: string; label: string; action: () => void; icon?: string } | null {
+function choisirAction(): { id: string; label: string; action: () => void; icon?: string; amount?: string } | null {
   /*
     Almost everything here carries a picture, and the two exceptions are on purpose.
 
@@ -1095,10 +1097,18 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   if (slotView.active) {
     if (slotView.valid) return { id: 'poser-base', label: 'PLACE HERE', icon: ico('build'), action: placeHere }
     /*
-      Marqueur demande a la main et endroit refuse: le bouton reste vide, le rectangle rouge et
-      son motif disent deja tout. Marqueur allume tout seul et endroit refuse: on ne bloque
-      rien, la suite de la liste decide, sinon un joueur qui apparait sur le couloir du tapis
-      se retrouverait sans aucun bouton pour sa toute premiere seconde de jeu (2 Sep).
+      The hammer always builds (design page 1, point 2, 17 Nov 2026).
+
+      On a refused square under the marker that lit by itself, the press used to be BUILD
+      BASE, whose action switched that marker off; the next frame lit it again, and nothing
+      happened. Now the press sends the square the player stands on, as on a legal one, and
+      the server sets the base down on the nearest free square (`freeSpotNear` in
+      `placeBase`): the square the beacon already stands on. No press is ever dead.
+    */
+    if (slotView.auto && nearestFreeSquare() !== null) return { id: 'poser-base', label: 'BUILD BASE', icon: ico('build'), action: placeHere }
+    /*
+      A marker asked for by hand (moving a base) on a refused square: the button stays empty,
+      the red rectangle and its reason already say everything.
     */
     if (!slotView.auto) return null
   }
@@ -1179,6 +1189,15 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     keeps its clicks as well. Ordered by how deliberate the standing is: a belt or a convoy
     you walked to, an elevator you spam, a shelf you happen to face.
   */
+  /*
+    During the tutorial's collect step, COLLECT comes before what the place offers.
+
+    Right after shelving, the player faces the shelf, and the button said PICK UP: the press
+    the step was waiting for was hidden behind the one that undoes the step before it. While
+    the step lasts, the button is COLLECT with the pot growing on it (design page 1, point 3).
+    Once it is done, COLLECT goes back to the end of the list, below.
+  */
+  if (stepExpects('encaisser') && pendingShown() >= 1) return collectAction()
   const caisse = crateInReach()
   if (caisse !== null) {
     return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: ico('buy'), action: () => buyCrate(caisse.articleId) }
@@ -1231,15 +1250,28 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     signifiant chiffre a la place d'un verbe nu. Et la cagnotte est lisible en permanence sous
     le compteur, donc elle cesse d'etre un nombre que seul le serveur connaissait.
   */
-  if (theftView.pending >= 1) {
-    return {
-      id: 'encaisser',
-      label: `COLLECT ${formatIncome(theftView.pending)}`,
-      icon: ico('collect'),
-      action: collectPending
-    }
-  }
+  if (pendingShown() >= 1) return collectAction()
   return null
+}
+
+/*
+  COLLECT, with the pot written on the button.
+
+  The amount was decided for this button on 7 Sep and never reached the screen: no label is
+  drawn when an action has an icon, and this one has the coins. It is now a text of the scene
+  set on the disc itself, in both layouts, growing every second (`pendingShown`), so a shelved
+  piece is seen earning and the press has a reason (design page 1, point 3). In the balance's
+  format, like the line under the counter: the two numbers are the same number.
+*/
+function collectAction(): { id: string; label: string; action: () => void; icon: string; amount: string } {
+  const pot = pendingShown()
+  return {
+    id: 'encaisser',
+    label: `COLLECT ${formatIncome(pot)}`,
+    icon: ico('collect'),
+    amount: formatSolde(pot),
+    action: collectPending
+  }
 }
 
 /** What the player is waiting on, in one line, never as a control. */
@@ -1364,7 +1396,8 @@ function hint(): string {
   if (slotView.active && !slotView.valid) return slotView.reason
   // Une production arretee est la chose la plus actionnable qui soit, et l'ancienne version
   // ne la disait nulle part: c'est ce silence qui l'a fait retirer, pas la borne elle-meme.
-  if (cagnottePleine()) return 'your pot is full, collect it'
+  // Not "pot": testers read it as the fuser (17 Nov 2026). The lexicon page will set the words.
+  if (cagnottePleine()) return 'full: collect to keep earning'
   // Actionable: it says go home, and the crates are not doing anything until you do.
   if (boxView.stock.length > 0 && !peutOuvrirIci()) {
     return `${boxView.stock.length} box${boxView.stock.length > 1 ? 'es' : ''} waiting at your base`
@@ -2315,8 +2348,8 @@ const uiComponent = () => {
                 regle selon la taille (deux decimales sous dix, aucune sous mille, une au-dela),
                 donc la cagnotte semblait tantot precise tantot grossiere en montant.
               */
-              + (theftView.pending >= 1
-                  ? `   ${formatSolde(theftView.pending)} WAITING${cagnottePleine() ? ', FULL' : ''}`
+              + (pendingShown() >= 1
+                  ? `   ${formatSolde(pendingShown())} WAITING${cagnottePleine() ? ', FULL' : ''}`
                   : '')
           } />
       </UiEntity>

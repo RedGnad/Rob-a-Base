@@ -11,6 +11,7 @@ import {
   positionOf, displayName, addCrate, cratesOf, spend, crediter, baseDe, advanceQuest, pushQuests
 } from './plots'
 import { crate } from '../shared/loot-table'
+import { bankToCover } from './collect'
 
 type State = {
   id: number
@@ -116,7 +117,8 @@ export function runConvoys(): void {
       return
     }
     const price = Math.ceil(e.pricePaid * CONVOY_OUTBID)
-    if (!spend(a, price)) { refus(a, `you need ${price} coins`); return }
+    // A short balance is topped up from the pot when the pot covers it, as at the belt.
+    if (!bankToCover(a, price, 'to outbid') || !spend(a, price)) { refus(a, `you need ${price} coins`); return }
 
     // The outbid holder is refunded in full. Without it, buying early would be strictly
     // losing and nobody would ever buy before the belt's end.

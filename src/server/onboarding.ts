@@ -1,17 +1,10 @@
 import { room } from '../shared/messages'
 import { log } from './log'
 import {
-  addCrate, cratesOf, etapeTuto, avancerTuto,
+  addCrate, cratesOf, tutorialStepOf, advanceTutorial, displayName,
   playedTime, addPlayedTime, giftsTaken, markGiftTaken
 } from './plots'
-
-export const ETAPES = [
-  'Place your base',
-  'Open your box',
-  'Collect your coins',
-  'Buy a box from the belt',
-  'Leave a gift on another base'
-] as const
+import { TUTORIAL_STEPS, TutorialStep, stepIndex, stepAt } from '../shared/tutorial'
 
 /**
  * Un escalier de cadeaux, dont la premiere marche est a deux minutes.
@@ -57,20 +50,35 @@ export const GIFT_CRATE = GIFTS[GIFTS.length - 1].crate
 const sessionS = new Map<string, number>()
 const REPLI_S = 60
 
-export function pousserTuto(address: string): void {
-  const e = etapeTuto(address)
-  void room.send('tutorial', { etape: e, total: ETAPES.length }, { to: [address] })
+export function pushTutorial(address: string): void {
+  const e = tutorialStepOf(address)
+  void room.send('tutorial', { etape: e, total: TUTORIAL_STEPS.length }, { to: [address] })
 }
 
-export function tutoFait(address: string, etape: number): void {
-  if (etapeTuto(address) !== etape) return
-  avancerTuto(address)
-  pousserTuto(address)
+/*
+  A step done moves the player on, and the server log says where they now stand.
+
+  One line per step reached, so the next playtest reads the whole funnel from the log: who
+  placed, who opened, who shelved, who collected, who bought, and how long each took
+  (design page 1, point 6). A step done out of order does nothing, as before: the tutorial
+  is a sequence.
+*/
+export function stepDone(address: string, step: TutorialStep): void {
+  if (tutorialStepOf(address) !== stepIndex(step)) return
+  advanceTutorial(address)
+  pushTutorial(address)
+  const next = stepAt(tutorialStepOf(address))
+  log(next === null
+    ? `tutorial: ${displayName(address)} did '${step}', tutorial finished`
+    : `tutorial: ${displayName(address)} did '${step}', reached step ${stepIndex(next) + 1}/${TUTORIAL_STEPS.length} '${next}'`)
 }
 
-export function arrivee(address: string): void {
+/** On arrival, the step a player stands on, logged when the tutorial is not finished. */
+export function onArrival(address: string): void {
   sessionS.set(address, 0)
-  pousserTuto(address)
+  pushTutorial(address)
+  const step = stepAt(tutorialStepOf(address))
+  if (step !== null) log(`tutorial: ${displayName(address)} arrives at step ${stepIndex(step) + 1}/${TUTORIAL_STEPS.length} '${step}'`)
 }
 
 export function depart(address: string): void {

@@ -12,7 +12,7 @@ import { poseView } from './pose'
 import { TOAST } from './theme'
 import { setSfx, replay } from './sfx'
 import { cue } from './ui-kit'
-import { REVENGE_MS } from '../shared/schemas'
+import { REVENGE_MS, PENDING_CAP_S } from '../shared/schemas'
 
 export const theftView = {
   alertes: [] as Array<{ id: number; t: string; c: string; ne: number; until: number; keep: boolean }>,
@@ -386,7 +386,9 @@ export function setupTheft(): void {
     theftView.canRecover = d.canRecover
     theftView.floorPrice = d.floorPrice
     theftView.rechargeSec = d.rechargeSec
+    pendingGrowing = d.pending > theftView.pending
     theftView.pending = d.pending
+    pendingAt = Date.now()
     theftView.luckSec = d.luckSec
     theftView.luckPrice = d.luckPrice
     theftView.prestigeEats = d.prestigeEats
@@ -465,6 +467,10 @@ export function setupTheft(): void {
     */
     floatAmount(d.gain, false)
     playCash()
+    // The pot is empty from this instant: the button drops its amount now, not at the next wallet.
+    theftView.pending = 0
+    pendingAt = Date.now()
+    pendingGrowing = false
   })
 
   room.onMessage('offlineEarnings', (d) => {
@@ -521,9 +527,10 @@ export function setupTheft(): void {
   })
 
   room.onMessage('actionRejected', (d) => {
-    // Une pose refusee rend la main: le marqueur se rallume et le joueur peut choisir ailleurs.
+    // A refused placement hands the marker back: it lights again and the player can choose elsewhere.
     if (d.action === 'build') poseView.pending = false
-    alerter(d.reason.toUpperCase(), '#ff6b6b', TOAST.result)
+    // A base set down on the nearest free square is news, not an error: gold, and the marker stays out.
+    alerter(d.reason.toUpperCase(), d.action === 'built-nearby' ? '#ffd166' : '#ff6b6b', TOAST.result)
     console.log(`[CLIENT] refuse (${d.action}): ${d.reason}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })
 
@@ -554,6 +561,27 @@ export function setupTheft(): void {
 }
 
 export function collectPending(): void { sendOrHold(() => { void room.send('collect', {}) }) }
+
+/*
+  The pot as the central button shows it: the last wallet, plus each whole second since.
+
+  The wallet comes every second and a half, so the amount moved in uneven jumps, and the
+  design asks for a pot that visibly grows every second (design page 1, point 3). The server
+  adds a second of production once a second, and the wallet carries the pot rounded down, so
+  adding one second's worth per WHOLE second since the wallet arrived can only lag the
+  server's own number, never run ahead of it: a press on the amount shown never meets
+  "nothing to collect". Only while the pot is actually filling (it grew between the last two
+  wallets: not when the owner is idle, which stops production, nor at the ceiling), two
+  seconds at most, so a silent server does not make it climb on its own.
+*/
+let pendingAt = 0
+let pendingGrowing = false
+export function pendingShown(): number {
+  const rate = theftView.income * (1 + theftView.prime)
+  if (!pendingGrowing || rate <= 0 || pendingAt === 0) return theftView.pending
+  const seconds = Math.min(2, Math.floor((Date.now() - pendingAt) / 1000))
+  return Math.min(theftView.pending + rate * seconds, Math.max(theftView.pending, rate * PENDING_CAP_S))
+}
 export function cancelSteal(): void { theftView.stealing = false; void room.send('cancelSteal', {}) }
 
 export function steal(ownerId = '', slot = -1): void {

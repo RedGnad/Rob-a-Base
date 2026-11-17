@@ -5,7 +5,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
-import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason } from '../shared/schemas'
+import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason, freeSpotNear } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
 import { myClientAddress, theftView } from './theft'
@@ -39,6 +39,39 @@ export function togglePlacing(): void {
     const e = Transform.getMutableOrNull(label)
     if (e !== null) e.scale = Vector3.create(0, 0, 0)
   }
+}
+
+/*
+  The square a press of the hammer builds on: where the player stands when that is legal,
+  otherwise the nearest legal square, the one the beacon stands on (guidage.ts).
+
+  The same search, on the same snapped point and the same list of bases, as the server's
+  fallback in `placeBase`, so the base lands where the beacon said it would. Kept until the
+  player crosses a grid line or the bases move: the ring search is cheap but the button asks
+  for it several times a frame.
+*/
+let othersVersion = 0
+let freeKey = ''
+let freeSquare: { x: number; z: number } | null = null
+export function nearestFreeSquare(): { x: number; z: number } | null {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return null
+  const x = snapToGrid(t.position.x)
+  const z = snapToGrid(t.position.z)
+  const key = `${x},${z},${othersVersion}`
+  if (key !== freeKey) {
+    freeKey = key
+    freeSquare = freeSpotNear(x, z, SCENE_SIDE, obstacles())
+  }
+  return freeSquare
+}
+
+/** Every other base: my own is never in my way, since placing again moves it. */
+function obstacles(): Array<{ x: number; z: number }> {
+  const mine = myBasePoint()
+  return mine === null
+    ? autres
+    : autres.filter((a) => Math.abs(a.x - mine.x) > 0.01 || Math.abs(a.z - mine.z) > 0.01)
 }
 
 function myBasePoint(): { x: number; z: number } | null {
@@ -79,6 +112,7 @@ export function setupSlots(): void {
   room.onMessage('basePositions', (d) => {
     autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))
     basesRecues = true
+    othersVersion += 1
   })
 
   /*
@@ -138,11 +172,7 @@ export function setupSlots(): void {
     const x = snapToGrid(p.x)
     const z = snapToGrid(p.z)
 
-    const moi = myBasePoint()
-    const obstacles = moi === null
-      ? autres
-      : autres.filter((a) => Math.abs(a.x - moi.x) > 0.01 || Math.abs(a.z - moi.z) > 0.01)
-    const reason = invalidReason(x, z, SCENE_SIDE, obstacles)
+    const reason = invalidReason(x, z, SCENE_SIDE, obstacles())
     slotView.valid = reason === null
     slotView.reason = reason ?? ''
 

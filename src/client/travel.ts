@@ -33,24 +33,24 @@ export const travelView = {
 export function setupTravel(): void {
   engine.addSystem(() => { travelView.peutRentrer = maBase() !== null })
   setupGardeFou()
-  apparaitreChezSoi()
+  arriveHome()
 }
 
 /**
- * On apparait chez soi, une fois, a la connexion.
+ * You appear at home, once, on joining.
  *
- * C'est ce que fait la reference: chaque parcelle contient sa propre part `Spawn`, le serveur
- * y teleporte son proprietaire (`Plot:TeleportOwnerToSpawn`, code decompile lu le 1 Sep), et
- * son wiki le dit en une ligne, "You spawn at your base". La raison tient au jeu: la base est
- * ce qui produit, ce qui se fait voler, et le seul endroit ou l'on ouvre une caisse. Arriver
- * ailleurs commence chaque session par une marche.
+ * That is what the reference does: each plot holds its own `Spawn` part and the server
+ * teleports its owner there (`Plot:TeleportOwnerToSpawn`, decompiled code read on 1 Sep), and
+ * its wiki says it in one line, "You spawn at your base". The reason is the game's: the base is
+ * what produces, what gets robbed, and the only place a crate opens. Arriving anywhere else
+ * starts every session with a walk.
  *
- * Un joueur qui n'a pas encore de base garde le point d'apparition de la scene: il n'a pas de
- * chez-soi ou l'send, et c'est la que le marqueur de pose l'attend.
+ * A player with no base yet is set down on a free square, facing it, so their first frame is
+ * the place they are about to build on (design page 1, point 1, 17 Nov 2026).
  *
- * Une seule fois, et seulement dans les vingt premieres secondes: la base arrive du serveur
- * quelques instants apres l'entree, alors on l'attend, mais on ne teleporte jamais quelqu'un
- * qui a commence a jouer.
+ * Once only. An owner is taken home within twenty seconds of the wallet and never after
+ * walking; a player with no base is always set down, unless they have already walked onto a
+ * legal square themselves.
  */
 /*
   A newcomer is set down in the emptiest eighth of the field.
@@ -83,87 +83,104 @@ function arrivalTarget(p: { x: number; z: number }, autres: Array<{ x: number; z
   return { x: CENTER.x + ARRIVAL_A * Math.cos(angle), z: CENTER.z + ARRIVAL_B * Math.sin(angle) }
 }
 
-function apparaitreChezSoi(): void {
-  let attente = 0
-  let fait = false
-  let depart: Vector3 | null = null
+/*
+  Where the camera looks when a newcomer is set down on their square: across it, away from the
+  belt. The square is where they stand, so "facing it" means the avatar on the green marker
+  with the beacon over it and the open field beyond, and the belt behind the camera: the first
+  moving thing in the frame is the beacon, not the crates (design page 1, point 1, "the eye
+  goes to movement before text", core-loop-and-ftue.md).
+*/
+const ARRIVAL_LOOK_M = 10
+function lookAcross(square: { x: number; z: number }): Vector3 {
+  const dx = square.x - CENTER.x
+  const dz = square.z - CENTER.z
+  const d = Math.hypot(dx, dz)
+  // A square at the very centre cannot be legal, but a direction is owed all the same: north.
+  const ux = d < 0.01 ? 0 : dx / d
+  const uz = d < 0.01 ? 1 : dz / d
+  return Vector3.create(square.x + ux * ARRIVAL_LOOK_M, 1, square.z + uz * ARRIVAL_LOOK_M)
+}
+
+function arriveHome(): void {
+  let wait = 0
+  let settled = false
+  let start: Vector3 | null = null
   /*
     The loading picture stays up until this is settled (ui.tsx, `loadingShown`): the one move
     of the arrival happens under it, and the player opens their eyes already where they stand,
     never watching themselves jump (owner, 10 Sep).
   */
-  const fini = (): void => { fait = true; loadingView.placed = true }
+  const settle = (): void => { settled = true; loadingView.placed = true }
   engine.addSystem((dt: number) => {
-    if (fait) return
+    if (settled) return
     /*
-      Poser sa base n'est pas arriver chez soi.
+      Placing your base is not coming home.
 
-      Une base POSEE arrive du serveur par le meme chemin qu'une base RESTAUREE, alors ce
-      systeme, qui attend vingt secondes qu'une base apparaisse, prenait l'une pour l'autre et
-      teleportait a sa porte le joueur qui venait juste de choisir sa place (proprietaire,
-      2 Sep, "j'ai pose ma base et j'ai eu MOVED tout de suite"). Il se tient deja exactement
-      ou il a voulu.
+      A PLACED base arrives from the server by the same path as a RESTORED one, so this system,
+      which waits for a base to appear, took one for the other and teleported to their door the
+      player who had just chosen their spot (owner, 2 Sep, "j'ai pose ma base et j'ai eu MOVED
+      tout de suite"). They already stand exactly where they wanted.
     */
-    if (poseView.pending) { fini(); return }
+    if (poseView.pending) { settle(); return }
     /*
-      The twenty seconds run from the server's answer, not from the scene's first frame.
-
-      A cold server answers after fifteen seconds and a phone loads for longer still: the
-      window had closed before the wallet came, and the newcomer was left on the spawn square,
-      in the crowded north, with a red ghost and an inert hammer (owner's phone, 10 Sep). The
-      rule that nobody who has begun to play is teleported is kept by another measure: a
-      player who has walked three metres from where they appeared is playing and is left be.
-      A jump of thirty metres or more is the client placing the avatar, not a walk: it resets
-      the mark instead of counting.
+      How far the player has walked from where they appeared. A jump of thirty metres or more
+      is the client placing the avatar, not a walk: it resets the mark instead of counting.
     */
+    let walked = false
     if (Transform.has(engine.PlayerEntity)) {
       const p = Transform.get(engine.PlayerEntity).position
-      if (depart === null) depart = Vector3.create(p.x, p.y, p.z)
+      if (start === null) start = Vector3.create(p.x, p.y, p.z)
       else {
-        const d = Vector3.distance(p, depart)
-        if (d >= 30) depart = Vector3.create(p.x, p.y, p.z)
-        else if (d > 3) { fini(); return }
+        const d = Vector3.distance(p, start)
+        if (d >= 30) start = Vector3.create(p.x, p.y, p.z)
+        else if (d > 3) walked = true
       }
     }
     if (!theftView.walletRecu) return
-    attente += dt
-    if (attente > 20) { fini(); return }
-    const chez = maBase()
-    if (chez === null) {
-      /*
-        A newcomer is set down somewhere they can actually build.
 
-        The scene's spawn point is a good spot by construction: it sits 24 m clear of the belt
-        and outside the plaza's reserved ellipse (checked against `invalidReason`, 6 Sep). What
-        it cannot know is where the OTHER bases are, and the field fills up: a player arriving
-        next to a neighbour's wall met a red ghost and an inert hammer as their first frame,
-        with no way to read why. So on a first arrival, once the server has said this player
-        owns nothing, an occupied spawn is nudged to the nearest legal square. Only then, only
-        once, and never for somebody who already has a base to go home to.
+    if (theftView.basePosee) {
+      /*
+        An owner is taken home once, and only in the first twenty seconds after the wallet:
+        the base arrives a moment after it, so it is waited for, but somebody who has begun to
+        play (three metres walked) is never teleported.
       */
-      if (!theftView.walletRecu || theftView.basePosee) return
-      if (!Transform.has(engine.PlayerEntity)) return
-      // The other bases travel on their own message (`basePositions`, every 2.5 s), not with
-      // the wallet. Settling before it has come once would read an empty field, call the spawn
-      // square legal with a base standing on it, and skip the emptiest wedge for good (the
-      // regression review of 11 Sep). The 20 s window above stays the fallback.
-      if (!basesConnuesRecues()) return
-      const p = Transform.get(engine.PlayerEntity).position
-      const autres = basesConnues()
-      const cible = arrivalTarget(p, autres)
-      const surPlace = cible.x === p.x && cible.z === p.z
-      // Staying put IS a settled arrival. Without `fini()` here the loading picture waited for
-      // the 20 s window (or the 30 s ceiling) on the one path a first visitor to an empty
-      // field takes: their own square is legal, nothing moves, nothing said so (audit, 11 Sep).
-      if (surPlace && invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, autres) === null) { fini(); return }
-      const libre = freeSpotNear(cible.x, cible.z, SCENE_SIDE, autres)
-      if (libre === null) { fini(); return }
-      fini()
-      moveTo(surPlace ? 'arrival on a free square' : 'arrival in the emptiest wedge', Vector3.create(libre.x, 0, libre.z), Vector3.create(CENTER.x, 1.6, CENTER.z))
+      if (walked) { settle(); return }
+      wait += dt
+      if (wait > 20) { settle(); return }
+      const home = maBase()
+      if (home === null) return
+      settle()
+      moveTo('apparition', home, Vector3.create(CENTER.x, 1.6, CENTER.z))
       return
     }
-    fini()
-    moveTo('apparition', chez, Vector3.create(CENTER.x, 1.6, CENTER.z))
+
+    /*
+      Every player without a base is set down on a free square, facing it (design page 1,
+      point 1, founder's request of 17 Nov 2026).
+
+      This move used to be skipped once the player had walked three metres, or twenty seconds
+      after the wallet, and on the live playtest some newcomers started in the belt corridor:
+      the moving crates drew them to the belt, they tried to buy with nothing, and did not
+      build. Neither skip applies to a player with no base any more. The one exception is a
+      player who has walked onto a legal square by themselves: they already stand where the
+      rule wants them, and moving them would only undo their own choice.
+
+      It waits for where the OTHER bases stand, which travels on its own message (every 2.5 s),
+      not with the wallet: settling before it would read an empty field and call an occupied
+      square free (regression review, 11 Sep).
+    */
+    if (!Transform.has(engine.PlayerEntity)) return
+    if (!basesConnuesRecues()) return
+    const p = Transform.get(engine.PlayerEntity).position
+    const others = basesConnues()
+    const onLegalSquare = invalidReason(snapToGrid(p.x), snapToGrid(p.z), SCENE_SIDE, others) === null
+    if (walked && onLegalSquare) { settle(); return }
+    const target = arrivalTarget(p, others)
+    const free = freeSpotNear(target.x, target.z, SCENE_SIDE, others)
+    settle()
+    if (free === null) return
+    const stayed = target.x === p.x && target.z === p.z
+    moveTo(stayed ? 'arrival on a free square' : 'arrival in the emptiest wedge', Vector3.create(free.x, 0, free.z), lookAcross(free))
   })
 }
 

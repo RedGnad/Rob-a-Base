@@ -5,18 +5,25 @@ const TOTAL = POIDS.reduce((a, b) => a + b, 0)
 export { PRODUCTION_PER_RARITY as INCOME_PER_RARITY } from '../shared/economy'
 
 
-export function rollCrate(crateId: number): number {
+/*
+  `minRarity` drops every rarity below it from the roll and keeps the others in their own
+  proportions: a Good Box floored at Uncommon still peaks on Uncommon, it only stops rolling
+  Commons. Used once per account, for the welcome crate (see `takeFirstCrateFloor`).
+*/
+export function rollCrate(crateId: number, minRarity = 0): number {
   // Index by TIER, never by crate id: a themed crate keeps its tier's rarity odds, and
   // its id sits past the end of this table.
   const tier = crate(crateId).tier
-  const poids = CRATE_WEIGHTS[Math.max(0, Math.min(tier, CRATE_WEIGHTS.length - 1))]
-  const total = poids.reduce((a, b) => a + b, 0)
+  const weights = CRATE_WEIGHTS[Math.max(0, Math.min(tier, CRATE_WEIGHTS.length - 1))]
+    .map((w, i) => (i < minRarity ? 0 : w))
+  const total = weights.reduce((a, b) => a + b, 0)
   let n = Math.random() * total
-  for (let i = 0; i < poids.length; i++) {
-    n -= poids[i]
+  for (let i = 0; i < weights.length; i++) {
+    if (weights[i] <= 0) continue
+    n -= weights[i]
     if (n <= 0) return i
   }
-  return 0
+  return Math.min(minRarity, weights.length - 1)
 }
 
 /**

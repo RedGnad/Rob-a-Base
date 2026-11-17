@@ -15,6 +15,7 @@ import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsFor, QuestType } from '..
 import { hasSomethingToRecover } from './theft'
 import { room } from '../shared/messages'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
+import { TUTORIAL_VERSION, stepIndex } from '../shared/tutorial'
 
 const BASE_KEY = (a: string) => `base:${a}`
 const PLAYER_KEY = 'profile'
@@ -101,6 +102,10 @@ type Profil = {
   given?: number
   received?: number
   tuto?: number
+  /** Which version of `TUTORIAL_STEPS` the index in `tuto` was counted against. */
+  tutorialVersion?: number
+  /** Set on a brand-new account only: its first crate opened cannot roll a Common. */
+  firstCrateFloor?: boolean
   questDay?: number
   /*
     Les trois quetes tirees pour la journee, ECRITES au moment du tirage.
@@ -785,6 +790,8 @@ export async function welcome(address: string): Promise<void> {
     rebirths: stocke?.rebirths ?? 0,
     alerts: stocke?.alerts ?? []
   }
+  // A brand-new account: its welcome crate rolls with a floor on Common (see `takeFirstCrateFloor`).
+  if (stocke === null) profile.firstCrateFloor = true
   // Arriver, c'est agir: la production part tout de suite, la regle anti-AFK compte depuis ici.
   profile.agiA = Date.now()
   profiles.set(address, profile)
@@ -2184,24 +2191,59 @@ export function crediter(address: string, montant: number): void {
   dirtyProfiles.add(address)
 }
 
-export function etapeTuto(address: string): number {
+/*
+  The index of the tutorial step this player stands on, in `TUTORIAL_STEPS`.
+
+  A profile counted against the five-step list of version 1 (no collect step) is moved onto
+  the six-step list once: an index of 3 or more meant buy, steal or finished, and each of
+  those sits one place further now. A player who was on buy stays on buy; a player who had
+  finished stays finished. Players below 3 had not reached collect and go through it.
+
+  A profile with no index at all is placed from what it owns, as before: a base, then an
+  item, then coins, which only a collect or a sale can have put there.
+*/
+export function tutorialStepOf(address: string): number {
   const p = profiles.get(address)
   if (!p) return 0
-  if (p.tuto !== undefined) return p.tuto
-  let e = 0
-  if (bases.has(address)) e = 1
-  if (occupe(p.items) > 0 || (p.itemsFound ?? 0) > 0) e = 2
-  if (p.coins > 0) e = 3
+  if (p.tuto !== undefined) {
+    if (p.tutorialVersion !== TUTORIAL_VERSION) {
+      if (p.tuto >= stepIndex('collect')) p.tuto += 1
+      p.tutorialVersion = TUTORIAL_VERSION
+      dirtyProfiles.add(address)
+    }
+    return p.tuto
+  }
+  let e = stepIndex('place')
+  if (bases.has(address)) e = stepIndex('open')
+  if (occupe(p.items) > 0 || (p.itemsFound ?? 0) > 0) e = stepIndex('shelve')
+  if (p.coins > 0) e = stepIndex('buy')
   p.tuto = e
+  p.tutorialVersion = TUTORIAL_VERSION
   dirtyProfiles.add(address)
   return e
 }
 
-export function avancerTuto(address: string): void {
+export function advanceTutorial(address: string): void {
   const p = profiles.get(address)
   if (!p) return
-  p.tuto = (p.tuto ?? 0) + 1
+  p.tuto = tutorialStepOf(address) + 1
   dirtyProfiles.add(address)
+}
+
+/*
+  A brand-new account's first crate never rolls a Common (design page 1, point 5).
+
+  The welcome Good Box rolled a Common one time in five, and with that one item the first
+  Basic Box took about 34 minutes of production instead of about 5 for an Uncommon. The floor
+  is a flag written on the profile when it is created, and spent by the first opening: an
+  account that existed before this rule never carries it, and no account carries it twice.
+*/
+export function takeFirstCrateFloor(address: string): boolean {
+  const p = profiles.get(address)
+  if (!p || p.firstCrateFloor !== true) return false
+  p.firstCrateFloor = undefined
+  dirtyProfiles.add(address)
+  return true
 }
 
 /** Ce que la cagnotte contient a cet instant, arrondi a la piece. */
@@ -2352,7 +2394,7 @@ export function startPlots(): void {
         // of a given rarity, and a button that offers what will be refused is a broken button.
         bestRarity: occupe(p.items) === 0 ? -1 : Math.max(...p.items.filter((c) => c !== VIDE).map(rarityOf)),
         multiplier: incomeMultiplier(prestige),
-        tutoEtape: etapeTuto(address),
+        tutoEtape: tutorialStepOf(address),
         welcomed: p.welcomed === true,
         sentries: p.sentries ?? 0,
         sentryPrice: sentryPrice(address),

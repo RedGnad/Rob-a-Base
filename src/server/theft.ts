@@ -13,14 +13,15 @@ import {
 advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, setSfxOff, setWelcomed, reclamerQuotidienne, declareName
 } from './plots'
 import { dropAt } from './coins'
-import { tutoFait } from './onboarding'
+import { stepDone } from './onboarding'
+import { bankPot } from './collect'
 import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains, setLandedHook, setHomeHook } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending, declarerVolEnCours,
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, declarerVolEnCours,
   WORLD_RESET_MARK
 } from './plots'
 
@@ -439,7 +440,7 @@ export function startTheft(): void {
       if (payback) pushRevenges(thief)
       compterVol(thief)
       // The last tutorial step is the game's core verb: a theft that reached the hands (27 Aug).
-      tutoFait(thief, 4)
+      stepDone(thief, 'steal')
       advanceQuest(thief, 'voler')
       noter('vol', displayName(thief), b.name, r)
 
@@ -547,9 +548,7 @@ export function startTheft(): void {
   room.onMessage('collect', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    const gain = collectPending(a)
-    if (gain <= 0) { refus(a, 'collect', 'nothing to collect'); return }
-    void room.send('collected', { gain }, { to: [a] })
+    if (bankPot(a, 'button') <= 0) refus(a, 'collect', 'nothing to collect')
   })
 
   room.onMessage('cancelSteal', (_d, ctx) => {
@@ -581,10 +580,14 @@ export function startTheft(): void {
     }
     const r = placeBase(a, d.x, d.z)
     if (!r.ok) { refus(a, 'build', r.reason ?? 'refused'); return }
-    // Une base qui atterrit ailleurs que la ou on a appuye doit le DIRE, sinon le joueur la
-    // cherche. Le meme canal que les refus: c'est une information, pas une erreur.
-    if (r.reason !== undefined) refus(a, 'build', r.reason)
-    tutoFait(a, 0)
+    /*
+      A base that lands somewhere other than where the press was has to SAY so, or the player
+      looks for it. Same channel as the refusals, under its own action name: since the hammer
+      builds on a refused square too (design page 1, point 2), this is the normal answer to that
+      press, and the client must not read it as a refusal that hands the marker back.
+    */
+    if (r.reason !== undefined) refus(a, 'built-nearby', r.reason)
+    stepDone(a, 'place')
   })
 
   timers.setInterval(() => {
