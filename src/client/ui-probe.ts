@@ -7,7 +7,8 @@
   them, at the top of the HUD render, and overwrites what it needs. See UI_PROBE in theme.ts.
 */
 import { UI_PROBE } from './theme'
-import { alerter, pushToFeed, theftView, hiddenClock } from './theft'
+import { alerter, alerterEnFile, pushToFeed, theftView, hiddenClock, myClientAddress } from './theft'
+import { awayView, revengeView } from './away'
 import { TOAST } from './theme'
 import { chooseTab, closeMenu } from './menu'
 import { welcomeView } from './welcome'
@@ -18,6 +19,14 @@ import { gearView } from './gear'
 import { carryView } from './carry'
 import { boxView } from './box'
 import { eventView } from './events'
+import { crateBurst, stealBurst, fuseBurst, zapBurst, startRushAir } from './vfx'
+import { revealItem } from './box'
+import { engine, Entity, Transform, MeshRenderer } from '@dcl/sdk/ecs'
+import { sentryLight } from './lights'
+import { FLOOR_HEIGHT, EVENT_THEMES } from '../shared/schemas'
+import { caisse } from './toy'
+import { crate, rarity } from '../shared/loot-table'
+import { Quaternion, Vector3 } from '@dcl/sdk/math'
 
 const HOLD_MS = 3_600_000
 /** What the timeline is doing right now, drawn big on the HUD so a capture explains itself. */
@@ -128,8 +137,159 @@ function menuCycle(): void {
   }
 }
 
+/*
+  The away report as a night's return shows it: the longest name the board has shown, a theft
+  with its revenge open, a sentry, a trap, and a gift past the three rows. The revenge points
+  at the player's own base, the one base a solo preview always has, so the button's journey
+  can be pressed and watched. The two theft toasts wait behind the report, as they would.
+*/
+function awayProbe(): void {
+  const me = myClientAddress()
+  if (seeded || me === '') return
+  seeded = true
+  const now = Date.now()
+  revengeView.list = [{ id: me, name: 'Cyrus Nightwing', until: now + 7.9 * 3_600_000 }]
+  awayView.lines = [
+    { kind: 3, name: 'Mira', id: '', code: 203 },
+    { kind: 2, name: 'Cyrus Nightwing', id: '', code: -1 },
+    { kind: 4, name: 'Mira', id: 'mira', code: 302 },
+    { kind: 1, name: 'Cyrus Nightwing', id: '', code: -1 },
+    { kind: 0, name: 'Cyrus Nightwing', id: me, code: 411 }
+  ]
+  awayView.gain = 128_400
+  awayView.capped = true
+  awayView.open = true
+  alerter('STOLEN BY CYRUS NIGHTWING  ·  sealed 8h', '#ff4dd2', HOLD_MS)
+  alerterEnFile('REVENGE OPEN ON CYRUS NIGHTWING  ·  8h', '#ff6b6b', HOLD_MS)
+}
+
+/*
+  The particle moments, one every four seconds, on the wall clock so a capture can be timed to
+  a step (step n fires when the epoch in ms reaches a multiple of 4000): the crate ladder from
+  Basic to Mythic, the ten themed crates, a theft for each rarity in front of the player, a
+  fusion for each rarity at the machine, a sentry hit, then a real Legendary Gold reveal
+  through the fuser's path. Each step is logged.
+*/
+const VFX_STEP_MS = 4000
+const VFX_CRATES = [0, 1, 2, 3, 7, 8, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15]
+let vfxStep = -1
+function vfxProbe(): void {
+  const total = VFX_CRATES.length + 7 + 5 + 2
+  const step = Math.floor(Date.now() / VFX_STEP_MS) % total
+  if (step === vfxStep) return
+  vfxStep = step
+  const me = Transform.getOrNull(engine.PlayerEntity)
+  if (me === null) return
+  const ahead = (d: number, up: number): Vector3 => {
+    const f = Vector3.rotate(Vector3.create(0, 0, d), me.rotation)
+    return Vector3.create(me.position.x + f.x, me.position.y + up, me.position.z + f.z)
+  }
+  let k = step
+  if (k < VFX_CRATES.length) {
+    crateBurst(VFX_CRATES[k], ahead(2.6, 1.1))
+    console.log(`[PROBE] vfx ${step}: crate ${crate(VFX_CRATES[k]).name}`)
+    return
+  }
+  k -= VFX_CRATES.length
+  if (k < 7) {
+    stealBurst(k, rarity(k).color, ahead(2.2, 1.2))
+    console.log(`[PROBE] vfx ${step}: steal ${rarity(k).name}`)
+    return
+  }
+  k -= 7
+  if (k < 5) {
+    fuseBurst(k + 2, rarity(k + 2).color)
+    console.log(`[PROBE] vfx ${step}: fuse ${rarity(k + 2).name}`)
+    return
+  }
+  k -= 5
+  if (k === 0) { zapBurst(ahead(2.2, 1.1)); console.log(`[PROBE] vfx ${step}: zap`) }
+  if (k === 1) { revealItem(401); console.log(`[PROBE] vfx ${step}: reveal`) }
+}
+
+/*
+  The reveal ladder: a plain piece of each rarity, Common to Secret, one every four seconds on the
+  wall clock (step n is rarity n), so the seven reveals can be heard and captured side by side.
+*/
+let revealStep = -1
+function revealProbe(): void {
+  const step = Math.floor(Date.now() / VFX_STEP_MS) % 7
+  if (step === revealStep) return
+  revealStep = step
+  revealItem(step * 100)
+  console.log(`[PROBE] reveal ${step}: ${rarity(step).name}`)
+}
+
+/*
+  The air of each rush in turn, twenty seconds each, on the wall clock like the bursts. Only
+  the particles: the floor and the chip stay as they are, so a capture shows what this adds.
+*/
+const AIR_STEP_MS = 20000
+let airStep = -1
+function airProbe(): void {
+  const step = Math.floor(Date.now() / AIR_STEP_MS) % EVENT_THEMES.length
+  if (step === airStep) return
+  airStep = step
+  startRushAir(EVENT_THEMES[step].theme)
+  console.log(`[PROBE] air ${step}: ${EVENT_THEMES[step].name}`)
+}
+
+/*
+  Every crate on the plaza, seen from its latch side: the tier ladder in the back row, cheapest
+  on the left, and the ten themed crates in front.
+*/
+let cratesLaid = false
+function cratesProbe(): void {
+  if (cratesLaid) return
+  cratesLaid = true
+  const rows = [[0, 1, 2, 3, 7, 8], [4, 5, 6, 9, 10, 11, 12, 13, 14, 15]]
+  rows.forEach((ids, r) => ids.forEach((id, i) => {
+    const size = crate(id).size
+    const e = engine.addEntity()
+    Transform.create(e, { position: Vector3.create(106 - i * 2.4, 0.6 + size / 2, 104 + r * 3), scale: Vector3.create(size, size, size) })
+    caisse(e, id)
+  }))
+}
+
+/*
+  The sentry light pool without a second player: three cones in a base root turned half a turn,
+  the way a north base faces the belt. Two stand on one storey beside the player and one a storey
+  up, so the pool should light the two on the player's storey. After six seconds the nearer one
+  is disarmed and its light should move to the cone upstairs.
+*/
+let lightCones: Entity[] = []
+let lightStep = -1
+function lightsProbe(): void {
+  const t = Math.floor(Date.now() / 6000)
+  if (lightCones.length === 0) {
+    lightStep = t
+    const root = engine.addEntity()
+    Transform.create(root, { position: Vector3.create(110, 0, 100), rotation: Quaternion.fromEulerDegrees(0, 180, 0) })
+    lightCones = [Vector3.create(2, 0.5, 0), Vector3.create(-3, 0.5, 2), Vector3.create(2, 0.5 + FLOOR_HEIGHT, 0)].map((at) => {
+      const e = engine.addEntity()
+      Transform.create(e, { parent: root, position: at })
+      MeshRenderer.setCylinder(e, 0.15, 0.3)
+      sentryLight(e, true)
+      return e
+    })
+    console.log('[PROBE] lights: cones at world (108,0.5,100) (113,0.5,98) (108,' + (0.5 + FLOOR_HEIGHT) + ',100)')
+    return
+  }
+  if (t > lightStep && lightCones[0] !== undefined) {
+    lightStep = Infinity
+    sentryLight(lightCones[0], false)
+    console.log('[PROBE] lights: first cone disarmed')
+  }
+}
+
 export function applyUiProbe(): void {
   if (UI_PROBE === '') return
+  if (UI_PROBE === 'lights') { lightsProbe(); return }
+  if (UI_PROBE === 'crates') { cratesProbe(); return }
+  if (UI_PROBE === 'vfx') { vfxProbe(); return }
+  if (UI_PROBE === 'reveal') { revealProbe(); return }
+  if (UI_PROBE === 'air') { airProbe(); return }
+  if (UI_PROBE === 'away') { awayProbe(); return }
   if (UI_PROBE === 'timeline') { timeline(); return }
   if (UI_PROBE === 'menu') { menuCycle(); return }
   if (!seeded) {

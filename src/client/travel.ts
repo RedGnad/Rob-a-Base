@@ -215,6 +215,28 @@ export function rentrer(): void {
   moveTo('retour-base', p, Vector3.create(p.x, FLOOR_HEIGHT, p.z - 4))
 }
 
+/*
+  To the door of somebody else's base: the revenge button's journey (away.tsx).
+
+  The same landing as going home, in front of the door, and the camera on the building: the
+  player arrives facing the shelves they came for. GO HOME and TO BELT already move the
+  player in one tap, so this is the game's own way of travelling, not a new power.
+*/
+export function goToBaseOf(ownerId: string, name: string): void {
+  const id = ownerId.toLowerCase()
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    if (p.ownerId.toLowerCase() !== id) continue
+    const t = Transform.getOrNull(e)
+    if (t === null) break
+    const o = orientToBase(t.position.z, 0, BASE_SIDE / 2 + 1.5)
+    cue('lift.wav', 0.55)
+    moveTo('revenge', Vector3.create(t.position.x + o.dx, 0, t.position.z + o.dz),
+      Vector3.create(t.position.x, FLOOR_HEIGHT, t.position.z))
+    return
+  }
+  alerter(`${name.toUpperCase()} HAS NO BASE STANDING`, '#ffd166', TOAST.result)
+}
+
 export function goToBelt(): void {
   const p = Vector3.create(CENTER.x, 0, CENTER.z - 4.5)
   cue('lift.wav', 0.55)

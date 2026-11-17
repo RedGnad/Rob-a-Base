@@ -206,7 +206,7 @@
   "authoritativeMultiplayer": true,
   "creator": "0x981F6E0Ea94f45fDB8ee7680DC862212E3C720e0",
   "skyboxConfig": {},
-  "landscapeTerrain": true,
+  "landscapeTerrain": false,
   "source": {
     "origin": "creator-hub",
     "projectId": "5b9b0443-928e-4e4e-8db7-2d51ebc19a10"

@@ -966,6 +966,14 @@ const caisses = new Map<Entity, Caisse>()
   cinq objets par caisse. Ce qui reste: le disque de lumiere sous les caisses Rare et plus,
   qui lui respire toujours, et la chauffe pendant le cassage.
 */
+/**
+ * How far a crate's model reaches above its centre, in its own units, by tier: the lid with its
+ * planks or straps is 0.53, the Legendary's rounded lid 0.66 and the Mythic's crown 0.75. The
+ * same table as `TOP` in `tools/model/build-crates.py`, which checks it against every crate it builds.
+ */
+const CRATE_TOP = [0.53, 0.53, 0.53, 0.56, 0.66, 0.75]
+export function crateTop(crateId: number): number { return CRATE_TOP[crate(crateId).tier] ?? 0.52 }
+
 export function caisse(racine: Entity, crateId: number, chauffe = 0, avecHalo = true): void {
   const c = crate(crateId)
   const theme = c.theme >= 0 ? mutation(c.theme).color : null

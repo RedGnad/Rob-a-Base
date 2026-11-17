@@ -3,6 +3,7 @@ import { holster } from './combat'
 import { engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers, GltfContainer, TextShape, Billboard, BillboardMode } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { replay } from './sfx'
+import { crateBurst } from './vfx'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
@@ -90,9 +91,12 @@ let sonBurst: Entity
 let sonLand: Entity
 let sonMutation: Entity
 let sonReveal: Entity
+let sonRevealUncommon: Entity
 let sonRevealRare: Entity
 let sonRevealBig: Entity
+let sonRevealLegendary: Entity
 let sonRevealHuge: Entity
+let sonRevealSecret: Entity
 /** How many chips the opening throws. A single blow throws a handful, see `frapper`. */
 const ECLATS = 14
 let sonTic: Entity
@@ -137,7 +141,9 @@ export const REEL_WIN = 38
  * It lives here rather than in the interface because the 3D piece keys on the same beat, and
  * two copies of one number is how a picture and an object end up arriving apart.
  */
-export function revealHold(rarete: number): number { return rarete >= 5 ? 340 : rarete >= 3 ? 220 : 0 }
+// The risers of `tools/sounds/build-reveal-tiers.py`: Epic 0.22 s, Legendary 0.28, Mythic 0.34, Secret 0.38.
+const RISER_MS = [0, 0, 0, 220, 280, 340, 380]
+export function revealHold(rarete: number): number { return RISER_MS[Math.max(0, Math.min(RISER_MS.length - 1, rarete))] }
 const REEL_BASE_S = 3.0
 const REEL_PER_RARITY_S = 0.55
 
@@ -230,11 +236,18 @@ export function setupBox(): void {
     bring each file's peak to -2.6 dBFS or lower, where they were reaching -1.6: the standard
     (ASWG-R001, portable titles) caps true peak at -1 dBTP, and a phone speaker is exactly
     where inter-sample peaks turn into harshness. To move the whole family, scale all four.
+
+    Three steps joined on 3 Nov, measured the same way and placed on the same climb: Uncommon
+    -19.0, Legendary -16.7, Secret -15.8 LUFS. Secret is held at 0.80, which keeps its peak at
+    -2.7 dBFS; it still sits above Mythic. Seven files now, scale all seven.
   */
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
+  sonRevealUncommon = emetteur('assets/sounds/reveal-uncommon.wav', 0.79)
   sonRevealRare = emetteur('assets/sounds/reveal-rare.wav', 0.6)
   sonRevealBig = emetteur('assets/sounds/reveal-big.wav', 0.55)
+  sonRevealLegendary = emetteur('assets/sounds/reveal-legendary.wav', 0.62)
   sonRevealHuge = emetteur('assets/sounds/reveal-huge.wav', 0.8)
+  sonRevealSecret = emetteur('assets/sounds/reveal-secret.wav', 0.8)
   sonTic = emetteur('assets/sounds/reel.wav', 0.6)
   sonTic2 = emetteur('assets/sounds/reel.wav', 0.6)
   // Le refus se dit au son, pas au texte: un etage plein est une chose qu'on entend une fois
@@ -450,7 +463,7 @@ export function frapper(): void {
     boxView.phase = 'wait'
     boxView.phaseJusqua = Date.now() + 6000
     const t = Transform.getOrNull(crateMesh)
-    if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color, t.position.y - b.size / 2)
+    if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), boxView.typeEnCours, b.color, t.position.y - b.size / 2)
     storeCrate()
     const tier = boxView.typeEnCours
     sendOrHold(() => { void room.send('openBox', { crateTier: tier }) })
@@ -491,11 +504,12 @@ let lastPosition: Vector3 | null = null
   a Secret sounded exactly like a Common. The genre's answer is that the higher the pull, the
   the sound CHANGES with the step, not only its length: a wooden blip for the small pulls, a
   bell for a Rare, a riser and a lasting ring for Epic and Legendary, and for the top a riser,
-  a low impact and a held chord (tools/sounds/build-reveal-tiers.py has the reasoning). Four
-  clips for seven rarities, and the ear names the tier before the eye reads it.
+  a low impact and a held chord (tools/sounds/build-reveal-tiers.py has the reasoning). One
+  clip per rarity since 3 Nov: four served seven, and three neighbouring pairs sounded alike.
 */
 function jouerReveal(rarete: number): void {
-  jouer(rarete >= 5 ? sonRevealHuge : rarete >= 3 ? sonRevealBig : rarete >= 2 ? sonRevealRare : sonReveal)
+  const ladder = [sonReveal, sonRevealUncommon, sonRevealRare, sonRevealBig, sonRevealLegendary, sonRevealHuge, sonRevealSecret]
+  jouer(ladder[Math.max(0, Math.min(ladder.length - 1, rarete))])
   // A mutated piece adds one layer over that sting, the same layer for all fourteen: the
   // ladder the ear reads stays the rarity's, and the shimmer says this one is not plain.
   if (boxView.resultatMutation > 0) jouer(sonMutation)
@@ -563,10 +577,26 @@ function projeter(center: Vector3, color: string, sol: number, combien: number,
   }, vie)
 }
 
-function exploser(center: Vector3, color: string, sol: number): void {
+function exploser(center: Vector3, crateId: number, color: string, sol: number): void {
   lastPosition = center
   jouer(sonBurst)
+  /*
+    The release gets its peak (3 Nov). Each of the three blows had a flash and the burst that
+    pays them off had none, so the gesture was louder than the result. Feedback belongs on the
+    result (Kao et al., CHI 2024: an effect played only on success raised felt competence, the
+    same effect on every swing lowered it), and a burst opens on a flash of a few frames before
+    its core and debris. In the crate's own colour and wider than the box, so it clears the
+    silhouette: a white flash vanished on the base's light floor, where most crates open
+    (capture, 3 Nov), and a flash reads by contrast with what is behind it. From Epic a second,
+    larger one in warm white a beat later, so the tier shows in the shape of the moment and not
+    only in how many particles fly.
+  */
+  const b = crate(crateId)
+  const peak = Vector3.create(center.x, center.y + b.size * 0.3, center.z)
+  puff(peak, color, b.size * 2.4)
+  if (b.tier >= 3) timers.setTimeout(() => puff(peak, '#ffe9a8', b.size * 3.2), 90)
   projeter(center, color, sol, ECLATS, 2.2, 0.16, 850)
+  crateBurst(crateId, center)
 }
 
 function storeCrate(): void {

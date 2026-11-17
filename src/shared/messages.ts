@@ -118,6 +118,8 @@ export const MESSAGES = {
   takeBackFusion: Schemas.Map({}),
   /** The raid boss's swipe on you: what fell on the floor (0 when the purse was empty). */
   raidSwipe: Schemas.Map({ lost: Schemas.Int64 }),
+  /** server -> everyone: the boss rears up where it stands and slams in `ms`; the client draws the disc filling. */
+  raidWindup: Schemas.Map({ x: Schemas.Float, z: Schemas.Float, ms: Schemas.Int, rage: Schemas.Boolean }),
   raidWon: Schemas.Map({ crate: Schemas.Int }),
   raidOver: Schemas.Map({ winner: Schemas.String, slain: Schemas.Boolean }),
   /** What a rush hands to whoever is present when it opens: a crate, and the toy that gained a trait, or -1. */
@@ -157,7 +159,22 @@ export const MESSAGES = {
   hello: Schemas.Map({ name: Schemas.String }),
   reclaim: Schemas.Map({}),
   actionRejected: Schemas.Map({ action: Schemas.String, reason: Schemas.String, antiCheat: Schemas.Boolean }),
-  youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int, shieldSec: Schemas.Int }),
+  /** `payback`: the thief was taking their revenge, so this theft opens none in return. */
+  youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int, shieldSec: Schemas.Int, payback: Schemas.Boolean }),
+  /**
+   * server -> the robbed player: whom they may still rob through any shield, and for how long.
+   * Parallel arrays, one entry per thief; sent on arrival and whenever the list changes.
+   */
+  /** client -> server: this client is listening now, so what waited for its return can be sent. */
+  awayReady: Schemas.Map({}),
+  revenges: Schemas.Map({ ids: Schemas.Array(Schemas.String), names: Schemas.Array(Schemas.String), leftSec: Schemas.Array(Schemas.Int) }),
+  /**
+   * server -> a returning player: everything that happened to their base while they were away,
+   * oldest first, in one message so the client can show it as one screen. `kinds`: 0 theft,
+   * 1 sentry, 2 trap, 3 gift, 4 a theft that was the thief's revenge. `ids` is the other
+   * player's address when known, `codes` the item.
+   */
+  awayReport: Schemas.Map({ kinds: Schemas.Array(Schemas.Int), names: Schemas.Array(Schemas.String), ids: Schemas.Array(Schemas.String), codes: Schemas.Array(Schemas.Int) }),
   thiefPenalty: Schemas.Map({ ms: Schemas.Int }),
   stolen: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   reclaimed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int }),

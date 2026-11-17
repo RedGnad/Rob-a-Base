@@ -56,15 +56,17 @@ const WATCHED = [
   // a day after the split: no entity ever carried it, the count stalled at 8 of 9, and every
   // load on every platform held the screen to the 25 s ceiling (owner, 11 Sep: "very long").
   ...TREE_CLUSTERS,
-  // decor.ts: the bushes, the wall, the plaza ring, the balloon spiral and its three balloons.
+  // decor.ts: the bushes, the rampart, the plaza ring, the balloon spiral and its three
+  // balloons. The rampart replaced wall.glb on 30 Oct; the old name stayed here and held every
+  // load to the 25 s ceiling at 19 of 20, the same fault as the tree file on 10 Sep.
   'assets/Models/vegetation-buissons.glb',
-  'assets/Models/wall.glb',
+  'assets/Models/rampart.glb',
   'assets/toy/plaza-ring.glb',
   'assets/Models/balloon-group01.glb',
   'assets/Models/balloon004.glb',
   'assets/Models/balloon005.glb',
   'assets/Models/balloon006.glb',
-  // belt.ts: le chassis du tapis, pose au demarrage lui aussi.
+  // belt.ts: the belt's frame, laid down at startup too.
   'assets/Models/belt.glb'
 ]
 const TIMEOUT_MS = 25_000

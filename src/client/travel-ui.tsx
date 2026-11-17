@@ -4,6 +4,7 @@ import { travelView, rentrer, goToBelt } from './travel'
 import { theftView } from './theft'
 import { slotView, togglePlacing } from './slots'
 import { closeMenu } from './menu'
+import { openRevenges, takeRevenge } from './away'
 
 /**
  * Getting around, as a panel rather than a row of buttons under the thumb.
@@ -31,17 +32,24 @@ const ENTRE = 20
   buttons also sat against the left edge of a body twice their width (owner, 3 Sep). What
   is left is centred in the body, both ways.
 */
-const Rang = (props: { label: string; primary?: boolean; onClick: () => void }) => (
+const Rang = (props: { label: string; primary?: boolean; skin?: 'danger'; onClick: () => void }) => (
   <UiEntity uiTransform={{ width: LARGEUR, height: RANG, margin: { bottom: ENTRE } }}>
-    <Btn label={props.label} width={LARGEUR} primary={props.primary} onClick={props.onClick} />
+    <Btn label={props.label} width={LARGEUR} primary={props.primary} skin={props.skin} onClick={props.onClick} />
   </UiEntity>
 )
 
-/** The three rows, the most it can ever be; the tab is laid out in the body it is given. */
-export const HAUTEUR_TRAVEL = 3 * (RANG + ENTRE)
+/** Four rows, the most it can ever be: the three destinations and one revenge. */
+export const HAUTEUR_TRAVEL = 4 * (RANG + ENTRE)
 
 export const TravelContent = () => {
   if (!travelView.open) return null
+  /*
+    The latest thief you may still rob back, as a destination. One row, not a list: the tab
+    holds four and a player rarely owes more than one visit at a time; the away report shows
+    the rest. The time left is on the away report and the toast, so the row stays a place.
+  */
+  const revenges = openRevenges()
+  const revenge = revenges.length > 0 ? revenges.reduce((a, b) => (b.until > a.until ? b : a)) : undefined
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
       <Rang label="GO HOME" primary={travelView.peutRentrer}
@@ -51,6 +59,10 @@ export const TravelContent = () => {
       {theftView.basePosee && (
         <Rang label={slotView.active ? 'CANCEL MOVE' : 'MOVE MY BASE'} primary={slotView.active}
           onClick={() => { togglePlacing(); closeMenu() }} />
+      )}
+      {revenge !== undefined && (
+        <Rang label={`REVENGE ON ${revenge.name.toUpperCase()}`} skin="danger"
+          onClick={() => { takeRevenge(revenge.id); closeMenu() }} />
       )}
     </UiEntity>
   )

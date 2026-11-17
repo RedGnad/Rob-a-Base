@@ -209,6 +209,43 @@ function pixelBlanc() {
 
 const PIXEL = pixelBlanc()
 
+/** A square grey PNG, `size` pixels a side, each pixel's value (0..1) from `value(x, y)`. */
+function greyTile(size, value) {
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(size, 0)
+  ihdr.writeUInt32BE(size, 4)
+  ihdr[8] = 8
+  ihdr[9] = 2
+  const rows = []
+  for (let y = 0; y < size; y++) {
+    const row = Buffer.alloc(1 + size * 3)
+    for (let x = 0; x < size; x++) {
+      const g = Math.round(255 * Math.max(0, Math.min(1, value(x, y))))
+      row[1 + x * 3] = g; row[2 + x * 3] = g; row[3 + x * 3] = g
+    }
+    rows.push(row)
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+    blocPng('IHDR', ihdr),
+    blocPng('IDAT', zlib.deflateSync(Buffer.concat(rows))),
+    blocPng('IEND', Buffer.alloc(0))
+  ])
+}
+
+/*
+  Moulded plastic for the plain bases' accents and climb: a seam every half metre and a lit
+  edge, tinted by the owner's colour. Deliberately quieter than any skin pattern, so a skin
+  still reads as the step up it is.
+*/
+const MOULDED_TILE = greyTile(64, (x, y) => {
+  const e = Math.min(x % 32, 31 - (x % 32), y % 32, 31 - (y % 32))
+  if (e < 1) return 0.8
+  if (e < 3) return (x % 32) < 3 || (y % 32) < 3 ? 1.0 : 0.9
+  return 0.96
+})
+const MOULDED_METRES = 1.0
+
 function ecrire(nomFichier, groupes) {
   const bin = []          // float and short payload, assembled at the end
   const bufferViews = [], accessors = [], materials = [], primitives = []
@@ -487,6 +524,8 @@ const MOTIFS = {
 /** One group for a skin's part: its surface, and its pattern when it has one. */
 function habit(nom, hexa, boites, id) {
   const g = { nom, couleur: hex(hexa), boites, ...(SURFACE[id] ?? {}) }
+  // A plain base (no skin) wears the moulded plastic; a skin keeps its own surface below.
+  if (id === undefined) { g.albedo = MOULDED_TILE; g.tuile = MOULDED_METRES; return g }
   const m = MOTIFS[id]
   if (!m) return g
   if (m.couleur) g.couleur = m.couleur

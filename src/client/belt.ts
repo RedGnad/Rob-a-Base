@@ -1,4 +1,4 @@
-import { TOY, plastic, caisse, demolir , dimCrate} from './toy'
+import { TOY, plastic, caisse, crateTop, demolir , dimCrate} from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer, AudioSource, GltfContainer
 } from '@dcl/sdk/ecs'
@@ -150,7 +150,9 @@ export function setupBelt(): void {
         // again the moment a push reproduces without another cause (owner, 4 Sep).
         MeshCollider.setBox(item, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
         caisse(item, b.crateTier)
-        const haut = r.size - 0.27
+        // The labels ride a fixed gap above the crate's own top, which the crown and the rounded
+        // lid raise: with the plain lid (0.52) this is the old `r.size - 0.27` exactly.
+        const haut = r.size * (0.48 + crateTop(b.crateTier)) - 0.27
         PointerEvents.create(item, {
           pointerEvents: [
             { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${crateSummary(b.crateTier)}` } }

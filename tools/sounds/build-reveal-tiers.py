@@ -17,10 +17,19 @@ is the one dimension a player does not measure (owner, 5 Sep). Game audio's own 
   - Loudness is part of the ladder, and only part: each step is a little louder, but the
     timbre change is what makes it recognisable at any volume.
 
-  reveal.wav       Common, Uncommon   two short wooden notes, no tail
-  reveal-rare.wav  Rare               three notes, a bell partial, a short ring
-  reveal-big.wav   Epic, Legendary    riser, four notes, bell, a ring that lasts
-  reveal-huge.wav  Mythic, Secret     riser, impact, six notes, held triad, a long shimmer
+  reveal.wav            Common      two short wooden notes, no tail
+  reveal-uncommon.wav   Uncommon    three wooden notes, still no tail
+  reveal-rare.wav       Rare        three notes, a bell partial, a short ring
+  reveal-big.wav        Epic        riser, four notes, bell, a ring that lasts
+  reveal-legendary.wav  Legendary   longer riser, five notes, a richer bell, a longer ring
+  reveal-huge.wav       Mythic      riser, impact, six notes, held triad, a long shimmer
+  reveal-secret.wav     Secret      the same, a step higher, a fuller chord and the longest shimmer
+
+Four clips served seven rarities until 3 Nov, so three pairs sounded alike (Common and
+Uncommon, Epic and Legendary, Mythic and Secret), the "flattened success gradations" a
+pre-registered study of 1,699 players blames for juice that stops informing (Kao et al., CHI
+2024). Each pair now differs by one more note and a step more ring, the same axes the ladder
+already climbs, so nothing new has to be learned.
 
 Same synthesis as the coin: sines, harmonics, exponential decay, 22 kHz mono. All four files
 together weigh about as much as one music loop.
@@ -104,7 +113,7 @@ def sting(path, notes, step_s, decay_s, tail, chord=None, gain=0.36, partials=(1
 
 if __name__ == '__main__':
     out = os.path.abspath(os.path.join(HERE, '../../assets/sounds'))
-    # Common and Uncommon: two wooden notes, over almost before it starts.
+    # Common: two wooden notes, over almost before it starts.
     n1 = sting(os.path.join(out, 'reveal.wav'),
                [880.0, 1174.7], step_s=0.070, decay_s=0.075, tail=0.10,
                partials=(1.0, 0.18, 0.06), gain=0.30)
@@ -112,17 +121,32 @@ if __name__ == '__main__':
     n2 = sting(os.path.join(out, 'reveal-rare.wav'),
                [880.0, 1174.7, 1568.0], step_s=0.080, decay_s=0.16, tail=0.28,
                partials=(1.0, 0.35, 0.14, 0.05), gain=0.33)
-    # Epic and Legendary: a riser, four notes, a bell, a ring that lasts.
+    # Uncommon: the same wood, one note higher: a third step, still no bell.
+    n1u = sting(os.path.join(out, 'reveal-uncommon.wav'),
+                [880.0, 1174.7, 1318.5], step_s=0.070, decay_s=0.085, tail=0.12,
+                partials=(1.0, 0.18, 0.06), gain=0.30)
+    # Epic: a riser, four notes, a bell, a ring that lasts.
     n3 = sting(os.path.join(out, 'reveal-big.wav'),
                [1046.5, 1318.5, 1568.0, 2093.0], step_s=0.085, decay_s=0.26, tail=0.55,
                partials=(1.0, 0.45, 0.22, 0.10, 0.05), gain=0.34,
                riser=(0.22, 520.0, 1300.0), shimmer=0.10)
-    # Mythic and Secret: riser, impact, six notes, a held triad and a long shimmer.
+    # Legendary: the Epic's gesture with one more note, a longer riser, a richer bell.
+    n3l = sting(os.path.join(out, 'reveal-legendary.wav'),
+                [1046.5, 1318.5, 1568.0, 2093.0, 2637.0], step_s=0.085, decay_s=0.30, tail=0.75,
+                partials=(1.0, 0.5, 0.25, 0.12, 0.06), gain=0.34,
+                riser=(0.28, 480.0, 1450.0), shimmer=0.13)
+    # Mythic: riser, impact, six notes, a held triad and a long shimmer.
     n4 = sting(os.path.join(out, 'reveal-huge.wav'),
                [783.99, 1046.5, 1318.5, 1568.0, 2093.0, 2637.0],
                step_s=0.095, decay_s=0.34, tail=1.15,
                chord=[1046.5, 1568.0, 2093.0], partials=(1.0, 0.5, 0.28, 0.14, 0.07),
                gain=0.36, riser=(0.34, 420.0, 1600.0), impact=(72.0, 0.42), shimmer=0.16)
+    # Secret: the Mythic one step further, a seventh note on top, four notes held, the most shimmer.
+    n5 = sting(os.path.join(out, 'reveal-secret.wav'),
+               [783.99, 1046.5, 1318.5, 1568.0, 2093.0, 2637.0, 3136.0],
+               step_s=0.095, decay_s=0.36, tail=1.35,
+               chord=[1046.5, 1318.5, 1568.0, 2093.0], partials=(1.0, 0.5, 0.28, 0.14, 0.07),
+               gain=0.36, riser=(0.38, 400.0, 1700.0), impact=(72.0, 0.46), shimmer=0.20)
     # A rare crate reaching the belt: two rising notes, short and quiet, because a player at
     # their base cannot see the band change colour (the rush bell exists for the same reason).
     # Announced crates are one item in twelve, so the ear is not asked to hear it often.
@@ -148,5 +172,5 @@ if __name__ == '__main__':
     # than any reveal, in the same key as everything else.
     nc = sting(os.path.join(out, 'bell.wav'), [783.99, 1046.5], step_s=0.16, decay_s=0.32, tail=0.45,
                partials=(1.0, 0.4, 0.18, 0.07), gain=0.32)
-    for nom, taille in (('belt', nb), ('mutation', nm), ('land', n0), ('bell', nc), ('reveal', n1), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-huge', n4)):
+    for nom, taille in (('belt', nb), ('mutation', nm), ('land', n0), ('bell', nc), ('reveal', n1), ('reveal-uncommon', n1u), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-legendary', n3l), ('reveal-huge', n4), ('reveal-secret', n5)):
         print(f'{nom + ".wav":18s} {taille / 1024:6.1f} KB')

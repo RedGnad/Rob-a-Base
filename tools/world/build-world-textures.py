@@ -135,6 +135,31 @@ def grass():
     return im
 
 
+def street_board():
+    """The street and the plaza line as a chessboard: two squares by two in a four metre tile.
+
+    Grey on purpose, like the rest: the street's clay tint multiplies it, so the squares are
+    the street's own colour, light and darker, and the street keeps its contrast with the grass.
+    The dark square sits at 0.82, enough to read as a board from the plaza, not enough to
+    compete with the bases and their skins. A soft bevel on each square, as on the wall panels.
+    """
+    im = Image.new('RGB', (N, N))
+    px = im.load()
+    q = N // 2
+    for j in range(N):
+        for i in range(N):
+            v = 1.0 if ((i // q) + (j // q)) % 2 == 0 else 0.82
+            di = min(i % q, q - 1 - i % q)
+            dj = min(j % q, q - 1 - j % q)
+            if min(di, dj) < 2:
+                v -= 0.05
+            elif min(di, dj) < 4:
+                v -= 0.02
+            g = int(round(255 * max(0.0, min(1.0, v))))
+            px[i, j] = (g, g, g)
+    return im
+
+
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     belt().save(os.path.join(OUT, 'belt.png'), optimize=True)
@@ -144,6 +169,7 @@ if __name__ == '__main__':
     ballon('pois').save(os.path.join(OUT, 'ballon-pois.png'), optimize=True)
     ballon('rayures').save(os.path.join(OUT, 'ballon-rayures.png'), optimize=True)
     wall_panel().save(os.path.join(OUT, 'mat-wall.png'), optimize=True)
+    street_board().save(os.path.join(OUT, 'mat-street.png'), optimize=True)
     # A white square: the texture a material names when it wants NO picture. Omitting the
     # texture field leaves the client on whatever it drew last; naming this one replaces it.
     Image.new('RGB', (8, 8), (255, 255, 255)).save(os.path.join(OUT, 'blank.png'), optimize=True)

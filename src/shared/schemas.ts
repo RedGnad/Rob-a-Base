@@ -1496,8 +1496,49 @@ export const RAID_ROAM_JITTER_MS = 3000
  * blows. 1.1 is the classic value.
  */
 export const RAID_THREAT_SWITCH = 1.1
-export const RAID_SWIPE_MS = 5_000
+/*
+  THE SLAM IS ANNOUNCED, then it lands (3 Nov).
+
+  The swipe was contact damage: step within four metres and the coins left your purse that same
+  tick, then every five seconds while you stayed (7 Sep, which fixed a global metronome that hit
+  people for no reason they could see). Cause and effect were linked, but nothing could be done
+  about it: the only answer to the boss was never to stand near it, and a fight you cannot play
+  is a toll. The genre's answer is the telegraph: the boss rears up, a red disc on the floor
+  fills to its edge, and whoever is still inside when it lands is hit. Stand in it and pay,
+  leave it in time and the slam is yours to punish.
+
+  Sized against the real speeds. A free runner covers the four metres in under a third of a
+  second, a player hauling goods (6.75 m/s) in 0.6: the wind-up leaves the carrier a chance and
+  the empty-handed an easy one, which is the order the game wants. The boss stands still while
+  it winds up, so the wind-up is also the moment to shoot it point blank.
+
+  Every slam lands on whoever is inside, with no per-player grace: a red disc that sometimes
+  does nothing would teach players to ignore it (the rule of 7 Sep, an announcement without a
+  consequence destroys the announcement that has one).
+*/
 export const RAID_SWIPE_RANGE = 4
+/**
+ * The slam hits a little inside the disc it draws: the server sees a player's position a tick or
+ * two late, and a player who left the red on their own screen must not be hit for the lag.
+ */
+export const RAID_SLAM_HIT = 3.5
+export const RAID_WINDUP_MS = 1_000
+/** From one slam to the next wind-up, while someone stays in range. */
+export const RAID_SLAM_GAP_MS = 3_000
+/*
+  Rage at half life: faster on its feet, quicker to slam, glowing and trailing embers. It is the
+  genre's second phase, the signal that the fight is turning, and the moment the crowd that
+  stood back at the start has a reason to join in.
+*/
+export const RAID_RAGE_AT = 0.5
+export const RAID_RAGE_SPEED = 1.35
+export const RAID_RAGE_WINDUP_MS = 700
+export const RAID_RAGE_GAP_MS = 1_800
+/**
+ * Local testing only: a raid opens fifteen seconds after the last one ends, whatever the clock
+ * and whatever rush runs. Must be false before any commit, like `STRESS_BASES` and `UI_PROBE`.
+ */
+export const RAID_PROBE = false
 /** A swipe shakes a tenth of the purse loose, capped at two minutes of income, onto the floor. */
 export const RAID_SWIPE_SHARE = 0.10
 export const RAID_SWIPE_CAP_S = 120

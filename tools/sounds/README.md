@@ -58,6 +58,8 @@ Before and after the pass of 5 Sep. Volume is the multiplier in code.
 | till.wav, back.wav | act | build-verbs.py | 0.30 s | 1075, 314 | 8 %, 0 % | 0.8 / 0.7, 0.8 / 0.75 | quieter |
 | draw.wav, holster.wav | act | build-verbs.py | 0.19, 0.21 s | 1267, 476 | 14 %, 5 % | 0.75, 0.7 | new on 5 Sep |
 | bell.wav | event | build-reveal-tiers.py | 0.77 s | 902 | 8 % | 0.8 rush, 0.85 raid | new: G5 to C6; both used to play reveal.wav |
+| slam.wav | event | build-raid.py | 0.55 s | 89 | 0.2 % | 0.9, from the boss | new on 3 Nov: G2 falling to C2, the telegraphed slam landing (RMS -14.2 dB) |
+| windup.wav | event | build-raid.py | 0.65 s at pitch 1 | 126 | 0.2 % | 0.8, from the boss | new on 3 Nov: C2 rising to G2, played at pitch 0.65 / wind-up seconds so it ends on the slam (RMS -11.1 dB) |
 | belt.wav | event | build-reveal-tiers.py | 0.37 s | 1180 | 9 % | 0.7 | now one crate in sixty, not one in nine |
 | alerte-vol.wav | event | none (23 Aug) | 0.27 s | 741 | 1 % | 1.0 | none |
 | reveal.wav | event | build-reveal-tiers.py | 0.24 s | 910 | 5 % | 0.85 | now the crate reveal only |

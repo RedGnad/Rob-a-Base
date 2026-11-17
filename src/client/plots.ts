@@ -66,6 +66,8 @@ function goUpOneFloor(v: View): void {
 }
 import { steal, myClientAddress, alerter, lockBase, theftView } from './theft'
 import { boltBetween } from './combat'
+import { zapBurst } from './vfx'
+import { sentryLight } from './lights'
 import { room } from '../shared/messages'
 import { moveTo } from './deplacer'
 import { serverNow } from './clock'
@@ -1158,6 +1160,8 @@ function destroyView(v: View): void {
       engine.removeEntity(ent)
     }
     // The sentry and the pedestals carry children of their own: model, silhouette, halo, light.
+    // Its light is the pool's and stays alive; only the claim on it goes, before the id can be reused.
+    sentryLight(e.sentry, false)
     demolir(e.sentry)
   }
   engine.removeEntity(v.racine)
@@ -1337,6 +1341,9 @@ function tirDeSentinelle(ownerId: string, floor: number, at: Vector3): void {
     const from = pointDeBase(v.racine, st.position.x, st.position.y + k * 0.5, st.position.z)
     if (from === null) return
     boltBetween(from, Vector3.create(at.x, at.y + 1.0, at.z))
+    // Sparks where it lands, in the bolt's own family: the hit is on the thief, not the turret.
+    // The sentry's interface cyan was tried and sank into the green field (capture, 2 Nov).
+    zapBurst(Vector3.create(at.x, at.y + 1.0, at.z))
     Tween.createOrReplace(s, {
       mode: Tween.Mode.Scale({ start: Vector3.create(k * 1.3, k * 1.3, k * 1.3), end: Vector3.create(k, k, k) }),
       duration: 260,
@@ -1807,7 +1814,7 @@ export function setupPlots(): void {
             ts.position = Vector3.create(ts.position.x, e * FLOOR_HEIGHT + SLAB_THICKNESS + 0.5 * k, ts.position.z)
             armSentry(v.floors[e].sentry, n > 0 && !v.loin)
             // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
-            toyLight(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
+            sentryLight(v.floors[e].sentry, n > 0 && !v.loin)
           }
 
         for (let e = 0; e < v.floors.length; e++) {

@@ -1,5 +1,6 @@
-import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
+import { engine, Transform, PlayerIdentityData, timers, executeTask } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
+import { Storage } from '@dcl/sdk/server'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
   LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, REVENGE_MS, SLOTS_PER_FLOOR, VIDE, occupe
@@ -13,13 +14,14 @@ advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, s
 } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
-import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains, setLandedHook } from './carry'
+import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains, setLandedHook, setHomeHook } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending, declarerVolEnCours
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, collectPending, declarerVolEnCours,
+  WORLD_RESET_MARK
 } from './plots'
 
 /*
@@ -28,10 +30,42 @@ import {
   a 402 as rarity 402, fell back to entry zero, and told the room that a Legendary recovered in
   front of witnesses was a Common.
 */
-type Larcin = { thief: string; victim: string; code: number; quand: number; landed: boolean }
+/*
+  `payback`: this theft was itself somebody's revenge. It can still be recovered in the
+  window, like any theft, but it opens no revenge of its own. Supercell's support page on
+  Revenge says it in one line: if they took revenge on you, you cannot take revenge on them.
+  Without it two players pierce each other's shields in turn for as long as they keep stealing.
+*/
+type Larcin = { thief: string; victim: string; code: number; quand: number; landed: boolean; payback: boolean }
 const larcins: Larcin[] = []
 /** Until when a thief frozen by a sentry may not start a theft: the freeze used to be client-side only. */
 const geles = new Map<string, number>()
+/*
+  Until when a sentry's shot holds a base, for everyone.
+
+  The shot raises the base's lock for SENTRY_LOCK_MS, and a revenge goes through any lock:
+  the one thief the hold was for walked straight back in after their seven-second freeze and
+  spent a charge every time, a guard's three in about twenty seconds. Kept apart from the
+  lock so the revenge still opens the shield it was meant to open.
+*/
+const tenues = new Map<string, number>()
+
+/*
+  Revenge rights survive the server.
+
+  The platform stops the server two minutes after the last player leaves, and `larcins` lived
+  in memory only, so a player robbed in the night came back to a server that had forgotten
+  the theft: the report showed it with no REVENGE on it, which is the one case the right
+  exists for. Only the entries that open a revenge are kept, and only for as long as they do;
+  the recovery window is twenty seconds and no restart is that short. The key carries the
+  world's reset mark, so a world reset leaves the old list behind with the old bases. Built
+  when used, not at load: plots.ts and this file import each other, and at load time the
+  mark was still undefined (the first local run wrote "revenges:undefined").
+*/
+function revengesKey(): string { return `revenges:${WORLD_RESET_MARK}` }
+const REVENGES_KEPT = 400
+let revengesDirty = false
+function revengesChanged(): void { revengesDirty = true }
 
 /** Stolen loot reached the thief's own shelf: the most recent open entry for that code. */
 export function noteLanded(thief: string, code: number): void {
@@ -41,6 +75,66 @@ export function noteLanded(thief: string, code: number): void {
   }
 }
 setLandedHook(noteLanded)
+
+/*
+  The item came back to the player it was taken from without RECOVER (carry.ts, `homeHook`):
+  the theft cost them nothing, so it owes them nothing. The latest entry for that item still
+  in a thief's hands or on the floor is the one; an entry whose loot reached a shelf is a theft
+  that worked, whatever twin of it walks home later.
+*/
+export function settleReturned(victim: string, code: number): void {
+  for (let i = larcins.length - 1; i >= 0; i--) {
+    const l = larcins[i]
+    if (l.victim !== victim || l.code !== code || l.landed) continue
+    larcins.splice(i, 1)
+    revengesChanged()
+    if (presents().has(victim)) pushRevenges(victim)
+    log(`${displayName(victim)} has their ${itemName(rarityOf(code), mutationDe(code))} back, the revenge on ${displayName(l.thief)} for it is closed`)
+    return
+  }
+}
+setHomeHook(settleReturned)
+
+/*
+  Written at most every ten seconds while dirty, like the records journal: storage writes are
+  capped and a dropped one answers false, which marks the list dirty again. Only what opens a
+  revenge is written, newest kept when the list is long.
+*/
+function saveRevenges(): void {
+  revengesDirty = false
+  const t = Date.now()
+  const owed = larcins
+    .filter((l) => !l.payback && t - l.quand <= REVENGE_MS)
+    .slice(-REVENGES_KEPT)
+    .map((l) => ({ thief: l.thief, victim: l.victim, code: l.code, quand: l.quand }))
+  void Storage.set(revengesKey(), JSON.stringify(owed)).then((ok) => {
+    if (!ok) { revengesDirty = true; log('ERROR revenge list not saved, retrying') }
+  })
+}
+
+function loadRevenges(): void {
+  executeTask(async () => {
+    const raw = await Storage.get<string>(revengesKey())
+    if (typeof raw !== 'string' || raw.length === 0) return
+    let lus: Array<{ thief: string; victim: string; code: number; quand: number }> = []
+    try { lus = JSON.parse(raw) } catch { lus = [] }
+    if (!Array.isArray(lus)) return
+    const t = Date.now()
+    const deja = new Set(larcins.map((l) => `${l.thief}|${l.victim}|${l.quand}`))
+    for (const x of lus) {
+      if (typeof x?.thief !== 'string' || typeof x?.victim !== 'string' || !Number.isFinite(x?.quand)) continue
+      if (t - x.quand > REVENGE_MS || deja.has(`${x.thief}|${x.victim}|${x.quand}`)) continue
+      // Landed: whatever became of the item, the restart has long closed its recovery window.
+      larcins.push({ thief: x.thief, victim: x.victim, code: x.code, quand: x.quand, landed: true, payback: false })
+    }
+    // The pruning walks from the front, so the list stays in time order.
+    larcins.sort((a, b) => a.quand - b.quand)
+    // A victim who arrived before the list came back was told it was empty.
+    const ici = presents()
+    for (const v of new Set(larcins.map((l) => l.victim))) if (ici.has(v)) pushRevenges(v)
+    log(`revenges restored: ${lus.length} read, ${larcins.length} open`)
+  })
+}
 
 function lockBonus(address: string): number {
   return prestigeOf(address) * LOCK_BONUS_MS
@@ -79,37 +173,106 @@ export function lockOnArrival(address: string): void {
   if (lockOf(address) > Date.now() && setLock(address, 0)) log(`${displayName(address)} arrived, shield down`)
 }
 
+/*
+  What happened while you were away, as ONE report.
+
+  Each stored alert used to be replayed as its live message, so a player back from a night
+  met a queue of one-line toasts, a few seconds each, gone before they could be acted on. The
+  genre keeps a log the player reads and acts from (Clash of Clans: the defence log, and a
+  Revenge button on each raid for twelve hours). One message lets the client draw one screen.
+  Alerts stored before the thief's address was kept carry an empty id: they show, without
+  the revenge button.
+*/
+const AWAY_KIND = { theft: 0, sentry: 1, trap: 2, gift: 3, payback: 4 } as const
 export function delivrerAlertes(address: string): void {
   const a = takeAlerts(address)
   if (a.length === 0) return
+  const kinds: number[] = [], names: string[] = [], ids: string[] = [], codes: number[] = []
   for (const alert of a) {
-    const x = alert as { type?: string; byName: string; rarity?: number; mutation?: number; code?: number }
-    if (x.type === 'sentry') {
-      const y = x as { left?: number; taken?: number }
-      void room.send('sentryTriggered', { byName: x.byName, left: y.left ?? 0, taken: y.taken ?? 0 }, { to: [address] })
-      continue
-    }
-    if (x.type === 'trap') {
-      void room.send('trapSprung', { byName: x.byName }, { to: [address] })
-      continue
-    }
-    if (x.type === 'gift') {
-      const code = x.code ?? 0
-      void room.send('wasGifted', { byName: x.byName, rarity: rarityOf(code), mutation: mutationDe(code) }, { to: [address] })
-      continue
-    }
-    void room.send('youWereRobbed', {
-      byName: x.byName, rarity: x.rarity ?? 0, mutation: x.mutation ?? 0,
-      shieldSec: (x as { shieldSec?: number }).shieldSec ?? 0
-    }, { to: [address] })
+    const x = alert as { type?: string; byName: string; by?: string; rarity?: number; mutation?: number; code?: number; payback?: boolean }
+    const kind = x.type === 'sentry' ? AWAY_KIND.sentry
+      : x.type === 'trap' ? AWAY_KIND.trap
+      : x.type === 'gift' ? AWAY_KIND.gift
+      : x.payback === true ? AWAY_KIND.payback
+      : AWAY_KIND.theft
+    kinds.push(kind)
+    names.push(x.byName)
+    ids.push(x.by ?? '')
+    codes.push(kind === AWAY_KIND.gift ? (x.code ?? 0)
+      : kind === AWAY_KIND.theft || kind === AWAY_KIND.payback ? (x.rarity ?? 0) * 100 + (x.mutation ?? 0)
+      : -1)
   }
+  void room.send('awayReport', { kinds, names, ids, codes }, { to: [address] })
   log(`${a.length} alert(s) differee(s) delivree(s) a ${displayName(address)}`)
+}
+
+/*
+  The away report and the revenge list go out when BOTH sides are ready, once per presence.
+
+  They were sent the moment the server saw the player arrive, and the server sees the avatar
+  before the scene's script runs on the client: locally the join landed at 00:42:02 and the
+  client started at 00:42:04, so the list went to nobody (2 Nov). The report is worse off,
+  because taking the alerts empties them: one lost message and the night's log is gone. The
+  client says when it is listening (`awayReady`); the server, when the profile holding the
+  alerts is loaded. Whichever comes second sends.
+*/
+const clientPret = new Set<string>()
+const serveurPret = new Set<string>()
+const accueillis = new Set<string>()
+function accueillir(address: string): void {
+  if (!clientPret.has(address) || !serveurPret.has(address) || accueillis.has(address)) return
+  accueillis.add(address)
+  delivrerAlertes(address)
+  pushRevenges(address)
+}
+/** The server finished the player's arrival: profile loaded, shield dropped. */
+export function arrivalDone(address: string): void { serveurPret.add(address); accueillir(address) }
+/** Gone: the next arrival is a new one. */
+export function arrivalOver(address: string): void {
+  clientPret.delete(address); serveurPret.delete(address); accueillis.delete(address)
 }
 
 /** Has `cible` taken something from `moi` recently enough to owe them an open door? */
 function meDoitUneRevanche(moi: string, cible: string): boolean {
+  return openRevengeIndex(moi, cible) >= 0
+}
+
+/*
+  One take-back per theft suffered, the oldest first since it runs out first.
+
+  A theft used to open eight hours of unlimited thefts through every shield the thief had:
+  one item lost, a whole base owed. Now each theft suffered is worth one theft back, and the
+  revenge on that thief closes when the take-backs are spent (owner, 2 Nov, after the revenge
+  research: Clash of Clans also gives one revenge per raid, from the defence log).
+*/
+function openRevengeIndex(victim: string, thief: string): number {
   const t = Date.now()
-  return larcins.some((l) => l.thief === cible && l.victim === moi && t - l.quand <= REVENGE_MS)
+  return larcins.findIndex((l) => l.thief === thief && l.victim === victim && !l.payback && t - l.quand <= REVENGE_MS)
+}
+
+/*
+  The revenge list, told to the player it belongs to.
+
+  The right existed only here: a thief's shield never stopped the player they robbed, for
+  REVENGE_MS, and nothing on any screen said so. The robbed player read "STOLEN BY X" and had
+  no way to know the door they would meet was open to them alone. One entry per thief, timed
+  from that thief's latest theft still owed, which is the one `meDoitUneRevanche` keeps alive
+  longest. Built from the same entries the server checks, so the button and the rule agree.
+*/
+export function pushRevenges(victim: string): void {
+  const t = Date.now()
+  const latest = new Map<string, number>()
+  for (const l of larcins) {
+    if (l.victim !== victim || l.payback || t - l.quand > REVENGE_MS) continue
+    latest.set(l.thief, Math.max(latest.get(l.thief) ?? 0, l.quand))
+  }
+  const ids: string[] = [], names: string[] = [], leftSec: number[] = []
+  for (const [thief, quand] of latest) {
+    ids.push(thief)
+    names.push(displayName(thief))
+    leftSec.push(Math.max(0, Math.round((REVENGE_MS - (t - quand)) / 1000)))
+  }
+  void room.send('revenges', { ids, names, leftSec }, { to: [victim] })
 }
 
 export function hasSomethingToRecover(address: string): boolean {
@@ -192,6 +355,7 @@ export function startTheft(): void {
         const left = sentriesOnFloor(v.victim, targetFloor)
         // Never shorter than the shield already up: an 8 h absence shield must not fall to 60 s.
         setLock(v.victim, Math.max(lockOf(v.victim), maintenant + SENTRY_LOCK_MS))
+        tenues.set(v.victim, maintenant + SENTRY_LOCK_MS)
         enCours.delete(thief)
         // The shot is SEEN by everyone in the world, not only felt by the thief: a bolt from
         // the cone to the thief on every client, so a newcomer reads the defence at work.
@@ -241,11 +405,19 @@ export function startTheft(): void {
         continue
       }
 
-      // ABOUTI: l'objet change enfin de main.
+      /*
+        Done: the item changes hands, and it is the item on the shelf the thief stood at.
+
+        This looked the code up anywhere on the base (`items.indexOf`), and a code is only a
+        rarity, a mutation and traits, so twins are common. A thief robbing the unguarded top
+        floor emptied the first twin from the bottom, which is the floor the owner guards: the
+        guarded shelf went bare, the sentry never fired, its charges stayed full (owner, 2 Nov:
+        "robbed with turrets up"). Shelves keep their holes, so the slot is still the item's
+        own; if something else stands there now, the item the thief was prying has gone.
+      */
       enCours.delete(thief)
-      const idx = b.items.indexOf(v.code)
-      if (idx < 0) { void room.send('stealFailed', { reason: 'it is gone' }, { to: [thief] }); continue }
-      const r = removeItem(v.victim, idx)
+      if (b.items[v.slot] !== v.code) { void room.send('stealFailed', { reason: 'it is gone' }, { to: [thief] }); continue }
+      const r = removeItem(v.victim, v.slot)
       if (r === null) { void room.send('stealFailed', { reason: 'it is gone' }, { to: [thief] }); continue }
       /*
         It lands in their hands, not in their base.
@@ -257,7 +429,14 @@ export function startTheft(): void {
         something, and where anybody watching can see what this game is about.
       */
       remettreEnMain(thief, r, v.victim)
-      larcins.push({ thief, victim: v.victim, code: r, quand: maintenant, landed: false })
+      // A theft from somebody who owes you one IS the revenge, whichever shield was up: it
+      // spends one take-back, and it opens none for them in return.
+      const dette = openRevengeIndex(thief, v.victim)
+      const payback = dette >= 0
+      if (payback) larcins.splice(dette, 1)
+      larcins.push({ thief, victim: v.victim, code: r, quand: maintenant, landed: false, payback })
+      revengesChanged()
+      if (payback) pushRevenges(thief)
       compterVol(thief)
       // The last tutorial step is the game's core verb: a theft that reached the hands (27 Aug).
       tutoFait(thief, 4)
@@ -283,12 +462,14 @@ export function startTheft(): void {
 
       const nomV = displayName(thief)
       const rar = rarityOf(r), mut = mutationDe(r)
-      storeAlert(v.victim, { byName: nomV, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000) })
+      // `by` is the thief's address: the away report needs it to offer revenge on the right player.
+      storeAlert(v.victim, { byName: nomV, by: thief, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000), payback })
       void room.send('youWereRobbed', {
-        byName: nomV, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000)
+        byName: nomV, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000), payback
       }, { to: [v.victim] })
+      if (presents().has(v.victim)) pushRevenges(v.victim)
       void room.send('stolen', { byName: nomV, fromName: b.name, rarity: rar, mutation: mut })
-      log(`${nomV} took a ${itemName(rar, mut)} from ${b.name}; shield ${Math.round(bouclier / 60000)} min (away ${Math.round(absenceDe(v.victim) / 60000)} min)`)
+      log(`${nomV} took a ${itemName(rar, mut)} from ${b.name}, floor ${Math.floor(v.slot / SLOTS_PER_FLOOR) + 1} slot ${v.slot}${payback ? ', as revenge' : ''}; shield ${Math.round(bouclier / 60000)} min (away ${Math.round(absenceDe(v.victim) / 60000)} min)`)
     }
   })
 
@@ -312,6 +493,12 @@ export function startTheft(): void {
       const lock = lockOf(c.address)
       if (lock > maintenant && !meDoitUneRevanche(thief, c.address)) {
         refus(thief, 'steal', `${c.name} is shielded for ${Math.ceil((lock - maintenant) / 1000)}s`)
+        continue
+      }
+      // A sentry's shot holds the base for everyone, revenge included (see `tenues`).
+      const tenue = tenues.get(c.address) ?? 0
+      if (tenue > maintenant) {
+        refus(thief, 'steal', `${c.name}'s sentry holds it for ${Math.ceil((tenue - maintenant) / 1000)}s`)
         continue
       }
       if (occupe(c.items) === 0) { refus(thief, 'steal', `${c.name} has nothing to take`); continue }
@@ -480,6 +667,13 @@ export function startTheft(): void {
     setWelcomed(a)
   })
 
+  room.onMessage('awayReady', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    clientPret.add(a)
+    accueillir(a)
+  })
+
   room.onMessage('hello', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
@@ -554,6 +748,9 @@ export function startTheft(): void {
         log(`ERROR recover: ${displayName(victim)} could not receive their own ${rarityOf(l.code)}`)
       }
       larcins.splice(i, 1)
+      revengesChanged()
+      // Taking it back settles the score: the revenge on that theft goes with it.
+      pushRevenges(victim)
       void room.send('reclaimed', {
         byName: displayName(victim), fromName: displayName(l.thief), rarity: rarityOf(l.code)
       })
@@ -566,8 +763,12 @@ export function startTheft(): void {
   timers.setInterval(() => {
     // Kept as long as revenge lasts, since the list IS the revenge list now.
     const t = Date.now() - REVENGE_MS
-    while (larcins.length > 0 && larcins[0].quand < t) larcins.shift()
+    while (larcins.length > 0 && larcins[0].quand < t) { larcins.shift(); revengesChanged() }
+    const now = Date.now()
+    for (const [a, until] of tenues) if (until <= now) tenues.delete(a)
+    if (revengesDirty) saveRevenges()
   }, 10000)
+  loadRevenges()
 
   log('steal layer ready')
 }

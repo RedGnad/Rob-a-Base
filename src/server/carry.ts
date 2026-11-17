@@ -96,9 +96,17 @@ function lacher(address: string): { code: number; origin: string } | null {
 /** Set by the theft module: carry cannot import it without a cycle. */
 let landedHook: (address: string, code: number) => void = () => {}
 export function setLandedHook(fn: (address: string, code: number) => void): void { landedHook = fn }
+/*
+  A stolen item back with the player it was taken from, by any road but RECOVER: dropped and
+  sent home, timed out on the floor, picked up by its owner, or handed back. The theft then
+  cost them nothing, so the revenge it opened closes (theft.ts, `settleReturned`).
+*/
+let homeHook: (origin: string, code: number) => void = () => {}
+export function setHomeHook(fn: (origin: string, code: number) => void): void { homeHook = fn }
 
 function rentrer(address: string, quoi: { code: number; origin: string }, pourquoi: string): void {
   const chezOrigine = addItem(quoi.origin, quoi.code) !== 'plein'
+  if (chezOrigine && quoi.origin !== address) homeHook(quoi.origin, quoi.code)
   const chezPorteur = !chezOrigine && addItem(address, quoi.code) !== 'plein'
   if (chezPorteur && quoi.origin !== address) landedHook(address, quoi.code)
   if (!chezOrigine && !chezPorteur) {
@@ -336,6 +344,7 @@ export function startCarry(): void {
     }
 
     recordGift(a, vise)
+    if (vise === origine) homeHook(vise, code)
     noter('don', displayName(a), displayName(vise), 0)
     advanceQuest(a, 'gift')
     pushQuests(a)
@@ -445,6 +454,7 @@ export function startCarry(): void {
           they need to know to find it again.
         */
         void room.send('itemHome', { rarity: rarityOf(d.code), mutation: mutationDe(d.code), stocked: ou === 'en-stock' }, { to: [d.origin] })
+        if (d.droppedBy !== d.origin) homeHook(d.origin, d.code)
         engine.removeEntity(e)
         continue
       }
@@ -466,6 +476,7 @@ export function startCarry(): void {
       }
       if (gagnant !== null) {
         poser(gagnant, d.code, d.origin)
+        if (gagnant === d.origin && d.droppedBy !== d.origin) homeHook(d.origin, d.code)
         void room.send('carryResult', {
           ok: true, reason: 'picked it up', rarity: rarityOf(d.code), mutation: mutationDe(d.code)
         }, { to: [gagnant] })

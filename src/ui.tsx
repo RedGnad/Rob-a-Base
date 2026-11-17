@@ -38,6 +38,7 @@ import { verb } from './client/verb'
 import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue, stepVerb } from './client/tutorial'
 import { WelcomePanel, welcomeView, closeWelcome } from './client/welcome'
+import { AwayPanel, awayView, closeAway, revengeOn } from './client/away'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, formatSolde, prixDeRevente, crate } from './shared/loot-table'
 import { applyUiProbe, probeStatus } from './client/ui-probe'
 
@@ -1187,7 +1188,8 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   if (fuserInReach()) return { id: 'fuser', label: 'FUSER', icon: ico('fuse'), action: agirSurFuser }
   if (elevatorInReach()) return { id: 'monter', label: 'GO UP', icon: ico('up'), action: monterIci }
   const pad = padEnFace()
-  if (pad !== null && !pad.mine) return { id: 'voler', label: `STEAL ${pad.nom}`, icon: ico('steal'), action: () => agirSurPad(pad) }
+  // In front of a thief's shelf the same press is the revenge their shield cannot stop (away.tsx).
+  if (pad !== null && !pad.mine) return { id: 'voler', label: `${revengeOn(pad.ownerId) ? 'REVENGE' : 'STEAL'} ${pad.nom}`, icon: ico('steal'), action: () => agirSurPad(pad) }
   /*
     Se planter devant son propre socle passe avant l'offre d'ouvrir une caisse.
 
@@ -1282,7 +1284,7 @@ const WaitBar = () => {
 
 /** A panel that takes the whole screen: nothing of the game draws behind it, not even tabs. */
 function modale(): boolean {
-  return welcomeView.open || prestigeView.open || fuserPanelView.open
+  return welcomeView.open || awayView.open || prestigeView.open || fuserPanelView.open
 }
 
 /**
@@ -2737,11 +2739,12 @@ const ModalLayer = () => (
       <UiEntity key="veil"
         uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, pointerFilter: 'block' }}
         uiBackground={{ color: SURF.voile }}
-        onMouseDown={() => { if (welcomeView.open) closeWelcome() }} />
+        onMouseDown={() => { if (welcomeView.open) closeWelcome(); else if (awayView.open) closeAway() }} />
     )}
     <ScreenInsetArea>
       <UiEntity uiTransform={{ width: '100%', height: '100%' }}>
         <WelcomePanel />
+        <AwayPanel />
         <PrestigePanel />
         <FusionPanel />
       </UiEntity>

@@ -4,7 +4,9 @@ import { Vector3, Color4, Color3 } from '@dcl/sdk/math'
 /*
   A burst where a blow lands: the mobile stand-in for a particle puff.
 
-  The mobile client draws no particles, so a hit had nothing at the point of impact: the
+  Written when the phone app drew no particles (3 Sep). It draws them now, from 1.14.0, except
+  on its Very Low profile, so `vfx.ts` adds particles on top and this stays as the floor that
+  every profile shows. At the time a hit had nothing at the point of impact: the
   crate punched and thudded, the coins rang, and testers still said the blow did not
   connect (3 and 4 Sep). A flat sprite of the reveal's rays, facing the camera, scaled up
   over a tenth of a second and gone, is what every mobile game draws in that spot when it

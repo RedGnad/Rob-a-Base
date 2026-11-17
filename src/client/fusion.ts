@@ -9,6 +9,7 @@ import { revealItem } from './box'
 import { openFuser, closeFuser, fuserPanelView } from './fusion-ui'
 import { clicMonde } from './monde'
 import { pushToFeed } from './theft'
+import { fuseBurst } from './vfx'
 
 /**
  * The fusion machine, client side: a drum on a plinth beside the records board, three
@@ -175,6 +176,8 @@ export function setupFuser(): void {
   })
   room.onMessage('fused', (d) => {
     pushToFeed(`${d.byName} fused a ${rarity(d.rarity).name}`)
+    // Everyone on the plaza sees it happen at the machine, not only in the feed.
+    fuseBurst(d.rarity, itemColor(d.rarity, d.mutation))
   })
 
   let dessine = ''

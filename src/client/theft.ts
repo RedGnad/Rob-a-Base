@@ -12,6 +12,7 @@ import { poseView } from './pose'
 import { TOAST } from './theme'
 import { setSfx, replay } from './sfx'
 import { cue } from './ui-kit'
+import { REVENGE_MS } from '../shared/schemas'
 
 export const theftView = {
   alertes: [] as Array<{ id: number; t: string; c: string; ne: number; until: number; keep: boolean }>,
@@ -118,6 +119,25 @@ let derniereAnnonceHL = 0
  */
 export function alerterEnFile(texte: string, color: string, durationMs: number = TOAST.warning): void {
   file.push({ t: texte, c: color, ms: durationMs })
+}
+
+/*
+  The welcome-back sum, for the away report (away.tsx).
+
+  When the player comes back to a base something happened to, one screen says it all, the
+  sum included, so the sum must not ALSO come as a toast once that screen closes. The report
+  and the wallet tick that carries the sum arrive in either order: the screen takes the sum
+  through `offlineTaker` when it is already up, and reads `lastOffline` and calls `unqueue`
+  when it opens second.
+*/
+let lastOffline = { gain: 0, capped: false, at: 0 }
+export function lastOfflineAnnounce(): { gain: number; capped: boolean; at: number } { return lastOffline }
+let offlineTaker: ((gain: number, capped: boolean) => boolean) | null = null
+export function takeOfflineAnnounce(fn: (gain: number, capped: boolean) => boolean): void { offlineTaker = fn }
+/** Withdraw the toasts that start with `prefix`, queued or showing: a screen says it instead. */
+export function unqueue(prefix: string): void {
+  for (let i = file.length - 1; i >= 0; i--) if (file[i].t.startsWith(prefix)) file.splice(i, 1)
+  for (let i = theftView.alertes.length - 1; i >= 0; i--) if (theftView.alertes[i].t.startsWith(prefix)) theftView.alertes.splice(i, 1)
 }
 
 /*
@@ -239,6 +259,14 @@ export function setupTheft(): void {
       ? `  ·  sealed ${d.shieldSec >= 3600 ? Math.round(d.shieldSec / 3600) + 'h' : Math.round(d.shieldSec / 60) + ' min'}`
       : ''
     alerter(`STOLEN BY ${d.byName.toUpperCase()}${abri}`, r.color, TOAST.event)
+    /*
+      And the answer, in the next breath: for REVENGE_MS their shield does not stop you, for
+      one theft back. The server always allowed it and nothing ever said so. Queued, so it
+      follows the theft instead of stacking on it; the travel tab keeps the button (away.tsx,
+      travel-ui.tsx). A theft that was their revenge opens none, and says so instead.
+    */
+    if (d.payback) alerterEnFile(`THAT WAS ${d.byName.toUpperCase()}'S REVENGE`, '#ffd166', TOAST.event)
+    else alerterEnFile(`REVENGE OPEN ON ${d.byName.toUpperCase()}  ·  ${Math.round(REVENGE_MS / 3_600_000)}h`, '#ff6b6b', TOAST.event)
     replay(sonneur)
     console.log(`[CLIENT] VOL SUBI: ${d.byName} -> ${r.name}`)
   })
@@ -372,8 +400,12 @@ export function setupTheft(): void {
       // "banked" et non "earned": depuis le 7 Sep cette somme porte AUSSI la cagnotte laissee a
       // la deconnexion, donc elle couvre la fin de la session precedente autant que l'absence.
       // Un mot qui decrit ou l'argent etait, pas quand il a ete produit, est vrai des deux.
-      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} banked`, '#ffd166', TOAST.event)
-      if (d.offlineCapped) alerterEnFile('SILO FULL  ·  build another', '#ffd166', TOAST.event)
+      lastOffline = { gain: d.offlineGain, capped: d.offlineCapped, at: Date.now() }
+      // The away report, when it is up, says the sum on its own screen (away.tsx).
+      if (offlineTaker === null || !offlineTaker(d.offlineGain, d.offlineCapped)) {
+        alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} banked`, '#ffd166', TOAST.event)
+        if (d.offlineCapped) alerterEnFile('SILO FULL  ·  build another', '#ffd166', TOAST.event)
+      }
     }
   })
 

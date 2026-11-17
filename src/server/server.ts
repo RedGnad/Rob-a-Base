@@ -10,7 +10,7 @@ import { startCarry } from './carry'
 import { startGear } from './gear'
 import { startEvents } from './events'
 import { log, flushLog, replayLog } from './log'
-import { startTheft, lockOnArrival, delivrerAlertes } from './theft'
+import { startTheft, lockOnArrival, arrivalDone, arrivalOver } from './theft'
 import { startBelt } from './belt'
 import { startRecords } from './records'
 import { startFuser } from './fusion'
@@ -80,7 +80,7 @@ export function startServer(): void {
         pushQuests(address)
         arrivee(address)
         lockOnArrival(address)    // grace period on arrival
-        delivrerAlertes(address)  // what happened while away
+        arrivalDone(address)      // the away report and the revenge list, once the client listens
         replayLog(address)
         console.log(`[SERVER] ${address} joined`)
       })()
@@ -93,6 +93,7 @@ export function startServer(): void {
       presents.delete(address)
       auRevoir(address)
       depart(address)
+      arrivalOver(address)
     }
   })
 }

@@ -3,7 +3,8 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
   Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS,
-  RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
+  RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
+  RAID_SLAM_HIT, RAID_WINDUP_MS, RAID_SLAM_GAP_MS, RAID_RAGE_AT, RAID_RAGE_SPEED, RAID_RAGE_WINDUP_MS, RAID_RAGE_GAP_MS, RAID_PROBE,
   RAID_SWIPE_CAP_S, RAID_RAIN_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN, RAID_STANDOFF, RAID_THREAT_SWITCH,
   SCENE_SIDE, forceDuTir
 , RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE, RAID_ROAM_RADIUS, RAID_ROAM_SPEED, RAID_ROAM_PAUSE_MS, RAID_ROAM_JITTER_MS} from '../shared/schemas'
@@ -34,37 +35,31 @@ let degats = new Map<string, number>()
 let prochain = 0
 let debut = 0
 
-/** The next fixed slot strictly after `apres`: the raid runs on the clock, not on uptime. */
-function prochainCreneau(apres: number): number {
-  const d = new Date(apres)
+/** The next fixed slot strictly after `after`: the raid runs on the clock, not on uptime. */
+function nextSlot(after: number): number {
+  if (RAID_PROBE) return after + 15_000
+  const d = new Date(after)
   const base = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), 0, 0, 0)
   for (const m of RAID_MINUTES) {
     const t = base + m * 60_000
-    if (t > apres) return t
+    if (t > after) return t
   }
   return base + 3_600_000 + RAID_MINUTES[0] * 60_000
 }
 let targetAddr: string | null = null
 /*
-  LE DELAI EST PAR JOUEUR, ET IL ETAIT GLOBAL.
-
-  Ce que le testeur ne "sentait" pas, et que le proprietaire a diagnostique en jouant (7 Sep):
-  on entrait dans le boss et IL NE SE PASSAIT RIEN, puis on perdait de l'argent cinq secondes
-  plus tard sans avoir rien fait entre-temps. La cause etait un metronome unique, `dernierBalai`,
-  demarre au debut du raid et partage par tout le monde: le boss tirait toutes les cinq secondes
-  et frappait qui se trouvait la A CET INSTANT PRECIS. Le contact ne declenchait rien.
-
-  Consequences observees, toutes expliquees par cette seule ligne: on pouvait entrer dans le
-  boss, le frapper et ressortir sans jamais rien prendre; on pouvait aussi prendre un coup en
-  arrivant, sans avoir eu le temps de faire quoi que ce soit. Le dégât n'avait aucun lien de
-  cause avec l'action du joueur, et un dégât sans cause ne se lit pas comme un dégât.
-
-  Le delai devient donc PAR JOUEUR: on entre a portee, on prend le coup TOUT DE SUITE, puis un
-  toutes les cinq secondes tant qu'on reste. C'est la regle du degat de contact partout ou elle
-  existe, et c'est la seule qui rende le "reste ou pars" lisible. Ressortir et revenir apres
-  cinq secondes reprend un coup, ce qui est exactement ce qu'on veut dire.
+  The slam's clock (see the note on RAID_SWIPE_RANGE in `schemas.ts`). It replaced, on 3 Nov,
+  the per-player contact delay of 7 Sep, which itself replaced one metronome shared by everyone:
+  the boss hit whoever stood there at that instant, so a player could walk in, hit it and leave
+  untouched, or take a blow on arrival before doing anything. A blow without a cause does not
+  read as a blow; the telegraph keeps the cause and adds the answer.
 */
-const dernierCoup = new Map<string, number>()
+/** When the slam being wound up lands, or 0 while none is. */
+let slamAt = 0
+/** No wind-up starts before this. */
+let nextSlamAt = 0
+/** Below RAID_RAGE_AT of its life, until it falls or leaves. */
+let enraged = false
 let spawnX = 0, spawnZ = 0
 /** The stroll waypoint near the spawn, and when to pick the next one (see RAID_ROAM_*). */
 let roamX = 0, roamZ = 0, nextRoamAt = 0
@@ -143,8 +138,8 @@ export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }
   const t = Math.max(0, (r.x - ax) * dx + (r.z - az) * dz)  // distance along the ray to the boss's foot
   const px = ax + t * dx, pz = az + t * dz
   if (Math.hypot(r.x - px, r.z - pz) > RAID_RADIUS) return false
-  // Le corps a corps frappe plus fort ici aussi, et c'est la ou il se paie: le balai du
-  // boss porte a quatre metres, donc frapper a deux metres cinquante, c'est rester dedans.
+  // Melee hits harder here too, and this is where it is paid for: the slam lands three and a
+  // half metres out, so striking from two and a half is standing inside it.
   const degat = Math.max(0.2, forceDuTir(bossDist)) * mult
   const m = Raid.getMutableOrNull(boss)
   if (m === null) return false
@@ -162,22 +157,30 @@ export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }
       log(`the raid boss turns on ${displayName(a)}, top threat`)
     }
   }
-  if (m.hp <= 0) finir(true)
+  if (!enraged && m.hp > 0 && m.hp <= m.hpMax * RAID_RAGE_AT) {
+    enraged = true
+    log('raid: the boss is enraged')
+  }
+  if (m.hp <= 0) closeRaid(true)
   return true
 }
 
-function ouvrir(now: number, finMs?: number): void {
+function openRaid(now: number, endMs?: number): void {
   if (boss === null) return
   const m = Raid.getMutableOrNull(boss)
   if (m === null) return
   const ici = presents().size
   degats = new Map()
   debut = now
-  dernierCoup.clear()
+  slamAt = 0
+  // It lands first (the client drops it from the sky), and only then looks for someone to slam.
+  nextSlamAt = now + 1_500
+  enraged = false
   m.active = true
   m.hpMax = RAID_HP_BASE + RAID_HP_PER_PLAYER * Math.max(1, ici)
-  m.hp = m.hpMax
-  m.untilMs = finMs ?? now + RAID_MS
+  // The probe starts it just above its rage, so a few shots test the rage and a dozen the fall.
+  m.hp = RAID_PROBE ? m.hpMax * 0.55 : m.hpMax
+  m.untilMs = endMs ?? now + RAID_MS
   seed = (now & 0x7fffffff) ^ 0x5f3759df
   spawnX = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
   spawnZ = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
@@ -194,19 +197,22 @@ function ouvrir(now: number, finMs?: number): void {
   m.lastHitName = ''
   m.hitAtMs = 0
   m.swipeAtMs = 0
-  log(`raid: the boss is up, ${m.hpMax} hp for ${ici} present`)
+  log(`raid: the boss is up at ${Math.round(m.x)}, ${Math.round(m.z)}, ${m.hpMax} hp for ${ici} present`)
 }
 
-function finir(vaincu: boolean): void {
+function closeRaid(slain: boolean): void {
   if (boss === null) return
   const m = Raid.getMutableOrNull(boss)
   if (m === null || !m.active) return
   const now = Date.now()
   m.active = false
-  m.hp = 0
-  prochain = prochainCreneau(now)
+  slamAt = 0
+  // Life left at the end is how a client tells a boss that fell from one that walked away:
+  // the first bursts, the second sinks into the ground (`client/raid.ts`).
+  if (slain) m.hp = 0
+  prochain = nextSlot(now)
   m.nextMs = prochain
-  if (vaincu) {
+  if (slain) {
     /*
       The corpse rains coins, and the rain is for the crowd.
 
@@ -277,13 +283,64 @@ function finir(vaincu: boolean): void {
   log('raid: the boss left')
 }
 
+/**
+ * A present player within `range` of the boss, on the ground and on the same side of every wall.
+ *
+ * A wall stops a claw as it stops a bullet. `memeEspace` guarded shots both ways but never the
+ * boss's blow, so a player pressed to the inside of their wall, with the boss pressed to the
+ * outside, was hit through it (owner, 8 Sep). The boss is kept OUT of the bases so a base is a
+ * refuge during a raid (`horsDesBases`), and a refuge that does not protect is worse than none,
+ * because people run to it.
+ */
+function inReach(addr: string, x: number, z: number, range: number): { x: number; y: number; z: number } | null {
+  const p = positionOf(addr)
+  if (p === null) return null
+  if (Math.hypot(p.x - x, p.z - z) > range || Math.abs(p.y - 0) > 3) return null
+  if (!memeEspace(p.x, p.z, x, z)) return null
+  return p
+}
+
+function someoneInReach(x: number, z: number, range: number): boolean {
+  for (const addr of presents()) if (inReach(addr, x, z, range) !== null) return true
+  return false
+}
+
+/*
+  The slam lands, on whoever is still inside, and it always lands. The shock wave used to be
+  drawn only when someone was hit (7 Sep), because a wave drawn every five seconds over an empty
+  plaza taught players it meant nothing. Announced by a wind-up, the slam that hits nobody is
+  the dodge the player just made, and it must show.
+*/
+function slam(now: number): void {
+  slamAt = 0
+  nextSlamAt = now + (enraged ? RAID_RAGE_GAP_MS : RAID_SLAM_GAP_MS)
+  if (boss === null) return
+  const m = Raid.getMutableOrNull(boss)
+  if (m === null) return
+  m.swipeAtMs = now
+  for (const addr of presents()) {
+    const p = inReach(addr, m.x, m.z, RAID_SLAM_HIT)
+    if (p === null) continue
+    // Full force: whatever they carried is on the floor, like a bomb.
+    hitCarrier(addr, 5)
+    const lost = Math.floor(Math.min(coinsOf(addr) * RAID_SWIPE_SHARE, incomePerSecond(addr) * RAID_SWIPE_CAP_S + 500))
+    if (lost > 0 && spend(addr, lost)) {
+      dropAt(addr, lost, { x: p.x, y: p.y, z: p.z })
+      void room.send('raidSwipe', { lost }, { to: [addr] })
+      log(`raid: slammed ${displayName(addr)} for ${lost}`)
+    } else {
+      void room.send('raidSwipe', { lost: 0 }, { to: [addr] })
+    }
+  }
+}
+
 export function startRaid(): void {
   for (const [e] of engine.getEntitiesWith(Raid)) {
     if ((e & 0xffff) < 512) continue
     engine.removeEntity(e)
   }
   boss = engine.addEntity()
-  prochain = prochainCreneau(Date.now())
+  prochain = nextSlot(Date.now())
   Raid.create(boss, {
     active: false, hp: 0, hpMax: 0, untilMs: 0, nextMs: prochain,
     x: RAID_POS.x, z: RAID_POS.z, topName: '', lastHitName: '', hitAtMs: 0, swipeAtMs: 0, faceX: 0, faceZ: 1
@@ -304,7 +361,7 @@ export function startRaid(): void {
     if (!lu.active) {
       if (now < prochain) return
       const finFenetre = prochain + RAID_MS
-      const passe = (): void => { prochain = prochainCreneau(now); if (boss !== null) { const m = Raid.getMutableOrNull(boss); if (m !== null) m.nextMs = prochain } }
+      const passe = (): void => { prochain = nextSlot(now); if (boss !== null) { const m = Raid.getMutableOrNull(boss); if (m !== null) m.nextMs = prochain } }
       // The window has run out with nobody there: move on to the next slot.
       if (now >= finFenetre) { passe(); return }
       // Still inside the window: a player arriving now gets the boss for the time that is left,
@@ -312,13 +369,14 @@ export function startRaid(): void {
       if (presents().size === 0) return
       // Not on top of a rush, nor on the doorstep of the grand one: one countdown at a time.
       for (const [, ev] of engine.getEntitiesWith(Event)) {
+        if (RAID_PROBE) break
         if (ev.theme >= 0 || ev.nextGrandMs - now < RAID_MS + 60_000) { passe(); return }
       }
-      ouvrir(now, finFenetre)
+      openRaid(now, finFenetre)
       return
     }
 
-    if (now >= lu.untilMs) { finir(false); return }
+    if (now >= lu.untilMs) { closeRaid(false); return }
 
     const m = Raid.getMutableOrNull(boss)
     if (m === null) return
@@ -383,58 +441,40 @@ export function startRaid(): void {
       */
       const garde = vise !== null ? RAID_STANDOFF : 0
       const reste = vl - garde
-      if (reste > 0.05) {
+      // Rooted while it winds up: the slam lands where the disc was drawn.
+      if (reste > 0.05 && slamAt === 0) {
         // It walks to the ends of the map after its target; the map and the plots stop it.
-        const pas = Math.min((vise !== null ? RAID_SPEED : RAID_ROAM_SPEED) * ds, reste)
+        const chase = RAID_SPEED * (enraged ? RAID_RAGE_SPEED : 1)
+        const pas = Math.min((vise !== null ? chase : RAID_ROAM_SPEED) * ds, reste)
         const libre = horsDesBases(m.x + vx * pas, m.z + vz * pas)
         m.x = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.x))
         m.z = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.z))
       }
     }
 
-    /*
-      L'ONDE DE CHOC NE PART QUE SI QUELQU'UN EST TOUCHE.
+  })
 
-      Elle partait sur le metronome, donc toutes les cinq secondes, meme la place vide. Le client
-      la dessine a chaque changement de `swipeAtMs` (`client/raid.ts`), donc le joueur voyait le
-      boss balayer dans le vide en boucle et apprenait qu'elle ne voulait rien dire. Une annonce
-      qui se declenche sans consequence detruit la valeur de l'annonce qui en a une.
-    */
-    let frappe = false
-    for (const addr of presents()) {
-      const p = positionOf(addr)
-      if (p === null) continue
-      if (Math.hypot(p.x - m.x, p.z - m.z) > RAID_SWIPE_RANGE || Math.abs(p.y - 0) > 3) continue
-      /*
-        UN MUR ARRETE AUSSI UNE GRIFFE, et il n'arretait qu'une balle.
-
-        `memeEspace` etait branche sur les TIRS, dans les deux sens, mais jamais sur le corps a
-        corps du boss: la boucle ne testait que la distance et la hauteur. Colle a l'interieur de
-        son mur, avec le boss colle a l'exterieur, un joueur se prenait le coup a travers la paroi
-        (proprietaire, 8 Sep, en jouant). Deux metres separaient les deux corps, la portee en vaut
-        quatre, et rien ne regardait la cloison entre eux.
-
-        Ce n'est pas un detail d'equilibrage, ca contredit une intention ecrite trois cents lignes
-        plus haut, dans `horsDesBases`: le boss est tenu HORS des bases pour donner a la base "the
-        role it should have during a raid: a refuge you duck into, with the thing pacing outside".
-        Un refuge qui ne protege pas est pire qu'aucun refuge, parce qu'on y court.
-      */
-      if (!memeEspace(p.x, p.z, m.x, m.z)) continue
-      if (now - (dernierCoup.get(addr) ?? 0) < RAID_SWIPE_MS) continue
-      dernierCoup.set(addr, now)
-      frappe = true
-      // Full force: whatever they carried is on the floor, like a bomb.
-      hitCarrier(addr, 5)
-      const perte = Math.floor(Math.min(coinsOf(addr) * RAID_SWIPE_SHARE, incomePerSecond(addr) * RAID_SWIPE_CAP_S + 500))
-      if (perte > 0 && spend(addr, perte)) {
-        dropAt(addr, perte, { x: p.x, y: p.y, z: p.z })
-        void room.send('raidSwipe', { lost: perte }, { to: [addr] })
-        log(`raid: swiped ${displayName(addr)} for ${perte}`)
-      } else {
-        void room.send('raidSwipe', { lost: 0 }, { to: [addr] })
-      }
+  /*
+    The slam, on its own clock: checked ten times a second rather than on the mover's half
+    second, so it lands when the disc the clients drew has filled, not up to half a second late.
+  */
+  let slamAcc = 0
+  engine.addSystem((dt) => {
+    slamAcc += dt
+    if (slamAcc < 0.1) return
+    slamAcc = 0
+    if (boss === null) return
+    const r = Raid.getOrNull(boss)
+    if (r === null || !r.active) return
+    const now = Date.now()
+    if (slamAt > 0) {
+      if (now >= slamAt) slam(now)
+      return
     }
-    if (frappe) m.swipeAtMs = now
+    if (now < nextSlamAt || !someoneInReach(r.x, r.z, RAID_SWIPE_RANGE)) return
+    const ms = enraged ? RAID_RAGE_WINDUP_MS : RAID_WINDUP_MS
+    slamAt = now + ms
+    void room.send('raidWindup', { x: r.x, z: r.z, ms, rage: enraged })
   })
 
   log('raid ready')

@@ -60,7 +60,8 @@ function streetMaterial(tx: number, tz: number): PBMaterial_PbrMaterial {
   return {
     ...plastic(TOY.street), roughness: 0.95,
     texture: Material.Texture.Common({
-      src: 'assets/textures/mat-wall.png',
+      // A chessboard in the street's own clay, two metre squares (build-world-textures.py).
+      src: 'assets/textures/mat-street.png',
       wrapMode: TextureWrapMode.TWM_REPEAT,
       tiling: Vector2.create(tx, tz)
     })
@@ -102,24 +103,22 @@ const LARGEUR_RUE = 6
 
 export function setupDecor(): void {
   /*
-    Le pourtour en UN objet, avec un profil.
+    The rampart: the horizon of the whole game, in ONE object.
 
-    C'etaient quatre cubes etires en creme et quatre dalles jaunes posees dessus: huit objets
-    rendus et deux materiaux pour la plus longue ligne visible du jeu, celle qui est a
-    l'horizon de chaque capture, et elle lisait comme le flanc d'un carton. `build-wall.py`
-    cuit tout le pourtour en un seul maillage a un materiau: socle deborde, corps legerement
-    fuyant, couronnement a larmier avec sa levre jaune, un contrefort tous les douze metres du
-    cote interieur, et une tour a chaque angle avec sa lanterne. 1 824 triangles, la ou il
-    nous reste 73 pour cent de marge, contre sept objets rendus et un materiau economises sur
-    les deux compteurs qui sont tendus.
+    The 3.2 m rim let the landscape Decentraland generates around a World fill every horizon in
+    its own colours (owner, 30 Oct). That landscape is now off (`landscapeTerrain: false` in
+    scene.json), and `tools/model/build-rampart.py` bakes a 12 m crenellated wall with 18.8 m
+    towers, a chessboard frieze and the yellow coping, one mesh, one material, one texture.
+    It gains height, never depth: nothing reaches more than 1.3 m in from the edge, so it takes
+    no ground from the field.
 
-    Le modele porte sa propre collision, physique ET pointeur, comme les boites: la camera de
-    troisieme personne doit s'arreter dessus, pas passer au travers.
+    The model carries its own collision, physics AND pointer, like the crates: the third-person
+    camera has to stop on it, not pass through.
   */
   const enceinte = engine.addEntity()
   Transform.create(enceinte, { position: Vector3.create(0, 0, 0) })
   GltfContainer.create(enceinte, {
-    src: 'assets/Models/wall.glb',
+    src: 'assets/Models/rampart.glb',
     visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER,
     invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
   })
@@ -196,7 +195,9 @@ export function setupDecor(): void {
     scale: Vector3.create(SCENE_SIDE, 0.06, LARGEUR_RUE)
   })
   MeshRenderer.setBox(rue)
-  Material.setPbrMaterial(rue, streetMaterial(SCENE_SIDE / 4, LARGEUR_RUE / 4))
+  // The box's top face runs its u ACROSS the street (z): with the long count first, the
+  // chessboard came out as 6 cm stripes 64 m long (30 Oct). Width first, length second.
+  Material.setPbrMaterial(rue, streetMaterial(LARGEUR_RUE / 4, SCENE_SIDE / 4))
 
   /*
     Le trait au sol qui EST la regle qu'on ne peut pas construire ici.

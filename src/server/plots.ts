@@ -428,7 +428,7 @@ function foldEmptyBases(absenceMs: number): number {
  * nouvelle remise a zero. Un booleen oublie a `true`, lui, aurait vide le monde a chaque
  * redemarrage du serveur, c'est-a-dire plusieurs fois par jour.
  */
-const WORLD_RESET_MARK = '2026-09-02-place-reservee'
+export const WORLD_RESET_MARK = '2026-09-02-place-reservee'
 const RESET_KEY = 'reset'
 
 /**

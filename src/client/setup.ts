@@ -12,6 +12,7 @@ import { setupBox } from './box'
 import { setupRevealToy } from './reveal-toy'
 import { setupPlots } from './plots'
 import { setupTheft, setClientAddress, theftView } from './theft'
+import { setupAway } from './away'
 import { sendOrHold } from './intent'
 import { setupBelt } from './belt'
 import { setupRecords } from './records'
@@ -27,6 +28,8 @@ import { setupTravel } from './travel'
 import { noteServerClock, serverClockOffset } from './clock'
 import { setupVenue } from './venue'
 import { setupJuiceSound } from './juice'
+import { setupVfx } from './vfx'
+import { setupLights } from './lights'
 import { setupConvoy } from './convoy'
 import { setupCombat } from './combat'
 import { setupCarry } from './carry'
@@ -133,12 +136,15 @@ export function startClient(): void {
   SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: 43200 })
 
   setupJuiceSound()
+  setupVfx()
+  setupLights()
   setupVenue()
   setupBox()
   setupRevealToy()
   setupPlots()
   setupStress()
   setupTheft()
+  setupAway()
   setupCarry()
   setupGear()
   setupEvents()

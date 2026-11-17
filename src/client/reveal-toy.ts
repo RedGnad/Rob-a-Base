@@ -2,6 +2,7 @@ import { engine, Entity, Transform, MeshRenderer, Material, MaterialTransparency
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { itemFile, montable, demonter, monte, figerMonture } from './toy'
 import { itemColor, rarityOf, mutationDe } from '../shared/loot-table'
+import { startGlitter, stopGlitter } from './vfx'
 
 /**
  * The piece you just won, in three dimensions, in front of your own camera and nobody else's.
@@ -111,9 +112,26 @@ let angle = 0
 let fige = false
 /** The piece's own colour, read once when it is mounted: the scrim and the glow both use it. */
 let teinte = Color3.create(1, 1, 1)
+/** The same colour as written, and the rarity: the glitter around the piece takes both. */
+let teinteHex = '#ffffff'
+let mountedRarity = 0
+/** Whether the glitter was started for the piece now mounted: once per showing. */
+let glittering = false
 /** Last alpha written to each material, in sixty fourths: a material write is not a Transform. */
 let voileEcrit = -1
 let haloEcrit = -1
+/*
+  The herald (3 Nov). From Legendary up the glow does not only come up like a lamp: it opens on
+  a white-hot flash that settles into the piece's colour within FLASH_MS, wider for that moment.
+  Blizzard's own words for Hearthstone, "a flash of gold heralding a Legendary card"; below
+  Legendary the lamp stays a lamp, so the flash itself is a step of the ladder.
+*/
+const FLASH_FROM = 4
+const FLASH_MS = 160
+/** The glow reaches full size about this long into the pop (`k * 1.4` reaches 1 under easeOutBack). */
+const FLASH_DELAY_MS = 140
+/** When the piece first showed, for the flash; 0 before. */
+let shownAt = 0
 
 function easeOutBack(t: number): number {
   const c1 = 1.70158
@@ -136,7 +154,9 @@ export function preparerRevealToy(code: number): void {
   montable(e, itemFile(code))
   support = e
 
-  teinte = Color3.fromHexString(itemColor(rarityOf(code), mutationDe(code)))
+  teinteHex = itemColor(rarityOf(code), mutationDe(code))
+  teinte = Color3.fromHexString(teinteHex)
+  mountedRarity = rarityOf(code)
 
   // The scrim: full size from the first frame, never scaled, only faded. Its edges live
   // outside the field of view and must stay there, or the reveal shows its own frame.
@@ -166,6 +186,7 @@ export function preparerRevealToy(code: number): void {
   phase = 'vide'
   angle = 0
   fige = false
+  shownAt = 0
 }
 
 /** The room's own darkness, at `a` of full: the piece's colour driven nearly to black. */
@@ -182,19 +203,22 @@ function ecrireVoile(a: number): void {
   })
 }
 
-/** The light behind the piece, at `a` of full. */
-function ecrireHalo(a: number): void {
+/** The light behind the piece, at `a` of full, white-hot by `f` (the herald's flash, 0 to 1). */
+function ecrireHalo(a: number, f = 0): void {
   if (halo === null) return
   const q = Math.round(a * 64)
-  if (q === haloEcrit) return
-  haloEcrit = q
+  const qf = Math.round(f * 16)
+  if (q * 17 + qf === haloEcrit) return
+  haloEcrit = q * 17 + qf
   const k = q / 64
+  const w = qf / 16
+  const r = teinte.r + (1 - teinte.r) * w, g = teinte.g + (1 - teinte.g) * w, b = teinte.b + (1 - teinte.b) * w
   Material.setPbrMaterial(halo, {
     texture: Material.Texture.Common({ src: 'assets/textures/reveal-glow.png' }),
     alphaTexture: Material.Texture.Common({ src: 'assets/textures/reveal-glow.png' }),
-    albedoColor: Color4.create(teinte.r, teinte.g, teinte.b, k * HALO_A),
-    emissiveColor: Color3.create(teinte.r * k, teinte.g * k, teinte.b * k),
-    emissiveIntensity: 1.6,
+    albedoColor: Color4.create(r, g, b, Math.min(1, k * HALO_A + w * 0.35)),
+    emissiveColor: Color3.create(r * k, g * k, b * k),
+    emissiveIntensity: 1.6 + 3.4 * w,
     transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
     metallic: 0, roughness: 1, specularIntensity: 0
   })
@@ -221,6 +245,8 @@ function retirer(): void {
   phase = 'vide'
   fige = false
   revealToyView.visible = false
+  glittering = false
+  stopGlitter()
 }
 
 /** The reveal is closing: shrink out if it is showing, otherwise just go. */
@@ -278,16 +304,22 @@ export function setupRevealToy(): void {
       t.position = Vector3.create(0, 0, (cible + 0.4) + (cible - (cible + 0.4)) * Math.min(1, k))
       // The room goes dark FIRST and comes back last: the light, then the piece.
       ecrireVoile(Math.min(1, k * 2.2))
-      // The glow opens a touch wider than the piece and settles: a lamp coming up, not a flash.
+      // The glow opens a touch wider than the piece and settles: a lamp coming up, not a flash,
+      // except from Legendary, where it opens on the herald's flash (see FLASH_MS).
       const kg = Math.min(1, k * 1.4)
-      if (th !== null) th.scale = Vector3.create(HALO_C * kg, HALO_C * kg, 1)
-      ecrireHalo(kg)
+      const since = Date.now() - shownAt - FLASH_DELAY_MS
+      const f = mountedRarity >= FLASH_FROM && shownAt > 0 && since >= 0 ? Math.max(0, 1 - since / FLASH_MS) : 0
+      const sg = HALO_C * kg * (1 + 0.3 * f)
+      if (th !== null) th.scale = Vector3.create(sg, sg, 1)
+      ecrireHalo(kg, f)
     }
 
     if (phase === 'entre') {
       const k = pret ? easeOutBack(Math.min(1, age / POP_MS)) : 0
       poser(k)
       revealToyView.visible = pret && k > 0.05
+      // The glitter comes up with the piece, not before it: a sparkle around nothing is noise.
+      if (revealToyView.visible && !glittering) { glittering = true; shownAt = Date.now(); startGlitter(teinteHex, mountedRarity) }
       if (age >= POP_MS && pret) phase = 'tient'
       return
     }
@@ -297,6 +329,7 @@ export function setupRevealToy(): void {
       return
     }
     // Leaving: back away and shrink, the entrance played backwards and faster.
+    if (glittering) { glittering = false; stopGlitter() }
     const k = Math.max(0, 1 - age / SORTIE_MS)
     poser(k * k)
     revealToyView.visible = false

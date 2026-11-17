@@ -1,7 +1,9 @@
 import {
   engine, Transform, MeshRenderer, Material, AvatarAttach, AvatarAnchorPointType,
   Entity, Billboard, BillboardMode, TextShape, inputSystem, InputAction, PointerEventType ,
-  Tween, TweenSequence, TweenLoop, EasingFunction} from '@dcl/sdk/ecs'
+  Tween, TweenSequence, TweenLoop, EasingFunction, PlayerIdentityData} from '@dcl/sdk/ecs'
+import { stealBurst } from './vfx'
+import { serverNow } from './clock'
 import { sendOrHold } from './intent'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
@@ -63,6 +65,23 @@ let vuCode = -1
 
 /** La taille qu'aura la piece sur son socle. La formule vit dans `loot-table.ts`, une seule fois. */
 const tailleDe = tailleAffichee
+
+/** A lift older than this, by the server's clock, was not just seen happening. */
+const FRESH_LIFT_MS = 4000
+
+/** A player's Transform sits at their feet (read in the Explorer, 2 Nov); the chest is this far up. */
+const CHEST_Y = 1.2
+
+/** Where a player's chest is, for anything drawn on them that cannot ride an attachment. */
+function chestOf(address: string): Vector3 | null {
+  const a = address.toLowerCase()
+  for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
+    if (id.address?.toLowerCase() !== a) continue
+    const t = Transform.getOrNull(e)
+    return t === null ? null : Vector3.create(t.position.x, t.position.y + CHEST_Y, t.position.z)
+  }
+  return null
+}
 
 export function setupCarry(): void {
   marqueur = engine.addEntity()
@@ -194,6 +213,18 @@ export function setupCarry(): void {
           Tween.setScale(anneau, Vector3.create(1.5, 0.03, 1.5), Vector3.create(2.05, 0.03, 2.05), 720, EasingFunction.EF_EASESINE)
           TweenSequence.createOrReplace(anneau, { sequence: [], loop: TweenLoop.TL_YOYO })
           AvatarAttach.create(anneau, { avatarId: c.holder, anchorPointId: AvatarAnchorPointType.AAPT_POSITION })
+          /*
+            And it glitters as it lands in the hand, the moment the theft happens.
+
+            Only for a lift that is fresh: arriving in a room where someone already holds stolen
+            goods creates their view too, and that is not a theft anyone just saw. Placed at the
+            carrier's chest rather than on the hand, because a scene can read an avatar's
+            position but not where an attachment ends up.
+          */
+          if (serverNow() - c.sinceMs < FRESH_LIFT_MS) {
+            const at = chestOf(c.holder)
+            if (at !== null) stealBurst(rarityOf(c.code), itemColor(rarityOf(c.code), mutationDe(c.code)), at)
+          }
         }
 
         /*

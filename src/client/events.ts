@@ -8,6 +8,7 @@ import { raidView } from './raid'
 import { alerterEnFile } from './theft'
 import { plastic, TOY } from './toy'
 import { TOAST } from './theme'
+import { startRushAir, stopRushAir } from './vfx'
 
 /**
  * What an event looks like, which is the part that makes it one.
@@ -337,6 +338,7 @@ export function setupEvents(): void {
       // The first rush of the session explains itself once; the rest is the chip and the world.
       if (!rushCardSeen) { rushCardSeen = true; openRushCard(true) }
       replay(cloche)
+      startRushAir(theme)
       const look = LOOK[theme] ?? LOOK[5]
       /*
         Le CIEL ne bouge plus, jamais.
@@ -367,6 +369,7 @@ export function setupEvents(): void {
         Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), look.vitesse ?? 0.015, TextureMovementType.TMT_OFFSET)
       }
     } else {
+      stopRushAir()
       if (sol !== null && solCouleur !== '') {
         // The plane takes its plain UVs back: the grass keeps its repeat in the material, and
         // with no tween left on the entity nothing overwrites that scale.
