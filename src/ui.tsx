@@ -85,7 +85,7 @@ const ETATS: Record<string, () => string> = {
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
   plein: () => 'your base is full  ·  make room'
 }
-import { slotView, togglePlacing, placeHere, nearestFreeSquare } from './client/slots'
+import { slotView, togglePlacing, placeHere, shakeMarkerText } from './client/slots'
 import { ico, ICONES_VERBES } from './client/icones'
 import { carryView, placeDown, dropCarried, vendre } from './client/carry'
 import { baseIci, padEnFace, agirSurPad, elevatorInReach, monterIci, lockPostInReach } from './client/plots'
@@ -755,9 +755,8 @@ function sonDuVerbe(icone: string | undefined): void {
  */
 function peutConstruireIci(a: { id: string } | null): boolean {
   if (a === null) return false
-  if (a.id !== 'construire-base' && a.id !== 'poser-base') return true
-  // On a refused square the marker lit by itself, the strike lands too: on the nearest free square.
-  return slotView.active && (slotView.valid || (slotView.auto && nearestFreeSquare() !== null))
+  if (a.id !== 'construire-base' && a.id !== 'poser-base' && a.id !== 'follow-arrow') return true
+  return slotView.active && slotView.valid
 }
 
 /* Les verbes qui SE BALANCENT sur le bouton: le maillet nu pour batir, le maillet sur une
@@ -1097,15 +1096,16 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   if (slotView.active) {
     if (slotView.valid) return { id: 'poser-base', label: 'PLACE HERE', icon: ico('build'), action: placeHere }
     /*
-      The hammer always builds (design page 1, point 2, 17 Nov 2026).
+      On a refused square the press does not build, and it still answers (founder, 18 Nov 2026).
 
-      On a refused square under the marker that lit by itself, the press used to be BUILD
-      BASE, whose action switched that marker off; the next frame lit it again, and nothing
-      happened. Now the press sends the square the player stands on, as on a legal one, and
-      the server sets the base down on the nearest free square (`freeSpotNear` in
-      `placeBase`): the square the beacon already stands on. No press is ever dead.
+      It used to be BUILD BASE, whose action switched the marker off; the next frame lit it again,
+      and nothing happened at all. For one evening (17 Nov) it built on the nearest free square
+      instead; the founder chose that a refused square is not built on, and that the player is
+      told what to do in as few words as possible: FOLLOW THE ARROW, which the press shakes
+      (slots.ts). The hammer does not swing here (`peutConstruireIci`), and the step does not
+      pulse: the move the player has to make is to walk to the arrow.
     */
-    if (slotView.auto && nearestFreeSquare() !== null) return { id: 'poser-base', label: 'BUILD BASE', icon: ico('build'), action: placeHere }
+    if (slotView.auto) return { id: 'follow-arrow', label: 'FOLLOW THE ARROW', icon: ico('build'), action: shakeMarkerText }
     /*
       A marker asked for by hand (moving a base) on a refused square: the button stays empty,
       the red rectangle and its reason already say everything.

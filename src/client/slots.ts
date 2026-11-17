@@ -2,7 +2,7 @@ import { TOY, plasticDe } from './toy'
 import { place3DText, LISIBLE_3D } from './texte3d'
 import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity,
-  PointerEvents, PointerEventType, InputAction, inputSystem
+  PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, timers
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason, freeSpotNear } from '../shared/schemas'
@@ -12,6 +12,7 @@ import { myClientAddress, theftView } from './theft'
 import { welcomeView } from './welcome'
 import { sendOrHold } from './intent'
 import { poseView } from './pose'
+import { moveTo } from './deplacer'
 
 
 
@@ -36,9 +37,149 @@ export function togglePlacing(): void {
   if (!slotView.active) {
     const t = Transform.getMutableOrNull(fantome)
     if (t !== null) t.scale = Vector3.create(0, 0, 0)
+    // While BUILD HERE bursts, the label stays up; the system takes it down when the burst ends.
     const e = Transform.getMutableOrNull(label)
-    if (e !== null) e.scale = Vector3.create(0, 0, 0)
+    if (e !== null && exitUntil === 0) e.scale = Vector3.create(0, 0, 0)
   }
+}
+
+/*
+  BUILD HERE, said with the whole body (founder, 17 Nov 2026: much bigger, and a juicy
+  animation from game design, not a random one).
+
+  Three beats, from the game-feel canon ("Juice it or lose it", Jonasson and Purho, 2012) and
+  Disney's principles of animation (squash and stretch, anticipation, overlapping action):
+  - it ENTERS when the square turns green: the letters pop in one after another, left to right,
+    overshooting to 125% before settling, so the words write themselves in one stroke;
+  - it LOOPS while the player stands on the square: a wave runs through the letters, each one
+    jumps in turn, stretching on the way up and squashing as it lands, and the last letter
+    lands on the hammer's strike on the E button (`SWING_MS` in ui.tsx, the strike 180 ms
+    before the end of the period in `Pouce`, ui-kit.tsx): the world and the button beat
+    together and point at the same press;
+  - it BURSTS on the press: every letter swells and vanishes in a quarter of a second, the
+    payoff just before the building stands up.
+  The refusal stays still, in the platform font: a refusal has nothing to celebrate. Each
+  letter is three entities (pop, jump, squash: one entity carries one tween), set once and
+  played by the client, so nothing is written per frame.
+*/
+const BUILD_HERE_SIZE = 0.84
+const WAVE_PERIOD_MS = 1200
+const STRIKE_BEFORE_END_MS = 180
+const WAVE_STEP_MS = 60
+const POP_STEP_MS = 40
+const JUMP_HEIGHT = 0.25
+const JUMP_MS = 150
+let waveGen = 0
+let popHolders: Entity[] = []
+let exitUntil = 0
+/** The words the marker's glyphs currently spell, '' for none. */
+let glyphText = ''
+
+function animateBuildHere(root: Entity): void {
+  waveGen += 1
+  const gen = waveGen
+  const quads: Array<{ e: Entity; x: number }> = []
+  for (const [e, t] of engine.getEntitiesWith(Transform)) if (t.parent === root) quads.push({ e, x: t.position.x })
+  quads.sort((a, b) => a.x - b.x)
+  const n = quads.length
+  const now = Date.now()
+  const one = Vector3.One()
+  const big = Vector3.create(1.25, 1.25, 1.25)
+  popHolders = []
+  quads.forEach((q, i) => {
+    const qt = Transform.getMutable(q.e)
+    const s = Vector3.create(qt.scale.x, qt.scale.y, qt.scale.z)
+    const pop = engine.addEntity()
+    Transform.create(pop, { parent: root, position: Vector3.create(q.x, 0, 0), scale: Vector3.Zero() })
+    const jump = engine.addEntity()
+    Transform.create(jump, { parent: pop })
+    qt.parent = jump
+    qt.position = Vector3.Zero()
+    popHolders.push(pop)
+    // Enter: wait for its turn, pop past full size, settle.
+    Tween.create(pop, { mode: Tween.Mode.Scale({ start: Vector3.Zero(), end: Vector3.Zero() }), duration: 1 + POP_STEP_MS * i, easingFunction: EasingFunction.EF_LINEAR })
+    TweenSequence.create(pop, {
+      sequence: [
+        { mode: Tween.Mode.Scale({ start: Vector3.Zero(), end: big }), duration: 180, easingFunction: EasingFunction.EF_EASEOUTBACK },
+        { mode: Tween.Mode.Scale({ start: big, end: one }), duration: 140, easingFunction: EasingFunction.EF_EASEOUTQUAD }
+      ]
+    })
+    // Loop: this letter lands WAVE_STEP_MS per letter before the last one, which lands on the strike.
+    const landAt = WAVE_PERIOD_MS - STRIKE_BEFORE_END_MS - WAVE_STEP_MS * (n - 1 - i)
+    const delay = (((landAt - 2 * JUMP_MS - (now % WAVE_PERIOD_MS)) % WAVE_PERIOD_MS) + WAVE_PERIOD_MS) % WAVE_PERIOD_MS
+    timers.setTimeout(() => { if (gen === waveGen && Transform.has(jump)) startLetterJump(jump, q.e, s) }, delay)
+  })
+}
+
+function startLetterJump(jump: Entity, quad: Entity, s: Vector3): void {
+  const rest = Vector3.Zero()
+  const up = Vector3.create(0, JUMP_HEIGHT, 0)
+  Tween.createOrReplace(jump, { mode: Tween.Mode.Move({ start: rest, end: up }), duration: JUMP_MS, easingFunction: EasingFunction.EF_EASEOUTQUAD })
+  TweenSequence.createOrReplace(jump, {
+    sequence: [
+      { mode: Tween.Mode.Move({ start: up, end: rest }), duration: JUMP_MS, easingFunction: EasingFunction.EF_EASEINQUAD },
+      { mode: Tween.Mode.Move({ start: rest, end: rest }), duration: WAVE_PERIOD_MS - 2 * JUMP_MS, easingFunction: EasingFunction.EF_LINEAR }
+    ],
+    loop: TweenLoop.TL_RESTART
+  })
+  // Stretched on the way up, squashed as it lands, then back with a little overshoot.
+  const k = (x: number, y: number): Vector3 => Vector3.create(s.x * x, s.y * y, s.z)
+  Tween.createOrReplace(quad, { mode: Tween.Mode.Scale({ start: k(1, 1), end: k(0.88, 1.18) }), duration: JUMP_MS, easingFunction: EasingFunction.EF_EASEOUTQUAD })
+  TweenSequence.createOrReplace(quad, {
+    sequence: [
+      { mode: Tween.Mode.Scale({ start: k(0.88, 1.18), end: k(1, 1) }), duration: JUMP_MS, easingFunction: EasingFunction.EF_EASEINQUAD },
+      { mode: Tween.Mode.Scale({ start: k(1, 1), end: k(1.22, 0.78) }), duration: 70, easingFunction: EasingFunction.EF_EASEOUTQUAD },
+      { mode: Tween.Mode.Scale({ start: k(1.22, 0.78), end: k(1, 1) }), duration: 160, easingFunction: EasingFunction.EF_EASEOUTBACK },
+      { mode: Tween.Mode.Scale({ start: k(1, 1), end: k(1, 1) }), duration: WAVE_PERIOD_MS - 2 * JUMP_MS - 230, easingFunction: EasingFunction.EF_LINEAR }
+    ],
+    loop: TweenLoop.TL_RESTART
+  })
+}
+
+/*
+  The same press turns the camera towards the free square, so the gold arrow over it comes into
+  the frame. Only on the press, never on its own: a camera that moves without the player asking
+  disorients, and stepping onto a refused square happens all the time while walking (founder,
+  18 Nov 2026: the camera turns when they press BUILD on a red marker).
+*/
+function turnTowardsFreeSquare(): void {
+  const me = Transform.getOrNull(engine.PlayerEntity)
+  const spot = nearestFreeSquare()
+  if (me === null || spot === null) return
+  moveTo('follow the arrow', Vector3.create(me.position.x, me.position.y, me.position.z), Vector3.create(spot.x, 1.2, spot.z))
+}
+
+/*
+  A press on a refused square does not build (founder, 18 Nov 2026): FOLLOW THE ARROW shakes
+  sideways, the "no" every player knows from a rejected password field, and points the player to
+  the gold arrow over the nearest free square. The whole word shakes, on its own root, so the
+  letters' entrance, wave and squash keep running underneath.
+*/
+export function shakeMarkerText(): void {
+  turnTowardsFreeSquare()
+  if (glyphes === null || glyphText !== 'FOLLOW THE ARROW') return
+  const at = (x: number): Vector3 => Vector3.create(x, 0, 0)
+  Tween.createOrReplace(glyphes, { mode: Tween.Mode.Move({ start: at(0), end: at(0.22) }), duration: 60, easingFunction: EasingFunction.EF_EASEOUTQUAD })
+  TweenSequence.createOrReplace(glyphes, {
+    sequence: [
+      { mode: Tween.Mode.Move({ start: at(0.22), end: at(-0.22) }), duration: 90, easingFunction: EasingFunction.EF_EASEQUAD },
+      { mode: Tween.Mode.Move({ start: at(-0.22), end: at(0.14) }), duration: 80, easingFunction: EasingFunction.EF_EASEQUAD },
+      { mode: Tween.Mode.Move({ start: at(0.14), end: at(0) }), duration: 70, easingFunction: EasingFunction.EF_EASEOUTQUAD }
+    ]
+  })
+}
+
+/** The press: every letter swells and vanishes, and the label comes down when they are gone. */
+function burstBuildHere(): void {
+  if (glyphes === null) return
+  waveGen += 1
+  const swell = Vector3.create(1.5, 1.5, 1.5)
+  for (const p of popHolders) {
+    if (!Transform.has(p)) continue
+    Tween.createOrReplace(p, { mode: Tween.Mode.Scale({ start: Vector3.One(), end: swell }), duration: 110, easingFunction: EasingFunction.EF_EASEOUTQUAD })
+    TweenSequence.createOrReplace(p, { sequence: [{ mode: Tween.Mode.Scale({ start: swell, end: Vector3.Zero() }), duration: 150, easingFunction: EasingFunction.EF_EASEINBACK }] })
+  }
+  exitUntil = Date.now() + 280
 }
 
 /*
@@ -125,6 +266,15 @@ export function setupSlots(): void {
     n'a pas de base, et redevient une bascule ensuite, pour la deplacer.
   */
   engine.addSystem(() => {
+    // The press's burst is over: take the letters and the label down.
+    if (exitUntil > 0 && Date.now() >= exitUntil) {
+      exitUntil = 0
+      if (glyphes !== null) { engine.removeEntityWithChildren(glyphes); glyphes = null; glyphText = '' }
+      if (!slotView.active) {
+        const e = Transform.getMutableOrNull(label)
+        if (e !== null) e.scale = Vector3.Zero()
+      }
+    }
     /*
       Le marqueur qui s'allume tout seul ne dit que OUI, jamais NON.
 
@@ -196,7 +346,10 @@ export function setupSlots(): void {
 
     const te = Transform.getMutableOrNull(label)
     if (te !== null) {
-      te.position = Vector3.create(x, 2.4, z)
+      // 3.6 m: the large, jumping text rides clear above the player's own name tag, which hangs
+      // over the head at the very spot where the player stands, and above the gold arrow that
+      // points the way from a refused square (guidage.ts, 2.75 m) (captures, 18 Nov 2026).
+      te.position = Vector3.create(x, 3.6, z)
       te.scale = muet ? Vector3.Zero() : Vector3.create(0.7, 0.7, 0.7)
     }
     /*
@@ -212,18 +365,28 @@ export function setupSlots(): void {
       REFUSALS keep the platform font: a reason is a sentence, and prose is exactly what an
       atlas of capitals is not for.
     */
+    /*
+      What the marker says, in as few words as possible: what to DO (founder, 18 Nov 2026).
+
+      On a square that can be taken, BUILD HERE in gold. On a refused square while placing a first
+      base, FOLLOW THE ARROW in red: the gold arrow (guidage.ts) stands over the nearest free
+      square, and the press does not build here. The cause is no longer written: "the plaza stays
+      open" stated a rule the game never teaches, and the red marker already says "not here". A
+      base being MOVED by hand keeps its reason in the platform font: no arrow guides that.
+    */
+    const wanted = muet ? '' : slotView.valid ? 'BUILD HERE' : slotView.auto ? 'FOLLOW THE ARROW' : ''
     const ts = TextShape.getMutableOrNull(label)
     if (ts !== null) {
-      ts.text = slotView.valid || muet ? '' : slotView.reason
+      ts.text = slotView.valid || slotView.auto || muet ? '' : slotView.reason
       ts.textColor = c
     }
-    const veutGlyphes = slotView.valid && !muet
-    if (veutGlyphes !== (glyphes !== null)) {
-      if (glyphes !== null) {
-        engine.removeEntity(glyphes)
-        glyphes = null
-      } else {
-        glyphes = place3DText(label, [{ texte: 'BUILD HERE', role: 'money', taille: 0.42 }], false)
+    if (wanted !== glyphText && exitUntil === 0) {
+      // With its letters: removing the root alone left every letter orphaned in the scene.
+      if (glyphes !== null) { waveGen += 1; engine.removeEntityWithChildren(glyphes); glyphes = null }
+      glyphText = wanted
+      if (wanted !== '') {
+        glyphes = place3DText(label, [{ texte: wanted, role: wanted === 'BUILD HERE' ? 'money' : 'danger', taille: BUILD_HERE_SIZE }], false)
+        animateBuildHere(glyphes)
       }
     }
   })
@@ -235,6 +398,7 @@ export function placeHere(): void {
   const x = snapToGrid(p.x), z = snapToGrid(p.z)
   poseView.pending = true
   sendOrHold(() => { void room.send('claimSlot', { x, z }) })
+  burstBuildHere()
   togglePlacing()
 }
 

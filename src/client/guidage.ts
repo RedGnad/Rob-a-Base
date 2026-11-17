@@ -1,9 +1,9 @@
-import { engine, Transform, MeshRenderer, Material, Entity } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, Material, Entity, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { Plot, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { plastic } from './toy'
 import { currentStep } from './tutorial'
-import { nearestFreeSquare } from './slots'
+import { nearestFreeSquare, slotView } from './slots'
 import { cratePosition } from './box'
 import { myClientAddress } from './theft'
 import { rushAgeS } from './events'
@@ -92,15 +92,74 @@ function cible(): Vector3 | null {
 }
 
 /*
-  How high the chevron floats over its target. Over a square to build on it rides above the
-  marker's BUILD HERE, which stands at 2.4 m on the same spot: at the usual height the two
-  were drawn through each other.
+  The chevron steps aside while the player stands on the square they can build on.
+
+  There, the green marker, the large jumping BUILD HERE (slots.ts) and the ring at the feet already
+  say "here", and a chevron on the same spot only crowded the text and the player's name tag
+  (capture, 18 Nov 2026). It comes back over the nearest free square as soon as the player stands
+  on a refused one, which is when "where" is the question.
 */
-function chevronHeight(): number {
-  return currentStep() === 'place' ? 3.4 : 2.6
+function chevronShown(): boolean {
+  return !(currentStep() === 'place' && slotView.active && slotView.valid)
+}
+
+/*
+  A gold arrow over the player's head, pointing at the free square (founder, 18 Nov 2026).
+
+  On a refused square the marker says FOLLOW THE ARROW, and the arrow over the free square is often
+  off screen: behind the player, or to one side. So a second arrow travels with the player, above
+  their name tag, and always points at that square, the way Crazy Taxi's arrow always points at the
+  destination wherever the camera looks. It is a real 3D arrow, not a picture, so it shows the
+  direction in the world; it nudges forward and back so the eye catches it, and it tilts its nose
+  a little down so it still reads when it points away from the camera. Shown only while placing a
+  first base on a refused square; the marker text sits above it (slots.ts, 3.6 m).
+*/
+const HEAD_ARROW_Y = 2.75
+const PARKED = Vector3.create(0, -50, 0)
+
+function setupHeadArrow(): void {
+  const root = engine.addEntity()
+  Transform.create(root, { position: PARKED, scale: Vector3.Zero() })
+  const nudge = engine.addEntity()
+  Transform.create(nudge, { parent: root })
+  Tween.create(nudge, {
+    mode: Tween.Mode.Move({ start: Vector3.create(0, 0, -0.08), end: Vector3.create(0, 0, 0.22) }),
+    duration: 420,
+    easingFunction: EasingFunction.EF_EASEOUTQUAD
+  })
+  TweenSequence.create(nudge, { sequence: [], loop: TweenLoop.TL_YOYO })
+  const shaft = engine.addEntity()
+  Transform.create(shaft, { parent: nudge, position: Vector3.create(0, 0, -0.28), scale: Vector3.create(0.17, 0.17, 0.72) })
+  MeshRenderer.setBox(shaft)
+  Material.setPbrMaterial(shaft, plastic(OR, 2.6))
+  const head = engine.addEntity()
+  // A cone whose point is turned from +Y to +Z, the direction the arrow points.
+  Transform.create(head, {
+    parent: nudge, position: Vector3.create(0, 0, 0.3),
+    rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(0.52, 0.46, 0.52)
+  })
+  MeshRenderer.setCylinder(head, 0.5, 0)
+  Material.setPbrMaterial(head, plastic(OR, 2.6))
+
+  engine.addSystem(() => {
+    const t = Transform.getMutableOrNull(root)
+    if (t === null) return
+    const show = currentStep() === 'place' && slotView.active && slotView.auto && !slotView.valid
+    const me = show ? Transform.getOrNull(engine.PlayerEntity) : null
+    const spot = show ? nearestFreeSquare() : null
+    if (me === null || spot === null) {
+      if (t.scale.x !== 0) { t.scale = Vector3.Zero(); t.position = PARKED }
+      return
+    }
+    const yaw = Math.atan2(spot.x - me.position.x, spot.z - me.position.z) * 180 / Math.PI
+    t.position = Vector3.create(me.position.x, me.position.y + HEAD_ARROW_Y, me.position.z)
+    t.rotation = Quaternion.fromEulerDegrees(14, yaw, 0)
+    if (t.scale.x !== 1) t.scale = Vector3.One()
+  })
 }
 
 export function setupGuidage(): void {
+  setupHeadArrow()
   /*
     The genre's marker, not a surveyor's pole. A solid gold column read as amateur noise
     (tester, 31 Aug), and no reference game plants a cylinder: they float a bouncing,
@@ -138,8 +197,8 @@ export function setupGuidage(): void {
     c.scale = Vector3.create(souffle, 0.04, souffle)
     const bob = Math.sin(t / 320) * 0.35
     filage = (filage + 4.2) % 360
-    f.position = Vector3.create(ou.x, ou.y + chevronHeight() + bob, ou.z)
-    f.scale = Vector3.create(0.9, 0.75, 0.9)
+    f.position = Vector3.create(ou.x, ou.y + 2.6 + bob, ou.z)
+    f.scale = chevronShown() ? Vector3.create(0.9, 0.75, 0.9) : Vector3.Zero()
     const ft = Transform.getMutableOrNull(fleche as Entity)
     if (ft !== null) ft.rotation = Quaternion.fromEulerDegrees(0, filage, 0)
   })

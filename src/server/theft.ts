@@ -567,19 +567,27 @@ export function startTheft(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     if (!Number.isFinite(d.x) || !Number.isFinite(d.z)) return
+    /*
+      Every press that does not end in a base is written to the log, with why.
+
+      At the playtest of 17 Nov a tester pressed on a red square, then on a green one, and nothing
+      happened; the log could not say why, because a refused or dropped claim left no line at all
+      (founder, 18 Nov 2026). Now the next playtest shows each one.
+    */
     // One placement a second: each accepted one rebuilds the synced building on every client.
     const t = Date.now()
-    if (t - (dernierePose.get(a) ?? 0) < 1000) return
+    if (t - (dernierePose.get(a) ?? 0) < 1000) { log(`build: ${displayName(a)} pressed again within a second, ignored`); return }
     dernierePose.set(a, t)
     const p = positionOf(a)
-    if (p === null) { refus(a, 'build', 'position unknown'); return }
+    if (p === null) { log(`build: ${displayName(a)} refused, position unknown`); refus(a, 'build', 'position unknown'); return }
     const dist = Vector3.distance(p, Vector3.create(d.x, p.y, d.z))
     if (dist > BUILD_RANGE) {
+      log(`build: ${displayName(a)} refused, claimed ${d.x},${d.z} from ${dist.toFixed(1)} m away`)
       refus(a, 'build', 'place it where you stand', true)
       return
     }
     const r = placeBase(a, d.x, d.z)
-    if (!r.ok) { refus(a, 'build', r.reason ?? 'refused'); return }
+    if (!r.ok) { log(`build: ${displayName(a)} refused at ${d.x},${d.z}: ${r.reason ?? 'refused'}`); refus(a, 'build', r.reason ?? 'refused'); return }
     /*
       A base that lands somewhere other than where the press was has to SAY so, or the player
       looks for it. Same channel as the refusals, under its own action name: since the hammer
