@@ -410,7 +410,14 @@ const MenuWindow = () => {
     the longest sum this game can show is six characters. Four units of the width move from the
     purse to the tabs, and every tab gains ten.
   */
-  const bourse = Math.round(dedans * 0.15)
+  /*
+    No purse in the header any more (18 Nov 2026). It was a small gold number with no icon and no
+    word beside the GOALS tab, and a tester at the 17 Nov playtest said the shop did not show their
+    balance although it was there. The balance now stays where it always is, the hero counter at
+    the top of the screen, which no longer hides when the menu opens; the header's width goes back
+    to the tabs.
+  */
+  const bourse = 0
   // CLOSE is utility, not a destination: it took as much of the bar as a whole tab and
   // read as a fifth one. Half the width and a single letter give the four real tabs the
   // room, which is the hierarchy lesson applied to our own header.
@@ -486,10 +493,6 @@ const MenuWindow = () => {
           edge of its own panel. Shares of the measured width cannot do that at any size, and
           the glyphs still get their box in pixels, which is the one thing they need.
         */}
-        <UiEntity uiTransform={{ width: bourse, height: TAP.height, justifyContent: 'center' }}>
-          <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
-            role="money" align="left" box={bourse} top={(TAP.height - TYPE.body) / 2} />
-        </UiEntity>
         {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
           <Btn key={o} width={onglet} right={ecart} primary={activeTab() === o}
             onClick={() => { noterEvenement(`tab-${o}`); chooseTab(o) }}
@@ -603,9 +606,16 @@ const SellChip = (props: { right?: number }) => {
   const taille = phone() ? TYPE.caption : TYPE.body
   const large = Math.round(largeurTexte(mot, taille) * 1.12) + 44
   return (
+    /*
+      A click sells on a desktop too. The chip only had its key binding, which the desktop client
+      ignores on scene UI (memo, entry 600; read again on 17 Nov 2026), so a mouse click lit the
+      chip, ticked, and sent nothing: testers said selling did nothing (playtest of 17 Nov). The
+      desktop gets the handler; the phone keeps the binding alone, which it honours, so one tap
+      never sells twice. `phone()` does not change during a session, so the handler never toggles.
+    */
     <Btn label={mot} size={taille}
       width={phone() ? large : 290} height={phone() ? TAP.menu : undefined}
-      right={props.right} bind={[InputAction.IA_ACTION_4]} />
+      right={props.right} bind={[InputAction.IA_ACTION_4]} onClick={phone() ? undefined : vendre} />
   )
 }
 
@@ -2243,7 +2253,8 @@ const uiComponent = () => {
       the subtitle could not say what the multiplier was for. Measured against the atlas, the
       busiest line this can hold is 597 px; the frame is 760.
     */}
-    {hud() && (
+    {/* The counter stays up while the menu is open: the shop is where the money is spent. */}
+    {(hud() || (menuView.open && !modale())) && (
     <UiEntity
       uiTransform={{
         /*
