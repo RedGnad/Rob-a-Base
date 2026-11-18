@@ -8,7 +8,7 @@
   may still try. What keeps an absent owner from being emptied is the cap on losses per absence
   (`recordAwayLoss` in plots.ts), not this.
 
-  A module with no imports, so theft.ts and gear.ts can both use it without a cycle. Kept in
+  A module that imports nothing from the server, so theft.ts and gear.ts can both use it without a cycle. Kept in
   memory: a server restart forgets who was kept out, and the cap per absence, which is stored
   with the base, still holds.
 */
@@ -27,11 +27,15 @@ export function bannedUntil(player: string, owner: string): number {
   return until
 }
 
-/** "45s", "12m", "7h 59m": a duration as short as a refusal line wants it. */
-export function shortDuration(ms: number): string {
-  const s = Math.max(1, Math.ceil(ms / 1000))
-  if (s < 60) return `${s}s`
-  const m = Math.ceil(s / 60)
-  if (m < 60) return `${m}m`
-  return `${Math.floor(m / 60)}h ${m % 60}m`
+/** Every base closed to this player right now, with the time left: what their client draws (theft.ts). */
+export function bansOf(player: string): Array<{ owner: string; leftMs: number }> {
+  const now = Date.now()
+  const out: Array<{ owner: string; leftMs: number }> = []
+  for (const [key, until] of bans) {
+    const [p, owner] = key.split('|')
+    if (p === player && until > now) out.push({ owner, leftMs: until - now })
+  }
+  return out
 }
+
+export { shortDuration } from '../shared/duration'

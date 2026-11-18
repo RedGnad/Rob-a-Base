@@ -14,7 +14,7 @@ advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, s
 } from './plots'
 import { dropAt } from './coins'
 import { stepDone } from './onboarding'
-import { banFromBase, bannedUntil, shortDuration } from './bans'
+import { banFromBase, bannedUntil, shortDuration, bansOf } from './bans'
 import { bankPot } from './collect'
 import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains, setLandedHook, setHomeHook } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
@@ -22,7 +22,7 @@ import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, declarerVolEnCours, recordAwayLoss,
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, declarerVolEnCours, recordAwayLoss, raiseKeepOutField,
   WORLD_RESET_MARK
 } from './plots'
 
@@ -228,7 +228,11 @@ function accueillir(address: string): void {
   pushRevenges(address)
 }
 /** The server finished the player's arrival: profile loaded, shield dropped. */
-export function arrivalDone(address: string): void { serveurPret.add(address); accueillir(address) }
+export function arrivalDone(address: string): void {
+  serveurPret.add(address); accueillir(address)
+  // A returning player gets back the bases still closed to them, so their client raises those shields again.
+  for (const b of bansOf(address)) void room.send('bannedFrom', { ownerId: b.owner, leftMs: b.leftMs }, { to: [address] })
+}
 /** Gone: the next arrival is a new one. */
 export function arrivalOver(address: string): void {
   clientPret.delete(address); serveurPret.delete(address); accueillis.delete(address)
@@ -471,6 +475,8 @@ export function startTheft(): void {
       const absent = absenceDe(v.victim) > 0
       const bouclier = shieldFor(absenceDe(v.victim))
       banFromBase(thief, v.victim, maintenant + bouclier)
+      raiseKeepOutField(v.victim, maintenant + bouclier)
+      void room.send('bannedFrom', { ownerId: v.victim, leftMs: bouclier }, { to: [thief] })
       let sceau = 0
       if (absent) {
         const { lost, cap } = recordAwayLoss(v.victim)

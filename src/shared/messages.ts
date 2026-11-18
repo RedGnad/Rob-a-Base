@@ -103,6 +103,8 @@ export const MESSAGES = {
   gearPlaced: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int }),
   /** server -> the one who stepped on it. */
   trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, mine: Schemas.Boolean, ownerId: Schemas.String, banMs: Schemas.Int }),
+  // A base now closed to this player alone, and for how long: their client raises its shield for them only.
+  bannedFrom: Schemas.Map({ ownerId: Schemas.String, leftMs: Schemas.Int }),
   /** server -> the owner, live or deferred. */
   trapSprung: Schemas.Map({ byName: Schemas.String }),
   /** client -> server: pull the cloak on. Server answers by writing the Cloaked component. */

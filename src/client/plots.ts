@@ -69,6 +69,7 @@ import { boltBetween } from './combat'
 import { zapBurst } from './vfx'
 import { sentryLight } from './lights'
 import { room } from '../shared/messages'
+import { shortDuration } from '../shared/duration'
 import { moveTo } from './deplacer'
 import { serverNow } from './clock'
 import { clicMonde } from './monde'
@@ -84,7 +85,7 @@ type Floor = {
   sentry: Entity
 }
 type View = {
-  plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity; plaqueGlyphes: Entity | null
+  plinth: Entity; label: Entity; gain: Entity; door: Entity; glass: Entity; plaque: Entity; plaqueGlyphes: Entity | null
   /** Niveau de detail: vrai quand la base est au-dela de LOD_LOIN et ne dessine que sa structure. */
   loin: boolean
   /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
@@ -588,6 +589,61 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   }
 }
 
+/*
+  The bases closed to THIS player, and until when (founder, 18 Nov 2026).
+
+  The thief who just robbed a base, or the intruder its trap caught, is kept out of it
+  (server/bans.ts). Everybody sees that base's force field (`fieldUntil` on the Plot); this
+  map is what makes it solid for this player alone: colliders are each client's own, so
+  everybody else walks in as usual and a raid by several players goes on. It turns solid only
+  once the player stands OUTSIDE the base: a thief still inside with a piece in hand is neither
+  walled in nor teleported out with the loot. They can leave; they cannot come back.
+*/
+const keptOut = new Map<string, number>()
+/*
+  Outside or inside, with a band of doubt round the wall. A single line at the wall's own
+  distance failed: pressed against the field from outside, the player's body already stood
+  within it, counted as inside, and the wall went soft and let them through (18 Nov, in the
+  preview). So the state only changes clearly away from the wall, and holds in between.
+*/
+const keptOutside = new Map<string, boolean>()
+function keptOutOf(ownerId: string, baseX: number, baseZ: number, floors: number): boolean {
+  const key = ownerId.toLowerCase()
+  const until = keptOut.get(key) ?? 0
+  if (until <= Date.now()) { keptOutside.delete(key); return false }
+  const me = Transform.getOrNull(engine.PlayerEntity)
+  if (me === null) return false
+  const half = BASE_SIDE / 2 + SHIELD_MARGIN
+  const d = Math.max(Math.abs(me.position.x - baseX), Math.abs(me.position.z - baseZ))
+  const above = me.position.y > floors * FLOOR_HEIGHT + 1.2
+  let outside = keptOutside.get(key) ?? d >= half
+  if (above || d > half + 0.3) outside = true
+  else if (d < half - 0.8) outside = false
+  keptOutside.set(key, outside)
+  return outside
+}
+
+/*
+  A wall that stops you says why (founder, 18 Nov 2026).
+
+  Pressed against a base's force field or its glass, the player gets one short line: whose base,
+  and for how long. Without it a wall that lets others through and not you reads as a bug.
+  Once every few seconds per base, so walking along the wall does not stack toasts.
+*/
+const wallToastAt = new Map<string, number>()
+function warnAtWall(ownerId: string, baseX: number, baseZ: number, floors: number, text: () => string): void {
+  const me = Transform.getOrNull(engine.PlayerEntity)
+  if (me === null) return
+  const half = BASE_SIDE / 2 + SHIELD_MARGIN
+  const d = Math.max(Math.abs(me.position.x - baseX), Math.abs(me.position.z - baseZ))
+  if (d < half - 0.1 || d > half + 0.7 || me.position.y > floors * FLOOR_HEIGHT + 0.6) return
+  const key = ownerId.toLowerCase()
+  const now = Date.now()
+  if (now - (wallToastAt.get(key) ?? 0) < TOAST.warning + 1000) return
+  wallToastAt.set(key, now)
+  alerter(text(), '#ffd166', TOAST.warning)
+}
+
 function expulser(base: Vector3, floors: number, toast = 'SEALED  ·  you were pushed out'): void {
   const moi = Transform.getOrNull(engine.PlayerEntity)
   if (moi === null) return
@@ -1011,6 +1067,13 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(0, (MAX_FLOORS * FLOOR_HEIGHT) / 2, 0),
     scale: Vector3.create(0, 0, 0)
   })
+  // The glass of a sealed base, beside the force field of a base closed to one player (see the shield pass).
+  const glass = engine.addEntity()
+  Transform.create(glass, {
+    parent: racine,
+    position: Vector3.create(0, (MAX_FLOORS * FLOOR_HEIGHT) / 2, 0),
+    scale: Vector3.create(0, 0, 0)
+  })
   // A shield you can walk through is a lie. It had a renderer and no collider, so it
   // looked like a wall and stopped nothing.
   /*
@@ -1083,7 +1146,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(createPedestal(racine, k))
   parentCourant = null
-  const v: View = { plinth, label, gain, door, plaque, enseigne, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', sigItems: null, sigSentries: null, ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
+  const v: View = { plinth, label, gain, door, glass, plaque, enseigne, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', sigItems: null, sigSentries: null, ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
   if (!loin) garnirBase(v)
   return v
 }
@@ -1108,7 +1171,9 @@ function garnirBase(v: View): void {
   // gone far threw "GltfContainer for N already exists" on every tick and froze the scene
   // (owner, 11 Sep, after moving his base; see memo 598).
   GltfContainer.createOrReplace(v.door, { src: 'assets/Models/shield.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
-  MeshCollider.setBox(v.door)
+  GltfContainer.createOrReplace(v.glass, { src: 'assets/Models/shield-glass.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  // A new dressing draws its walls again from the next shield pass, colliders included.
+  v.vuBouclier = ''
   TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, ...LISIBLE_3D })
   MeshRenderer.setPlane(v.enseigne)
   // Alpha TEST, not blend: a tested cutout writes depth and wins every angle against the glazing (1 Sep).
@@ -1122,7 +1187,7 @@ function garnirBase(v: View): void {
 }
 
 function depouillerBase(v: View): void {
-  for (const e of [v.ascenseur, v.door, v.enseigne]) {
+  for (const e of [v.ascenseur, v.door, v.glass, v.enseigne]) {
     if (MeshRenderer.has(e)) MeshRenderer.deleteFrom(e)
     if (MeshCollider.has(e)) MeshCollider.deleteFrom(e)
     if (Material.has(e)) Material.deleteFrom(e)
@@ -1156,6 +1221,7 @@ function destroyView(v: View): void {
   engine.removeEntity(v.gain)
   engine.removeEntityWithChildren(v.plaque)
   engine.removeEntity(v.door)
+  engine.removeEntity(v.glass)
   engine.removeEntity(v.ascenseur)
   for (const e of v.floors) {
     /*
@@ -1473,6 +1539,7 @@ export function setupPlots(): void {
   liftEmitter = emitter('assets/sounds/lift.wav', 0.7)
   sealEmitter = emitter('assets/sounds/seal.wav', 0.7)
   room.onMessage('sentryShot', (d) => tirDeSentinelle(d.ownerId, d.floor, Vector3.create(d.x, d.y, d.z)))
+  room.onMessage('bannedFrom', (d) => { keptOut.set(d.ownerId.toLowerCase(), Date.now() + d.leftMs) })
   engine.addSystem(() => {
     // Pedestals carry no collider on mobile, and a far base has none to tap: neither is polled.
     if (isMobile()) return
@@ -1614,6 +1681,8 @@ export function setupPlots(): void {
         v.lockSeen = p.lockedUntil
         const porte = pointDeBase(v.racine, 0, 1.2, BASE_SIDE / 2)
         if (porte !== null) jouerA(sealEmitter, porte)
+        // The glass keeps everyone but the owner out, so whoever is inside when it seals is put out at the door.
+        if (p.ownerId.toLowerCase() !== myClientAddress()) expulser(Vector3.create(t.position.x, 0, t.position.z), p.floors)
       } else if (p.lockedUntil < v.lockSeen) v.lockSeen = p.lockedUntil
       const monBase = p.ownerId.toLowerCase() === myClientAddress()
 
@@ -1858,74 +1927,51 @@ export function setupPlots(): void {
         0 on arrival since 5 Sep, so the few seconds of real drift between two clocks can
         only move a fold by those seconds, never leave a wall standing.
       */
-      const lockedNow = p.lockedUntil > Date.now()
-      const shieldState = `${lockedNow}|${p.floors}|${monBase}`
+      /*
+        Two protections, two looks (founder, 18 Nov 2026).
+
+        SEALED for everybody (an absent owner's share lost, a sentry shot, the owner's LOCK):
+        the glass (shield-glass.glb) stands round the building and nobody but the owner gets
+        through it; whoever stands inside when it seals is put out at the door (see `lockSeen`
+        above). This takes back the 6 Sep rule that the seal was only seen and never touched.
+
+        Closed to ONE player (the thief who just robbed it, the intruder its trap caught): the
+        force field (shield.glb, the glowing lattice) stands for everyone to see, while
+        `fieldUntil` says so, and only that player bumps into it, from outside: colliders are
+        each client's own, so everybody else walks through and a raid by several goes on.
+      */
+      const now = Date.now()
+      const sealed = p.lockedUntil > now
+      const field = !sealed && Number(p.fieldUntil) > now
+      const keptHere = field && !monBase && keptOutOf(p.ownerId, t.position.x, t.position.z, p.floors)
+      const shieldState = `${sealed}|${field}|${keptHere}|${p.floors}|${monBase}`
       const ptr = shieldState === v.vuBouclier ? null : Transform.getMutableOrNull(v.door)
-      if (ptr !== null) {
+      const pv = shieldState === v.vuBouclier ? null : Transform.getMutableOrNull(v.glass)
+      if (ptr !== null && pv !== null) {
         v.vuBouclier = shieldState
-        const locked = lockedNow
         const h = p.floors * FLOOR_HEIGHT + 0.6
-        /*
-          LOCAL, because the shield is a child of the base's own root.
-
-          This wrote the base's WORLD coordinates into a child of a root already standing at
-          those coordinates, so the shield was drawn at twice them: a base at (60, 70) put its
-          dome at (120, 140), a hundred metres away or outside the scene entirely. The theft
-          was refused, the countdown ran, the plate said LOCKED, and the wall itself was
-          somewhere nobody would ever look (owner, 1 Sep). Only the height is a number here;
-          the position is the parent's.
-        */
-        ptr.position = Vector3.create(0, h / 2, 0)
+        // LOCAL: both walls are children of the base's own root (a world position here once drew the dome a base away, 1 Sep).
         const plein = Vector3.create(BASE_SIDE + 2 * SHIELD_MARGIN, h, BASE_SIDE + 2 * SHIELD_MARGIN)
-        ptr.scale = locked ? plein : Vector3.create(0, 0, 0)
-        /*
-          The wall does not breathe any more, and nothing is left on it to outlive an unlock.
-
-          Since 5 Sep the seal swelled by three percent in a yoyo loop, and the unlock deleted
-          the Tween and the TweenSequence in the tick that wrote scale zero. On the owner's
-          desktop the door then folded for one frame and stood back up, and it did so with the
-          server clock and with the plate's clock alike (11 Sep, builds eca7 and 9699), which is
-          what cleared the clock. The renderer explains the rest: when the sequence component
-          goes, its tweener is returned to a pool whose release action is Kill(true), complete
-          before killing (unity-explorer, TweenerPool.cs), so the door is sent to the tween's
-          end value after the scene's zero. A wall that never animates has no tween to be
-          completed: the scale written above is final. The two deletes stay for a client that
-          still carries a tween from an older bundle.
-        */
-        if (Tween.has(v.door)) Tween.deleteFrom(v.door)
-        if (TweenSequence.has(v.door)) TweenSequence.deleteFrom(v.door)
-
-        /*
-          The shield keeps thieves out. It must not keep the owner out.
-
-          A shield is earned by being robbed while away, or bought with the lock, and it
-          can still be standing when its owner walks up to it. The shield is a solid box,
-          and it was solid for everyone, so a returning player met a wall around their own
-          base with no way through and no explanation. The protection is against other
-          people by definition, so the collider only exists on somebody else's shield. Ours
-          is drawn and walked through.
-        */
-        /*
-          Whoever is inside when it seals is pushed out to the door.
-
-          The reference traps intruders instead, and that works there because the owner then
-          KILLS the trapped thief and the matter ends in a respawn. We have no death: a
-          trapped thief would only stand in a sealed room for sixty seconds, out of the game
-          (owner, 4 Sep). So the seal is a broom here, and the reference's trap stays theirs.
-        */
-        /*
-          The shield is SEEN, never touched. Nobody is ever kept out of a base.
-
-          It used to be a solid box for everyone but the owner, and it swept whoever was inside
-          out to the door. Two facts killed that: the protection does not come from the wall,
-          it comes from the server refusing the theft while the lock stands, so the collider
-          added no security at all; and a base is a SHOWCASE whose whole point is that people
-          come and look at it, so a wall around it closes the one thing the venue is for. A
-          newcomer met an invisible refusal with no explanation on the very first base he tried
-          to visit (owner, 6 Sep). The dome still stands and still breathes, so the protection
-          reads at a glance; it simply lets you walk through and read the shelves.
-        */
-        if (MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
+        ptr.position = Vector3.create(0, h / 2, 0)
+        pv.position = Vector3.create(0, h / 2, 0)
+        ptr.scale = field ? plein : Vector3.Zero()
+        pv.scale = sealed ? plein : Vector3.Zero()
+        // A wall never animates: a deleted looping tween is completed by the renderer and stood the door back up (11 Sep).
+        for (const e of [v.door, v.glass]) {
+          if (Tween.has(e)) Tween.deleteFrom(e)
+          if (TweenSequence.has(e)) TweenSequence.deleteFrom(e)
+        }
+        const glassSolid = sealed && !monBase
+        if (glassSolid && !MeshCollider.has(v.glass)) MeshCollider.setBox(v.glass)
+        else if (!glassSolid && MeshCollider.has(v.glass)) MeshCollider.deleteFrom(v.glass)
+        if (keptHere && !MeshCollider.has(v.door)) MeshCollider.setBox(v.door)
+        else if (!keptHere && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
+      }
+      if (keptHere) {
+        warnAtWall(p.ownerId, t.position.x, t.position.z, p.floors, () =>
+          `${p.ownerName.toUpperCase()}'S BASE  ·  closed to you ${shortDuration((keptOut.get(p.ownerId.toLowerCase()) ?? now) - now)}`)
+      } else if (sealed && !monBase) {
+        warnAtWall(p.ownerId, t.position.x, t.position.z, p.floors, () => `SEALED  ·  opens in ${shortDuration(Number(p.lockedUntil) - now)}`)
       }
 
       // The lock pad: the one control of the base that is a thing on its floor.

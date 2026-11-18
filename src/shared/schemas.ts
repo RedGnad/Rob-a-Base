@@ -40,7 +40,9 @@ export const Plot = engine.defineComponent('basetycoon::plot', {
     here is a storey. That costs nothing to build and asks the player to look at the building.
   */
   sentryFloors: Schemas.Array(Schemas.Int),
-  lockedUntil: Schemas.Int64
+  lockedUntil: Schemas.Int64,
+  /** Until when the force field stands because this base is closed to one player at least (server/bans.ts): seen by all, solid only for them. */
+  fieldUntil: Schemas.Int64
 })
 
 export const Loot = engine.defineComponent('basetycoon::loot', {

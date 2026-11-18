@@ -10,7 +10,7 @@ import { log } from './log'
 import {
   displayName, presents, positionOf, spend, prestigeOf,
   gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil, luckBuysOf, noteLuckBuy,
-  minesDe, placeMine, retirerMine, toutesLesBases, absenceDe
+  minesDe, placeMine, retirerMine, toutesLesBases, absenceDe, raiseKeepOutField
 } from './plots'
 import { banFromBase } from './bans'
 import { carriesFor, hitCarrier } from './carry'
@@ -282,7 +282,11 @@ export function startGear(): void {
           when they have been away for long. Banned from one base, never from the game.
         */
         const banMs = t.mine ? 0 : shieldFor(absenceDe(t.owner))
-        if (banMs > 0) banFromBase(addr, t.owner, now + banMs)
+        if (banMs > 0) {
+          banFromBase(addr, t.owner, now + banMs)
+          raiseKeepOutField(t.owner, now + banMs)
+          void room.send('bannedFrom', { ownerId: t.owner, leftMs: banMs }, { to: [addr] })
+        }
         void room.send('trapped', { ownerName: proprio, gelMs: gel, mine: t.mine, ownerId: t.owner, banMs }, { to: [addr] })
         const info = { type: 'trap', byName: displayName(addr) }
         if (ici.has(t.owner)) void room.send('trapSprung', { byName: displayName(addr) }, { to: [t.owner] })

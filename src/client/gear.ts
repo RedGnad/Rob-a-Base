@@ -1,3 +1,4 @@
+import { shortDuration } from '../shared/duration'
 import { TOY, plasticDe } from './toy'
 import { sendOrHold } from './intent'
 import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
@@ -168,8 +169,7 @@ export function setupGear(): void {
     // A trap's catch is put out at the door when the freeze ends, and that base stays closed to
     // them for `banMs` (server/gear.ts, founder 18 Nov 2026).
     if (!d.mine && d.banMs > 0) {
-      const closed = d.banMs >= 3_600_000 ? `${Math.round(d.banMs / 3_600_000)}h` : `${Math.max(1, Math.round(d.banMs / 60_000))}m`
-      timers.setTimeout(() => expelFromBaseOf(d.ownerId, `${d.ownerName.toUpperCase()}'S BASE  ·  closed to you ${closed}`), d.gelMs)
+      timers.setTimeout(() => expelFromBaseOf(d.ownerId, `${d.ownerName.toUpperCase()}'S BASE  ·  closed to you ${shortDuration(d.banMs)}`), d.gelMs)
     }
   })
   room.onMessage('tased', (d) => {

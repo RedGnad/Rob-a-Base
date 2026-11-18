@@ -343,7 +343,7 @@ function createBase(
   try {
   const e = engine.addEntity()
   Transform.create(e, { position: Vector3.create(x, 0, z) })
-  Plot.create(e, { floors: 1, rebirths: 0, index: 0, ownerId: address, ownerName: name, items: arrange(items), ownerPresent: false, lockedUntil: 0 })
+  Plot.create(e, { floors: 1, rebirths: 0, index: 0, ownerId: address, ownerName: name, items: arrange(items), ownerPresent: false, lockedUntil: 0, fieldUntil: 0 })
   syncEntity(e, [Plot.componentId, Transform.componentId])
   const b: Base = { address, name, items: [...items], x, z, entity: e, lastSeen, ...vitrine }
   bases.set(address, b)
@@ -1434,6 +1434,13 @@ export function recordGift(giver: string, receiver: string): void {
   Counts the theft that just happened and answers how many pieces this absence has cost, and the
   share it may cost. The stolen piece is already off the shelf when this runs.
 */
+/** The force field of a base closed to one player at least: every client draws it until then (client/plots.ts). */
+export function raiseKeepOutField(owner: string, until: number): void {
+  const b = bases.get(owner)
+  const c = b === undefined ? null : Plot.getMutableOrNull(b.entity)
+  if (c !== null && until > Number(c.fieldUntil)) c.fieldUntil = until
+}
+
 export const AWAY_LOSS_SHARE = 0.25
 export function recordAwayLoss(address: string): { lost: number; cap: number } {
   const b = bases.get(address)
