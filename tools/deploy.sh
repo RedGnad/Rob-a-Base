@@ -29,7 +29,13 @@ echo "bundle: $SIZE B, production"
 # piling up: six of them on one night (5 to 6 Sep), each stealing the next deploy's port and
 # the wallet's reconnection with it. So the linker is given 330 s and then closed by this
 # script itself; the port comes back and the next attempt reuses it.
-npx sdk-commands deploy --target-content https://worlds-content-server.decentraland.org --no-browser --skip-version-checks --skip-build "$@" &
+# One fixed port for the signing page (18 Nov 2026). The linker took the first free port from
+# 8000, so a preview running elsewhere moved it to 8001 and the wallet session, which the page
+# keeps per address, was gone: the founder had to connect again. 8790 is outside the range the
+# previews take, so the page stays at one address and keeps its session from one deploy to the next.
+SIGNING_PORT=8790
+echo "signing page: http://localhost:$SIGNING_PORT"
+npx sdk-commands deploy --target-content https://worlds-content-server.decentraland.org --no-browser --skip-version-checks --skip-build --port "$SIGNING_PORT" "$@" &
 LINKER=$!
 # A wall-clock deadline, not one long sleep: on 10 Sep a single `sleep 330` returned after 50 s
 # under the agent's shell and the linker was closed before anyone could sign. The loop re-checks
