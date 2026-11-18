@@ -706,14 +706,12 @@ export const CONVOY_SPEED = 3.4
 export const CONVOY_MIN_S = 8
 export const CONVOY_OUTBID = 1.5
 export const CONVOY_RANGE = 6
-/**
- * A player who has just been outbid cannot be outbid again for 30 s.
- * Without it a rich player can take every crate a beginner buys, forever. The victim is
- * always refunded in full, so the cost is time, not money, and time is what a newcomer
- * has least of. 30 s echoes the reference's own anti-grief pattern: `Methods_Of_Stealing`
- * notes "Sammy adding the 30 seconds anti-steal cooldown".
- */
-export const OUTBID_IMMUNITY_MS = 30_000
+/*
+  There was an outbid immunity here: a player just outbid could not be outbid again for 30 s.
+  Removed on 18 Nov 2026 by the founder's decision (see `runConvoys` in server/convoy.ts): it
+  capped every duel at two outbids. Known consequence: a richer player can outbid a newcomer's
+  crate as often as they can pay half as much again each time; the newcomer is refunded in full.
+*/
 
 export const Convoy = engine.defineComponent('basetycoon::convoy', {
   convoyId: Schemas.Int,

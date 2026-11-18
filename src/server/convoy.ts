@@ -2,7 +2,7 @@ import { engine, Transform, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Convoy, CONVOY_SPEED, CONVOY_MIN_S, CONVOY_OUTBID, CONVOY_RANGE, OUTBID_IMMUNITY_MS,
+  Convoy, CONVOY_SPEED, CONVOY_MIN_S, CONVOY_OUTBID, CONVOY_RANGE,
   convoyPosition, convoyLongueur
 } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -26,8 +26,6 @@ type State = {
 }
 
 const convoys = new Map<number, State>()
-/** Address -> instant until which they cannot be outbid again. */
-const immunite = new Map<string, number>()
 let prochainId = 1
 
 function durationMs(depart: { x: number; z: number }, cible: { x: number; z: number }): number {
@@ -111,11 +109,13 @@ export function runConvoys(): void {
     const dist = Math.sqrt((ici.x - p.x) ** 2 + (ici.z - p.z) ** 2)
     if (dist > CONVOY_RANGE) { refus(a, `too far (${dist.toFixed(1)}m)`, true); return }
 
-    const until = immunite.get(e.owner) ?? 0
-    if (until > Date.now()) {
-      refus(a, `${displayName(e.owner)} was just outbid, ${Math.ceil((until - Date.now()) / 1000)}s left`)
-      return
-    }
+    /*
+      No pause between outbids (founder, 18 Nov 2026). A player who had just been outbid could
+      not be outbid again for 30 s, and a convoy mostly arrives within 30 s, so a duel stopped at
+      the second outbid: testers said they could only outbid twice (playtest of 17 Nov). Each
+      outbid costs half as much again as the last, which ends a bidding war by itself, and the
+      holder who loses the crate is refunded in full.
+    */
     const price = Math.ceil(e.pricePaid * CONVOY_OUTBID)
     // A short balance is topped up from the pot when the pot covers it, as at the belt.
     if (!bankToCover(a, price, 'to outbid') || !spend(a, price)) { refus(a, `you need ${price} coins`); return }
@@ -123,7 +123,6 @@ export function runConvoys(): void {
     // The outbid holder is refunded in full. Without it, buying early would be strictly
     // losing and nobody would ever buy before the belt's end.
     crediter(e.owner, e.pricePaid)
-    immunite.set(e.owner, Date.now() + OUTBID_IMMUNITY_MS)
     const previous = e.owner
     void room.send('outbidLost', { byName: displayName(a), rembourse: e.pricePaid, crateTier: e.crateTier }, { to: [previous] })
 
