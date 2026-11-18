@@ -6,8 +6,8 @@ import {
 , MELEE_FORCE, SAME_STOREY} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
-import { hitCarrier } from './carry'
-import { interrompreVol } from './theft'
+import { hitCarrier, carriesFor } from './carry'
+import { interrompreVol, isPrying } from './theft'
 import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf, memeEspace, shelteredAtHome } from './plots'
 import { dropAt } from './coins'
 import { raidHit } from './raid'
@@ -80,6 +80,38 @@ export function startCombat(): void {
     return best
   }
 
+  /*
+    A short immunity for a player who is being hammered (founder, 18 Nov 2026).
+
+    Without coins to win the spam has no reason left, but the target still had no defence away
+    from home: hit after hit, flash after flash. After six hits landed on them inside three
+    seconds, from anyone, they cannot be hit for three seconds; the same idea as World of
+    Warcraft's immunity after repeated stuns. It covers only a player who carries nothing and is
+    not stealing: a thief running home with a piece stays open to every shot, or the escape
+    shootout, the part testers liked best, would end after six hits.
+  */
+  const HIT_BURST = 6
+  const HIT_BURST_MS = 3_000
+  const HIT_IMMUNE_MS = 3_000
+  const recentHits = new Map<string, number[]>()
+  const immuneUntil = new Map<string, number>()
+  function innocent(target: string): boolean { return !carriesFor(target) && !isPrying(target) }
+  function immuneNow(target: string, now: number): boolean {
+    return innocent(target) && (immuneUntil.get(target) ?? 0) > now
+  }
+  function noteHit(target: string, now: number): void {
+    if (!innocent(target)) return
+    const hits = (recentHits.get(target) ?? []).filter((t) => now - t < HIT_BURST_MS)
+    hits.push(now)
+    if (hits.length >= HIT_BURST) {
+      immuneUntil.set(target, now + HIT_IMMUNE_MS)
+      recentHits.delete(target)
+      log(`${displayName(target)} is immune to hits for ${HIT_IMMUNE_MS / 1000} s after ${HIT_BURST} in ${HIT_BURST_MS / 1000} s`)
+      return
+    }
+    recentHits.set(target, hits)
+  }
+
   /** What a shooter may still shake loose: a tenth of their production, banked up to ten seconds of it. */
   const SHOT_PAY_SHARE = 0.1
   const SHOT_PAY_BURST_S = 10
@@ -134,6 +166,11 @@ export function startCombat(): void {
       }, { to: [a] })
       return
     }
+    if (immuneNow(best.addr, now)) {
+      void room.send('shotResult', { hitName: displayName(best.addr), dropped: 0, reason: 'immune', loot: 0 }, { to: [a] })
+      return
+    }
+    noteHit(best.addr, now)
 
     // A share of what the target is CARRYING, capped so a rich player never loses a
     /*
@@ -243,7 +280,7 @@ export function startCombat(): void {
     frapper(a, d, SLAP_RANGE, TASER_COOLDOWN_MS, true)
     // The freeze is resolved here rather than inside `frapper`, so the shelter has to be
     // asked about twice: a shielded owner who could not be hit must not be frozen either.
-    if (best === null || shelteredAtHome(best.addr)) return
+    if (best === null || shelteredAtHome(best.addr) || immuneNow(best.addr, now)) return
     void room.send('tased', { byName: displayName(a), gelMs: TASER_FREEZE_MS }, { to: [best.addr] })
     log(`${displayName(a)} tased ${displayName(best.addr)}`)
   })

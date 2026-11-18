@@ -283,6 +283,8 @@ export function hasSomethingToRecover(address: string): boolean {
 
 type EnCours = { victim: string; slot: number; code: number; fin: number; total: number; grip: number }
 const enCours = new Map<string, EnCours>()
+/** Whether this player is prying an item off a shelf right now (combat.ts asks before a hit immunity). */
+export function isPrying(address: string): boolean { return enCours.has(address) }
 
 /**
  * A shot lands on somebody who is prying: the attempt ends there.

@@ -486,6 +486,10 @@ export function setupCombat(): void {
     if (d.reason === 'shielded') {
       alerter(`${String(d.hitName).toUpperCase()} IS SHIELDED AT HOME`, '#ffd166', TOAST.result)
     }
+    // Hit six times in three seconds: safe for a moment (server/combat.ts, `immuneNow`).
+    if (d.reason === 'immune') {
+      alerter(`${String(d.hitName).toUpperCase()} IS SAFE FOR 3S`, '#ffd166', TOAST.result)
+    }
   })
   /*
     Being shot has three channels and no toast.
