@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { Storage } from '@dcl/sdk/server'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, REVENGE_MS, SLOTS_PER_FLOOR, VIDE, occupe
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, SHIELD_MAX_MS, REVENGE_MS, SLOTS_PER_FLOOR, VIDE, occupe
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
@@ -14,6 +14,7 @@ advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, s
 } from './plots'
 import { dropAt } from './coins'
 import { stepDone } from './onboarding'
+import { banFromBase, bannedUntil, shortDuration } from './bans'
 import { bankPot } from './collect'
 import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains, setLandedHook, setHomeHook } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
@@ -21,7 +22,7 @@ import { log } from './log'
 import {
   nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, declarerVolEnCours,
+  placeBase, basePoints, buyFloorFor, buySiloFor, lockCooldown, declarerVolEnCours, recordAwayLoss,
   WORLD_RESET_MARK
 } from './plots'
 
@@ -460,19 +461,36 @@ export function startTheft(): void {
         here earns a minute, which is a chase rather than a wall and keeps a busy venue worth
         visiting. Genuinely asleep earns the eight hours.
       */
+      /*
+        Since 18 Nov 2026 (founder): the shield keeps out THIS thief, for the same ramp, and the
+        whole base seals only when an absent owner has lost their share for this absence (a
+        quarter of their pieces, `recordAwayLoss`). A raid by several players can take a piece
+        each; nobody empties an absent owner. A present owner seals nothing: they defend live,
+        and the thief who just robbed them is kept out for a minute.
+      */
+      const absent = absenceDe(v.victim) > 0
       const bouclier = shieldFor(absenceDe(v.victim))
-      setLock(v.victim, maintenant + bouclier)
+      banFromBase(thief, v.victim, maintenant + bouclier)
+      let sceau = 0
+      if (absent) {
+        const { lost, cap } = recordAwayLoss(v.victim)
+        if (lost >= cap) {
+          sceau = SHIELD_MAX_MS
+          setLock(v.victim, maintenant + sceau)
+        }
+        log(`${displayName(v.victim)} has lost ${lost} of ${cap} piece(s) this absence${sceau > 0 ? ': base sealed' : ''}`)
+      }
 
       const nomV = displayName(thief)
       const rar = rarityOf(r), mut = mutationDe(r)
       // `by` is the thief's address: the away report needs it to offer revenge on the right player.
-      storeAlert(v.victim, { byName: nomV, by: thief, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000), payback })
+      storeAlert(v.victim, { byName: nomV, by: thief, rarity: rar, mutation: mut, shieldSec: Math.round(sceau / 1000), payback })
       void room.send('youWereRobbed', {
-        byName: nomV, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000), payback
+        byName: nomV, rarity: rar, mutation: mut, shieldSec: Math.round(sceau / 1000), payback
       }, { to: [v.victim] })
       if (presents().has(v.victim)) pushRevenges(v.victim)
       void room.send('stolen', { byName: nomV, fromName: b.name, rarity: rar, mutation: mut })
-      log(`${nomV} took a ${itemName(rar, mut)} from ${b.name}, floor ${Math.floor(v.slot / SLOTS_PER_FLOOR) + 1} slot ${v.slot}${payback ? ', as revenge' : ''}; shield ${Math.round(bouclier / 60000)} min (away ${Math.round(absenceDe(v.victim) / 60000)} min)`)
+      log(`${nomV} took a ${itemName(rar, mut)} from ${b.name}, floor ${Math.floor(v.slot / SLOTS_PER_FLOOR) + 1} slot ${v.slot}${payback ? ', as revenge' : ''}; thief kept out ${Math.round(bouclier / 60000)} min (away ${Math.round(absenceDe(v.victim) / 60000)} min)`)
     }
   })
 
@@ -495,7 +513,13 @@ export function startTheft(): void {
     for (const c of cibles) {
       const lock = lockOf(c.address)
       if (lock > maintenant && !meDoitUneRevanche(thief, c.address)) {
-        refus(thief, 'steal', `${c.name} is shielded for ${Math.ceil((lock - maintenant) / 1000)}s`)
+        refus(thief, 'steal', `${c.name} is shielded for ${shortDuration(lock - maintenant)}`)
+        continue
+      }
+      // Kept out of this base alone: they robbed it a moment ago, or its trap caught them (bans.ts).
+      const ferme = bannedUntil(thief, c.address)
+      if (ferme > maintenant) {
+        refus(thief, 'steal', `${c.name} is closed to you for ${shortDuration(ferme - maintenant)}`)
         continue
       }
       // A sentry's shot holds the base for everyone, revenge included (see `tenues`).

@@ -3,15 +3,16 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
   GEARS, Trap, TRAP_LIFETIME_MS, TRAP_TRIGGER_RANGE, TRAP_FREEZE_MS, MINE_FREEZE_MS, prixGear, luckCost, LUCK_MS,
-  Cloaked, CLOAK_MS, CLOAK_COOLDOWN_MS, Bomb, BOMB_FUSE_MS, BOMB_RADIUS
+  Cloaked, CLOAK_MS, CLOAK_COOLDOWN_MS, Bomb, BOMB_FUSE_MS, BOMB_RADIUS, shieldFor
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import {
   displayName, presents, positionOf, spend, prestigeOf,
   gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil, luckBuysOf, noteLuckBuy,
-  minesDe, placeMine, retirerMine, toutesLesBases
+  minesDe, placeMine, retirerMine, toutesLesBases, absenceDe
 } from './plots'
+import { banFromBase } from './bans'
 import { carriesFor, hitCarrier } from './carry'
 
 /**
@@ -271,11 +272,22 @@ export function startGear(): void {
         engine.removeEntity(e)
         const proprio = baseDe(t.owner)?.name ?? displayName(t.owner)
         if (t.mine) { retirerMine(t.owner, tr.position); hitCarrier(addr, 5) }
-        void room.send('trapped', { ownerName: proprio, gelMs: gel, mine: t.mine }, { to: [addr] })
+        /*
+          A trap now does what a kill does in the reference (founder, 18 Nov 2026). There, the
+          trap freezes a thief for seven seconds so the owner can kill them, and the thief starts
+          again from the spawn; with no death here, seven seconds were all an absent owner got
+          for an expensive trap. Now the intruder is frozen, then put out at the door (the
+          client does it when the freeze ends), and this base stays closed to them for as long
+          as a thief would be kept out: a minute when the owner is there, up to eight hours
+          when they have been away for long. Banned from one base, never from the game.
+        */
+        const banMs = t.mine ? 0 : shieldFor(absenceDe(t.owner))
+        if (banMs > 0) banFromBase(addr, t.owner, now + banMs)
+        void room.send('trapped', { ownerName: proprio, gelMs: gel, mine: t.mine, ownerId: t.owner, banMs }, { to: [addr] })
         const info = { type: 'trap', byName: displayName(addr) }
         if (ici.has(t.owner)) void room.send('trapSprung', { byName: displayName(addr) }, { to: [t.owner] })
         else storeAlert(t.owner, info)
-        log(`${displayName(addr)} stepped on ${proprio}'s ${t.mine ? 'mine' : 'trap'}`)
+        log(`${displayName(addr)} stepped on ${proprio}'s ${t.mine ? 'mine' : `trap, kept out ${Math.round(banMs / 60000)} min`}`)
         break
       }
     }

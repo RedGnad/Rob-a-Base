@@ -1,6 +1,6 @@
 import { TOY, plasticDe } from './toy'
 import { sendOrHold } from './intent'
-import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Trap, GEARS, Cloaked, Bomb, CENTER } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -10,6 +10,7 @@ import { applyFreeze, setCoil } from './locomotion'
 import { carryView } from './carry'
 import { TOAST } from './theme'
 import { cue } from './ui-kit'
+import { expelFromBaseOf } from './plots'
 import { puff } from './impact'
 
 /**
@@ -164,6 +165,12 @@ export function setupGear(): void {
     alerter(d.mine
       ? `${d.ownerName.toUpperCase()}'S MINE  ·  frozen ${Math.round(d.gelMs / 1000)}s`
       : `${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', TOAST.warning)
+    // A trap's catch is put out at the door when the freeze ends, and that base stays closed to
+    // them for `banMs` (server/gear.ts, founder 18 Nov 2026).
+    if (!d.mine && d.banMs > 0) {
+      const closed = d.banMs >= 3_600_000 ? `${Math.round(d.banMs / 3_600_000)}h` : `${Math.max(1, Math.round(d.banMs / 60_000))}m`
+      timers.setTimeout(() => expelFromBaseOf(d.ownerId, `${d.ownerName.toUpperCase()}'S BASE  ·  closed to you ${closed}`), d.gelMs)
+    }
   })
   room.onMessage('tased', (d) => {
     applyFreeze(d.gelMs)

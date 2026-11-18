@@ -102,7 +102,7 @@ export const MESSAGES = {
   gearBought: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int, cost: Schemas.Int64 }),
   gearPlaced: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int }),
   /** server -> the one who stepped on it. */
-  trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, mine: Schemas.Boolean }),
+  trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, mine: Schemas.Boolean, ownerId: Schemas.String, banMs: Schemas.Int }),
   /** server -> the owner, live or deferred. */
   trapSprung: Schemas.Map({ byName: Schemas.String }),
   /** client -> server: pull the cloak on. Server answers by writing the Cloaked component. */

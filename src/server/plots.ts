@@ -53,6 +53,10 @@ type Base = {
   skin: number
   /** Mines set inside the base: kept until stepped on, whoever is away, and regrown at every server start. */
   mines: Mine[]
+  /** Pieces stolen during the owner's current absence, counted from `awayLossesSince` (see `recordAwayLoss`). */
+  awayLosses?: number
+  /** The `lastSeen` the count belongs to: a new departure starts a new count. */
+  awayLossesSince?: number
 }
 export type Mine = { x: number; y: number; z: number }
 type Profil = {
@@ -643,7 +647,8 @@ async function loadBases(): Promise<void> {
       perdre. Une position ecrite par un joueur est un fait, pas une suggestion.
     */
     for (const l of loaded) {
-      createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
+      const nb = createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
+      if (nb !== null) { nb.awayLosses = l.awayLosses; nb.awayLossesSince = l.awayLossesSince }
       if (l.lockedUntil > Date.now()) setLock(l.address, l.lockedUntil)
     }
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
@@ -695,7 +700,7 @@ async function loadBases(): Promise<void> {
 }
 
 /** Everything about a base that has to survive it, written in one place so nothing is dropped. */
-type BaseBlob = { address: string; name: string; items: number[]; lastSeen: number; x: number; z: number; vitrine: Vitrine | null; lockedUntil: number }
+type BaseBlob = { address: string; name: string; items: number[]; lastSeen: number; x: number; z: number; vitrine: Vitrine | null; lockedUntil: number; awayLosses: number; awayLossesSince: number }
 
 /** A stored `base:` record read back, or null when it cannot be parsed. */
 function baseDepuisBlob(key: string, value: unknown): BaseBlob | null {
@@ -709,6 +714,9 @@ function baseDepuisBlob(key: string, value: unknown): BaseBlob | null {
       // eight hours of shield, and every restart (each deploy, two minutes after the venue
       // empties) reloaded it at zero. Older records simply have none.
       lockedUntil: typeof v.lockedUntil === 'number' ? v.lockedUntil : 0,
+      // The losses of the current absence, kept since 18 Nov 2026 so a restart cannot reopen a capped base.
+      awayLosses: typeof v.awayLosses === 'number' ? v.awayLosses : 0,
+      awayLossesSince: typeof v.awayLossesSince === 'number' ? v.awayLossesSince : 0,
       // Left null on purpose when the blob predates these fields: null means "never written",
       // which is what tells the migration in the restore to go and find them.
       vitrine: v.floorsBought === undefined ? null : {
@@ -740,7 +748,8 @@ function blobDeBase(b: Base): string {
     name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
     floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
     given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0, mines: b.mines,
-    lockedUntil: Plot.getOrNull(b.entity)?.lockedUntil ?? 0
+    lockedUntil: Plot.getOrNull(b.entity)?.lockedUntil ?? 0,
+    awayLosses: b.awayLosses ?? 0, awayLossesSince: b.awayLossesSince ?? 0
   })
 }
 
@@ -1412,6 +1421,31 @@ export function recordGift(giver: string, receiver: string): void {
   to trigger the shield, and reading real elapsed absence rather than a present/absent flag is
   what closes it.
 */
+/*
+  An absent owner is never emptied (founder, 18 Nov 2026).
+
+  Clash of Clans' rule: a raid only takes a share of the defender's stores, about a fifth at the
+  start and less later. Here, during one absence, an owner loses at most a quarter of the pieces
+  they had on show when they left, and never less than one can be taken. Once that share is gone
+  the whole base seals until they come back, at most eight hours (theft.ts). Below the share a
+  raid by several players stays open: each thief is kept out alone (bans.ts). The quarter is a
+  starting value, to be measured at the next playtest.
+
+  Counts the theft that just happened and answers how many pieces this absence has cost, and the
+  share it may cost. The stolen piece is already off the shelf when this runs.
+*/
+export const AWAY_LOSS_SHARE = 0.25
+export function recordAwayLoss(address: string): { lost: number; cap: number } {
+  const b = bases.get(address)
+  if (b === undefined) return { lost: 0, cap: 1 }
+  if (b.awayLossesSince !== b.lastSeen) { b.awayLosses = 0; b.awayLossesSince = b.lastSeen }
+  b.awayLosses = (b.awayLosses ?? 0) + 1
+  const atDeparture = occupe(b.items) + b.awayLosses
+  const cap = Math.max(1, Math.floor(atDeparture * AWAY_LOSS_SHARE))
+  dirtyBases.add(address)
+  return { lost: b.awayLosses, cap }
+}
+
 export function absenceDe(address: string): number {
   if (presents().has(address)) return 0
   const b = bases.get(address)

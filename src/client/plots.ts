@@ -588,7 +588,7 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   }
 }
 
-function expulser(base: Vector3, floors: number): void {
+function expulser(base: Vector3, floors: number, toast = 'SEALED  ·  you were pushed out'): void {
   const moi = Transform.getOrNull(engine.PlayerEntity)
   if (moi === null) return
   const dx = Math.abs(moi.position.x - base.x), dz = Math.abs(moi.position.z - base.z)
@@ -597,7 +597,18 @@ function expulser(base: Vector3, floors: number): void {
   const o = orientToBase(base.z, 0, BASE_SIDE / 2 + 2.5)
   const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
   if (moveTo('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
-    alerter('SEALED  ·  you were pushed out', '#ffd166', TOAST.warning)
+    alerter(toast, '#ffd166', TOAST.warning)
+  }
+}
+
+/** Put the player out at the door of this owner's base, if they stand inside it (a trap's catch, gear.ts). */
+export function expelFromBaseOf(ownerId: string, toast: string): void {
+  const id = ownerId.toLowerCase()
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    if (p.ownerId.toLowerCase() !== id) continue
+    const t = Transform.getOrNull(e)
+    if (t !== null) expulser(Vector3.create(t.position.x, 0, t.position.z), p.floors, toast)
+    return
   }
 }
 
