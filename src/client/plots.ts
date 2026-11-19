@@ -7,7 +7,7 @@ import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, STEAL_RANGE, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
-import { place3DText, largeur3D, Segment3D, LISIBLE_3D } from './texte3d'
+import { largeur3D, Segment3D, LISIBLE_3D, place3DTextShared, glyphFiles3D, glyphCount3D } from './texte3d'
 import { emettreGain } from './gains'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
@@ -90,6 +90,8 @@ type View = {
   loin: boolean
   /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
   vuLabel: string; vuBouclier: string
+  /** What the facade sign last spelled: name, rank and presence. Its letters are rebuilt only when this changes. */
+  vuEnseigne: string
   floors: Floor[]; items: Entity[]; ascenseur: Entity; enseigne: Entity; signature: string; sigItems: readonly number[] | null; sigSentries: readonly number[] | null; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
@@ -280,13 +282,40 @@ type Cost = { mats: number; draws: number }
 const MATERIAL_BUDGET = 380
 /** Decor primitives measured at 85 (5 Sep, board with one face) plus the shared materials of its models, plus convoys. */
 const DECOR_MATERIALS = 120
-/** Rendered instances: under the app-wide draw-call warning with room for avatars and UI. */
-const DRAW_BUDGET = 800
+/*
+  Rendered instances, counted as if the whole field were on screen at once.
+
+  800 until 19 Nov 2026. The sign then joined every level (about twelve models per base, some
+  three hundred at twenty-five bases), and the founder chose to raise this rather than let the
+  signs take the place of the nearest bases' detail. What makes it hold: the phone counts the
+  draw calls of the frame (`RENDER_TOTAL_DRAW_CALLS_IN_FRAME`, godot-explorer scene inspector,
+  read 19 Nov), so only what is on screen, and a normal view shows about 56 % of the field (427
+  of 769 on 7 Sep). 1,100 is then about 600 in a normal view, under the 1,000 warning; the worst
+  view, the whole field from a corner, reaches about 1,100 plus the avatars, over the warning (a
+  notice in the creator's performance panel) and far from the 2,000 that blocks.
+*/
+const DRAW_BUDGET = 1100
 /** Decor plus belt and convoys, measured at 126 bodies (5 Sep). */
 const DECOR_DRAWS = 130
 
+/*
+  What the facade sign spells. The facade speaks the HUD's numbers and the HUD's typeface: the name
+  in white, then the interface's own prestige star and the level it carries, rebirths plus one,
+  the pair the prestige panel's badge shows ("x5" on a facade meant nothing to a player who had
+  never read the HUD's multiplier, owner, 5 Sep). One definition, read by the drawing and the budget.
+*/
+function signSegments(p: { ownerName: string; rebirths: number }): Segment3D[] {
+  const segs: Segment3D[] = [{ texte: p.ownerName.slice(0, 14), role: 'name', taille: 0.78 }]
+  if (p.rebirths > 0) {
+    segs.push({ texte: ' ', role: 'money', taille: 0.78 })
+    segs.push({ image: 'ui-prestige.png', taille: 0.66 })
+    segs.push({ texte: `${p.rebirths + 1}`, role: 'money', taille: 0.78 })
+  }
+  return segs
+}
+
 function baseCost(
-  p: { floors: number; items: readonly number[]; sentryFloors: readonly number[]; skin: number; ownerName: string }, pres: boolean
+  p: { floors: number; items: readonly number[]; sentryFloors: readonly number[]; skin: number; ownerName: string; rebirths: number }, pres: boolean
 ): Cost {
   const etages = Math.max(1, Math.min(p.floors, MAX_FLOORS))
   let pieces = 0, rays = 0, lit = 0
@@ -323,15 +352,18 @@ function baseCost(
     rotation est coupee au loin parce que "cent pieces tweenees coutent au tick de scene plus que
     toutes les bases reunies". On en comptait deja une cinquantaine sur le champ mesure.
   */
-  const loin: Cost = { mats: 2, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces }
+  // The sign is part of every level now: its plate and one model per letter, all shared files,
+  // so it adds draws here and its materials once for the whole field (see the pre-pass).
+  const enseigne = p.ownerName === '' ? 0 : 1 + glyphCount3D(signSegments(p))
+  const loin: Cost = { mats: 2, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces + enseigne }
   if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
   const crown = p.skin > 0 ? 1 : 0  // the kerb
-  // Full: door and sign, a crown of rays above Epic and up, one cone per armed storey, the kerb
-  // and crown of a skin, one glyph plane per letter; in draws also one pad per piece and one
-  // painted pool per lit piece. Pads are files shared per colour, billed once on the field.
-  const extras = 2 + cones + crown + p.ownerName.length
+  // Full: the door, a crown of rays above Epic and up, one cone per armed storey, the kerb and
+  // crown of a skin; in draws also one pad per piece and one painted pool per lit piece. Pads
+  // are files shared per colour, billed once on the field. The sign moved to every level.
+  const extras = 1 + cones + crown
   return { mats: loin.mats + extras + rays, draws: loin.draws + extras + rays + pieces + lit }
 }
 
@@ -1129,6 +1161,9 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(0, 0.02, 0.05),
     scale: Vector3.create(5.1, 1.28, 1)
   })
+  // A shared file on every level, near or far (tools/model/build-glyphs.py, founder 19 Nov 2026):
+  // the sign stands on every base and never appears on the way in. Alpha tested, like before.
+  GltfContainer.create(enseigne, { src: 'assets/glyphs/sign.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   /*
     Alpha TEST, not blend. The glazing is alpha blended, and two blended surfaces resolve
     their order per frame by distance: from some angles the wall drew over the sign and
@@ -1146,12 +1181,12 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(createPedestal(racine, k))
   parentCourant = null
-  const v: View = { plinth, label, gain, door, glass, plaque, enseigne, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', sigItems: null, sigSentries: null, ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
+  const v: View = { plinth, label, gain, door, glass, plaque, enseigne, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', vuEnseigne: '', ascenseur, floors, items, signature: '', sigItems: null, sigSentries: null, ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
   if (!loin) garnirBase(v)
   return v
 }
 
-/** The parts of a base only its full view carries: lift, door, floating texts, the sign's plate. */
+/** The parts of a base only its full view carries: lift, door, floating texts. The facade sign is on every level. */
 function garnirBase(v: View): void {
   MeshRenderer.setBox(v.ascenseur)
   MeshCollider.setBox(v.ascenseur)
@@ -1175,26 +1210,17 @@ function garnirBase(v: View): void {
   // A new dressing draws its walls again from the next shield pass, colliders included.
   v.vuBouclier = ''
   TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, ...LISIBLE_3D })
-  MeshRenderer.setPlane(v.enseigne)
-  // Alpha TEST, not blend: a tested cutout writes depth and wins every angle against the glazing (1 Sep).
-  Material.setPbrMaterial(v.enseigne, {
-    texture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
-    emissiveTexture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
-    emissiveColor: Color3.White(), emissiveIntensity: 0.3,
-    metallic: 0, roughness: 1, specularIntensity: 0,
-    transparencyMode: 1, alphaTest: 0.5
-  })
 }
 
 function depouillerBase(v: View): void {
-  for (const e of [v.ascenseur, v.door, v.glass, v.enseigne]) {
+  for (const e of [v.ascenseur, v.door, v.glass]) {
     if (MeshRenderer.has(e)) MeshRenderer.deleteFrom(e)
     if (MeshCollider.has(e)) MeshCollider.deleteFrom(e)
     if (Material.has(e)) Material.deleteFrom(e)
   }
   if (PointerEvents.has(v.ascenseur)) PointerEvents.deleteFrom(v.ascenseur)
   if (TextShape.has(v.gain)) TextShape.deleteFrom(v.gain)
-  if (v.plaqueGlyphes !== null) { engine.removeEntityWithChildren(v.plaqueGlyphes); v.plaqueGlyphes = null }
+  // The sign stays: it belongs to every level now.
 }
 
 /**
@@ -1600,6 +1626,8 @@ export function setupPlots(): void {
     const variantes = new Set<number>()
     const socles = new Set<number>()
     const flaques = new Set<number>()
+    // Each glyph file the field's signs load, billed once however many signs use it.
+    const glyphes = new Set<string>()
     for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
       const id = ent as unknown as number
       const t = Transform.get(ent)
@@ -1614,6 +1642,7 @@ export function setupPlots(): void {
           flaques.add(couleur * 4 + poolTier(g + 0.8 * traitsDe(it)))
         }
       }
+      if (p.ownerName !== '') for (const f of glyphFiles3D(signSegments(p), !p.ownerPresent)) glyphes.add(f)
       const sienne = p.ownerId.toLowerCase() === moiAdr
       const dejaPres = views.get(id)?.loin === false
       rangs.push({
@@ -1632,7 +1661,8 @@ export function setupPlots(): void {
       loin tant que le budget suit. Une base qu'on ne peut pas s'offrir n'arrete pas la boucle:
       une base basse derriere une tour peut encore rentrer, et la refuser gaspillerait la place.
     */
-    let mats = DECOR_MATERIALS + variantes.size + 1 + socles.size + flaques.size
+    // + 1: the sign's plate, one shared file.
+    let mats = DECOR_MATERIALS + variantes.size + 1 + socles.size + flaques.size + glyphes.size + 1
     let draws = DECOR_DRAWS
     for (const r of rangs) { mats += r.loin.mats; draws += r.loin.draws }
     const complets = new Set<number>()
@@ -1786,22 +1816,11 @@ export function setupPlots(): void {
             The facade speaks the HUD's numbers and the HUD's typeface. The number is the
             MULTIPLIER, rebirths plus one, because that is what the counter over the score
             says (x3 PRESTIGE) and what a player calls their prestige; the plate said P2 to
-            a player the HUD had told x3 (owner, 1 Sep). The letters are glyph quads from
-            the Baloo atlas, name in white, rank in the money gold.
+            a player the HUD had told x3 (owner, 1 Sep). The letters are shared glyph models
+            cut from the Baloo atlas (`tools/model/build-glyphs.py`), name in white, rank in
+            the money gold, and they stand on every level of detail.
           */
-          if (v.plaqueGlyphes !== null) engine.removeEntityWithChildren(v.plaqueGlyphes)
-          /*
-            The rank is the interface's own prestige star and the level it carries, the same
-            pair the prestige panel's badge shows: "x5" on a facade meant nothing to a player
-            who had never read the HUD's multiplier (owner, 5 Sep). The star stands in the
-            line as a picture segment; the figure after it is the level, rebirths plus one.
-          */
-          const segs: Segment3D[] = [{ texte: p.ownerName.slice(0, 14), role: 'name', taille: 0.78 }]
-          if (p.rebirths > 0) {
-            segs.push({ texte: ' ', role: 'money', taille: 0.78 })
-            segs.push({ image: 'ui-prestige.png', taille: 0.66 })
-            segs.push({ texte: `${p.rebirths + 1}`, role: 'money', taille: 0.78 })
-          }
+          const segs = signSegments(p)
           /*
             LE PANNEAU s'ajuste au nom, et non l'inverse.
 
@@ -1818,7 +1837,13 @@ export function setupPlots(): void {
           const largeurLigne = largeur3D(segs)
           const te = Transform.getMutableOrNull(v.enseigne)
           if (te !== null) te.scale = Vector3.create(Math.max(3.2, Math.min(7.4, largeurLigne + 0.9)), 1.28, 1)
-          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : place3DText(v.plaque, segs, !p.ownerPresent)
+          // Rebuilt only when what it spells changes: a level-of-detail flip no longer touches it.
+          const cle = `${p.ownerName}|${p.rebirths}|${p.ownerPresent}`
+          if (cle !== v.vuEnseigne) {
+            v.vuEnseigne = cle
+            if (v.plaqueGlyphes !== null) engine.removeEntityWithChildren(v.plaqueGlyphes)
+            v.plaqueGlyphes = p.ownerName === '' ? null : place3DTextShared(v.plaque, segs, !p.ownerPresent)
+          }
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
           if (rp !== null) {

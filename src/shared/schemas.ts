@@ -867,7 +867,7 @@ export const OBJECT_BUDGET = 385
 export const DECOR_COST = 106
 /** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quelle que soit sa hauteur. */
 export const BASE_FIXED_COST = 4
-/** Reduced to a silhouette, a base renders neither door nor sign: plinth and lift only (measured 5 Sep: 143 for 15 far bases). */
+/** Reduced to a silhouette, a base renders no door: plinth and lift (measured 5 Sep: 143 for 15 far bases). Its sign is shared model files since 19 Nov, no material of its own. */
 export const BASE_FIXED_COST_FAR = 2
 /** Un etage complet: coque, accent, verre, montee. Reduit: coque, accent et verre. */
 export const STOREY_COST_NEAR = 4

@@ -1,4 +1,4 @@
-import { engine, Transform, MeshRenderer, Material, Entity } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, Material, Entity, GltfContainer } from '@dcl/sdk/ecs'
 import { Vector3, Color3, Color4 } from '@dcl/sdk/math'
 import { ATLAS, ADVANCE, FONT_FILES } from './font-metrics'
 
@@ -162,6 +162,101 @@ export function place3DText(parent: Entity, segments: Segment3D[], estompe: bool
           metallic: 0, roughness: 1, specularIntensity: 0,
           transparencyMode: 1, alphaTest: 0.5
         })
+      }
+      curseur += adv * seg.taille
+    }
+  }
+  return racine
+}
+
+/*
+  The facade sign, in shared model files (founder, 19 Nov 2026).
+
+  `place3DText` draws each letter as an SDK plane with its own material, and the phone counts one
+  material per such plane, never shared: a twelve-letter name cost thirteen. The level-of-detail
+  budget could therefore only afford the sign on the nearest bases, and the others stood without
+  one. `tools/model/build-glyphs.py` writes one model per letter, the same quad cut from the same
+  atlas cell, and a model file is counted once however many copies stand. The sign can then stand
+  on every base at every distance, and never appears on the way in.
+
+  Same layout as `place3DText`, letter for letter. Only the faces the sign uses exist as files:
+  every glyph in the name face, the digits in the money face, the prestige star. Anything else
+  falls back to the plane, so a new use shows up as a material in the budget, not as a hole.
+*/
+const GLYPH_DIR = 'assets/glyphs/'
+const GLYPH_IMAGE: Record<string, string> = { 'ui-prestige.png': 'prestige' }
+
+function glyphFile(role: keyof typeof FONT_FILES, ch: string, estompe: boolean): string | null {
+  const idx = ATLAS.glyphs.indexOf(ch)
+  if (idx < 0 || ch === ' ') return null
+  if (role !== 'name' && !(role === 'money' && ch >= '0' && ch <= '9')) return null
+  return `${GLYPH_DIR}${role}${estompe ? '-dim' : ''}-${String(idx).padStart(2, '0')}.glb`
+}
+
+/** The model files a sign with these segments loads: what the budget bills once for the whole field. */
+export function glyphFiles3D(segments: Segment3D[], estompe: boolean): string[] {
+  const out: string[] = []
+  for (const seg of segments) {
+    if ('image' in seg) {
+      const base = GLYPH_IMAGE[seg.image]
+      if (base !== undefined) out.push(`${GLYPH_DIR}${base}${estompe ? '-dim' : ''}.glb`)
+      continue
+    }
+    for (const ch of seg.texte.toUpperCase()) {
+      const f = glyphFile(seg.role, ch, estompe)
+      if (f !== null) out.push(f)
+    }
+  }
+  return out
+}
+
+/** How many models the sign draws: one per letter or picture, the spaces excluded. */
+export function glyphCount3D(segments: Segment3D[]): number {
+  let n = 0
+  for (const seg of segments) {
+    if ('image' in seg) { n++; continue }
+    for (const ch of seg.texte.toUpperCase()) if (ch !== ' ' && ATLAS.glyphs.indexOf(ch) >= 0) n++
+  }
+  return n
+}
+
+export function place3DTextShared(parent: Entity, segments: Segment3D[], estompe: boolean): Entity {
+  const racine = engine.addEntity()
+  Transform.create(racine, { parent })
+  const propres: Segment3D[] = segments.map((s) => ('image' in s ? s : { ...s, texte: s.texte.toUpperCase() }))
+  const total = propres.reduce((w, s) => w + largeurDe(s), 0)
+  let curseur = -total / 2
+  const poser = (src: string, x: number, taille: number): void => {
+    const e = engine.addEntity()
+    Transform.create(e, { parent: racine, position: Vector3.create(x, 0, 0), scale: Vector3.create(taille, taille, 1) })
+    GltfContainer.create(e, { src, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  }
+  for (const seg of propres) {
+    if ('image' in seg) {
+      const base = GLYPH_IMAGE[seg.image]
+      if (base === undefined) {
+        // Not a shared picture: the plane, through the general path.
+        const one = place3DText(racine, [seg], estompe)
+        const t = Transform.getMutable(one)
+        t.position = Vector3.create(curseur + (seg.taille * AVANCE_IMAGE) / 2, 0, 0)
+      } else {
+        poser(`${GLYPH_DIR}${base}${estompe ? '-dim' : ''}.glb`, curseur + (seg.taille * AVANCE_IMAGE) / 2, seg.taille)
+      }
+      curseur += seg.taille * AVANCE_IMAGE
+      continue
+    }
+    for (const ch of seg.texte) {
+      const idx = ATLAS.glyphs.indexOf(ch)
+      if (idx < 0 && ch !== ' ') continue
+      const adv = (ADVANCE[ch] ?? 0.5) + TRACKING
+      if (idx >= 0 && ch !== ' ') {
+        const x = curseur + (ADVANCE[ch] * seg.taille) / 2
+        const f = glyphFile(seg.role, ch, estompe)
+        if (f !== null) poser(f, x, seg.taille)
+        else {
+          const one = place3DText(racine, [{ texte: ch, role: seg.role, taille: seg.taille }], estompe)
+          Transform.getMutable(one).position = Vector3.create(x, 0, 0)
+        }
       }
       curseur += adv * seg.taille
     }
