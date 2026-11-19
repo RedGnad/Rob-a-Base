@@ -583,6 +583,17 @@ export function startTheft(): void {
     if (bankPot(a, 'button') <= 0) refus(a, 'collect', 'nothing to collect')
   })
 
+  /*
+    Walking into one of the coins that wait over your pieces banks the pot as the button does
+    (founder, 19 Nov 2026). The whole pot, as one tap on a Clash of Clans mine collects every
+    mine: the pot is one sum on the server, and the coins are where it is SEEN, not where it is
+    kept. Silent when there is nothing: a walk past an empty shelf is not a refused request.
+  */
+  room.onMessage('collectTouch', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (a) bankPot(a, 'touch')
+  })
+
   room.onMessage('cancelSteal', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (a && enCours.delete(a)) void room.send('stealFailed', { reason: 'cancelled' }, { to: [a] })

@@ -9,6 +9,8 @@ export const MESSAGES = {
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   collect: Schemas.Map({}),
+  // Walking into a coin that waits over one of your pieces (client/pot-coins.ts): banks the pot, like the button.
+  collectTouch: Schemas.Map({}),
   collected: Schemas.Map({ gain: Schemas.Int64 }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),

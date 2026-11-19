@@ -9,6 +9,7 @@ import {
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { largeur3D, Segment3D, LISIBLE_3D, place3DTextShared, glyphFiles3D, glyphCount3D } from './texte3d'
 import { emettreGain } from './gains'
+import { syncPotSlots, potCoinHeight, potCoinLanded, potCoinCount } from './pot-coins'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 /** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
@@ -951,6 +952,31 @@ const GAIN_PERIODE_MS = 3000
 */
 const GAIN_DEBIT_MAX = 3
 
+/*
+  Where the coins that wait with the pot hang: over each occupied, visible piece of your base, in
+  world coordinates at the top of the piece, the point the rising coin starts from. Four times a
+  second is enough: a piece moves only when it is shelved, taken or stolen.
+*/
+let potSlotsAt = 0
+function potSlotsDeBase(v: View, p: { items: readonly number[] }): void {
+  const now = Date.now()
+  if (now - potSlotsAt < 250) return
+  potSlotsAt = now
+  const rt = Transform.getOrNull(v.racine)
+  if (rt === null) return
+  const slots: Array<{ key: number; x: number; y: number; z: number; rarity: number }> = []
+  for (let k = 0; k < p.items.length; k++) {
+    const code = p.items[k]
+    if (code === undefined || code === VIDE) continue
+    const ent = v.items[k]
+    const socle = ent === undefined ? null : Transform.getOrNull(ent)
+    if (socle === null || socle.scale.x <= 0) continue
+    const o = orientToBase(rt.position.z, socle.position.x, socle.position.z)
+    slots.push({ key: k, x: rt.position.x + o.dx, y: socle.position.y + socle.scale.y * 0.5, z: rt.position.z + o.dz, rarity: rarityOf(code) })
+  }
+  syncPotSlots(slots)
+}
+
 function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
   const rt = Transform.getOrNull(v.racine)
   const me = Transform.getOrNull(engine.PlayerEntity)
@@ -1057,11 +1083,14 @@ function emissionsDeBase(v: View, p: { items: readonly number[] }): void {
       du socle porte l'objet a son CENTRE et son echelle est sa hauteur, donc son sommet est a
       la moitie de l'echelle, et un doigt d'air au-dessus suffit a ce qu'elle s'en detache.
     */
+    // It climbs into the coin that waits over this piece, when there is one (pot-coins.ts).
+    const haut = potCoinHeight(k)
+    const slotIndex = k
     emettreGain(Vector3.create(
       rt.position.x + o.dx,
       socle.position.y + socle.scale.y * 0.5 + 0.12,
       rt.position.z + o.dz
-    ), rarityOf(code), grossir)
+    ), rarityOf(code), grossir, haut === null ? null : { y: haut, onLand: () => potCoinLanded(slotIndex) })
   }
   prochainGain.set(cleBase, prochaine === Infinity ? now + GAIN_PERIODE_MS : prochaine)
 }
@@ -1662,8 +1691,9 @@ export function setupPlots(): void {
       une base basse derriere une tour peut encore rentrer, et la refuser gaspillerait la place.
     */
     // + 1: the sign's plate, one shared file.
-    let mats = DECOR_MATERIALS + variantes.size + 1 + socles.size + flaques.size + glyphes.size + 1
-    let draws = DECOR_DRAWS
+    let mats = DECOR_MATERIALS + variantes.size + 1 + socles.size + flaques.size + glyphes.size + 1 + (potCoinCount() > 0 ? 1 : 0)
+    // The coins that wait over your pieces: one shared file, one draw each (pot-coins.ts).
+    let draws = DECOR_DRAWS + potCoinCount()
     for (const r of rangs) { mats += r.loin.mats; draws += r.loin.draws }
     const complets = new Set<number>()
     for (const r of rangs) {
@@ -1717,6 +1747,7 @@ export function setupPlots(): void {
       const monBase = p.ownerId.toLowerCase() === myClientAddress()
 
       if (monBase) emissionsDeBase(v, p)
+      if (monBase) potSlotsDeBase(v, p)
 
       /*
         The signature is computed here rather than further down, because it guards twice.

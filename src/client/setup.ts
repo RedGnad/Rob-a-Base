@@ -38,6 +38,7 @@ import { setupEvents } from './events'
 import { setupToy } from './toy'
 import { setupLootUi } from './loot-ui'
 import { setupGains } from './gains'
+import { setupPotCoins } from './pot-coins'
 import { setupPreload } from './preload'
 import { setupIntent } from './intent'
 import { setupClics } from './clics'
@@ -151,6 +152,7 @@ export function startClient(): void {
   setupToy()
   setupLootUi()
   setupGains()
+  setupPotCoins()
   setupPreload()
   setupBelt()
   setupRecords()

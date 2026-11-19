@@ -56,6 +56,8 @@ function autour(v: number): number { return v * (1 - VARIE + Math.random() * 2 *
 type Slot = {
   e: Entity; depuis: number; y0: number; taille: number; vivant: boolean
   montee: number; vie: number; tours: number
+  /** Set when the coin climbs into a waiting coin (pot-coins.ts): called as it arrives. */
+  onLand: (() => void) | null
 }
 const pool: Slot[] = []
 let prochain = 0
@@ -72,7 +74,7 @@ function creer(): void {
       emissiveIntensity: 0.9,
       metallic: 0.9, roughness: 0.25, castShadows: false
     })
-    pool.push({ e, depuis: 0, y0: 0, taille: 0.2, vivant: false, montee: MONTEE, vie: VIE_MS, tours: TOURS })
+    pool.push({ e, depuis: 0, y0: 0, taille: 0.2, vivant: false, montee: MONTEE, vie: VIE_MS, tours: TOURS, onLand: null })
   }
 }
 
@@ -84,7 +86,12 @@ function creer(): void {
  * d'une etagere seraient a dechiffrer un par un, la ou une piece se reconnait d'un coup et
  * supporte de se repeter, ce qui est exactement ce qu'on lui demande.
  */
-export function emettreGain(ou: Vector3, rarete: number, grossir = 1): void {
+/*
+  `landAt`: since 19 Nov 2026 the coin no longer climbs into nothing. Over each piece of your base
+  a coin waits with the pot (pot-coins.ts), and the rising coin stops at its height, lands in it
+  and makes it take the knock. The money is seen leaving the piece and piling up over it.
+*/
+export function emettreGain(ou: Vector3, rarete: number, grossir = 1, landAt: { y: number; onLand: () => void } | null = null): void {
   creer()
   let slot: Slot | null = null
   for (let i = 0; i < POOL; i++) {
@@ -109,10 +116,13 @@ export function emettreGain(ou: Vector3, rarete: number, grossir = 1): void {
   slot.montee = autour(MONTEE)
   slot.vie = autour(VIE_MS)
   slot.tours = autour(TOURS)
+  slot.onLand = landAt === null ? null : landAt.onLand
+  if (landAt !== null) slot.montee = Math.max(0.2, landAt.y - ou.y)
   slot.vivant = true
   // Un ecart lateral, tire lui aussi: sans lui, six pieces montent sur six verticales exactes
   // et l'oeil retrouve la grille des socles au lieu de voir de la monnaie.
-  t.position = Vector3.create(ou.x + (Math.random() - 0.5) * 0.14, ou.y, ou.z + (Math.random() - 0.5) * 0.14)
+  const ecart = landAt === null ? 0.14 : 0.04
+  t.position = Vector3.create(ou.x + (Math.random() - 0.5) * ecart, ou.y, ou.z + (Math.random() - 0.5) * ecart)
 }
 
 /**
@@ -130,6 +140,7 @@ export function setupGains(): void {
       const t = Transform.getMutableOrNull(s.e)
       if (k >= 1 || t === null) {
         s.vivant = false
+        if (s.onLand !== null) { const f = s.onLand; s.onLand = null; f() }
         if (t !== null) { t.scale = Vector3.Zero(); t.position = Vector3.create(0, -60, 0) }
         continue
       }
