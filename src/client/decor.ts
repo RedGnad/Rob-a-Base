@@ -1,6 +1,6 @@
 import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, PBMaterial_PbrMaterial, ColliderLayer, Entity } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
-import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS } from '../shared/schemas'
+import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS, MAX_FLOORS, FLOOR_HEIGHT } from '../shared/schemas'
 import { TOY, plastic } from './toy'
 import { TREE_CLUSTERS } from './vegetation-clusters'
 
@@ -122,6 +122,27 @@ export function setupDecor(): void {
     visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER,
     invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
   })
+
+  /*
+    The rampart goes on up, unseen, past the top of the tallest base (founder, 19 Nov 2026).
+
+    With the landscape off, whoever leaves the field stands in the void with no way back, and
+    the scene cannot fetch them: a player is moved only while standing inside the scene, and
+    only to a point inside it (docs, "Move the player"). The rampart is 12 m high and a base
+    may stand less than a metre from it, so from the fourth storey a player gliding (6 m/s
+    across, 1 m/s down, the client's defaults) sails over it. Four colliders carry the edge
+    to a twelve-storey roof plus a double jump. Nothing is drawn: no material, no draw call.
+  */
+  const hautMur = MAX_FLOORS * FLOOR_HEIGHT + 16
+  const bords: Array<[number, number, number, number]> = [
+    [0.6, SCENE_SIDE / 2, 1, SCENE_SIDE - 1], [SCENE_SIDE - 0.6, SCENE_SIDE / 2, 1, SCENE_SIDE - 1],
+    [SCENE_SIDE / 2, 0.6, SCENE_SIDE - 1, 1], [SCENE_SIDE / 2, SCENE_SIDE - 0.6, SCENE_SIDE - 1, 1]
+  ]
+  for (const [x, z, sx, sz] of bords) {
+    const mur = engine.addEntity()
+    Transform.create(mur, { position: Vector3.create(x, hautMur / 2, z), scale: Vector3.create(sx, hautMur, sz) })
+    MeshCollider.setBox(mur, ColliderLayer.CL_PHYSICS)
+  }
 
   /*
     The vegetation merged in the tool: the trees by cell, the bushes in one piece.
