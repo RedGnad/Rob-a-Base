@@ -1987,7 +1987,7 @@ export function setupPlots(): void {
         Two protections, two looks (founder, 18 Nov 2026).
 
         SEALED for everybody (an absent owner's share lost, a sentry shot, the owner's LOCK):
-        the glass (shield-glass.glb) stands round the building and nobody but the owner gets
+        the red glass (shield-glass.glb, red since 20 Nov) stands round the building and nobody but the owner gets
         through it; whoever stands inside when it seals is put out at the door (see `lockSeen`
         above). This takes back the 6 Sep rule that the seal was only seen and never touched.
 
