@@ -18,7 +18,10 @@ type State = {
   id: number
   entity: ReturnType<typeof engine.addEntity>
   crateTier: number
+  /** What an outbid is computed on: the list price at the belt, then each outbid's price. */
   pricePaid: number
+  /** What the holder really paid, and gets back when outbid: less than `pricePaid` for a newcomer's first box. */
+  refund: number
   owner: string
   depart: { x: number; z: number }
   cible: { x: number; z: number }
@@ -55,7 +58,7 @@ function position(e: State, t: number): { x: number; z: number } {
  * Starts a convoy. Returns false when the buyer has no base yet: the caller then delivers
  * straight to inventory, rather than blocking a purchase and breaking the tutorial order.
  */
-export function startConvoy(buyer: string, crateTier: number, price: number, from: { x: number; z: number }): boolean {
+export function startConvoy(buyer: string, crateTier: number, price: number, from: { x: number; z: number }, paid: number = price): boolean {
   const b = baseDe(buyer)
   if (b === undefined) return false
 
@@ -64,6 +67,7 @@ export function startConvoy(buyer: string, crateTier: number, price: number, fro
     entity: engine.addEntity(),
     crateTier,
     pricePaid: price,
+    refund: paid,
     owner: buyer,
     depart: { x: from.x, z: from.z },
     cible: { x: b.x, z: b.z },
@@ -123,9 +127,9 @@ export function runConvoys(): void {
 
     // The outbid holder is refunded in full. Without it, buying early would be strictly
     // losing and nobody would ever buy before the belt's end.
-    crediter(e.owner, e.pricePaid)
+    crediter(e.owner, e.refund)
     const previous = e.owner
-    void room.send('outbidLost', { byName: displayName(a), rembourse: e.pricePaid, crateTier: e.crateTier }, { to: [previous] })
+    void room.send('outbidLost', { byName: displayName(a), rembourse: e.refund, crateTier: e.crateTier }, { to: [previous] })
 
     const nb = baseDe(a)
     if (nb === undefined) return
@@ -133,6 +137,7 @@ export function runConvoys(): void {
     e.cible = { x: nb.x, z: nb.z }
     e.owner = a
     e.pricePaid = price
+    e.refund = price
     e.debutMs = Date.now()
     e.durationMs = durationMs(e.depart, e.cible)
     publish(e)

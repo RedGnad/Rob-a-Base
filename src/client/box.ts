@@ -808,6 +808,14 @@ export function openBestCrate(): void {
 }
 
 /** The crate currently standing at the base, if one is being opened: the beacon's target. */
+/** The floor under the crate being opened: where a ground marker belongs, not at the crate's centre. */
+export function crateFoot(): Vector3 | null {
+  if (!boxView.opening) return null
+  const t = Transform.getOrNull(crateMesh)
+  if (t === null || t.scale.x <= 0) return null
+  return Vector3.create(t.position.x, t.position.y - t.scale.y / 2, t.position.z)
+}
+
 export function cratePosition(): Vector3 | null {
   if (!boxView.opening) return null
   const t = Transform.getOrNull(crateMesh)

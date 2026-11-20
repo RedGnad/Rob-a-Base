@@ -9,9 +9,10 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce, eventTheme } from './loot'
 import { tempoDuTapis } from './events'
-import { displayName, spend, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf, MAX_CRATES, takeFirstCrateFloor } from './plots'
+import { displayName, spend, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf, MAX_CRATES, takeFirstCrateFloor, tutorialStepOf, firstBoxAvailable, takeFirstBox } from './plots'
+import { beltPriceFor } from '../shared/tutorial'
 import { remettreEnMain, carriesFor } from './carry'
-import { stepDone } from './onboarding'
+import { stepDone, pushTutorial } from './onboarding'
 import { bankToCover, shortOf } from './collect'
 import { startConvoy } from './convoy'
 import { CRATES, encoder, itemName } from '../shared/loot-table'
@@ -145,16 +146,21 @@ export function startBelt(): void {
       void room.send('actionRejected', { action: 'purchase', reason: `your box stock is full (${MAX_CRATES}), open some first`, antiCheat: false }, { to: [a] })
       return
     }
+    // What THIS player pays: 800 for a Basic Box until their Buy step is done (shared/tutorial.ts).
+    const price = beltPriceFor(art.crateTier, art.price, tutorialStepOf(a), firstBoxAvailable(a))
     // A short balance is topped up from the pot when the pot covers it (see `bankToCover`).
-    if (!bankToCover(a, art.price, `to buy a ${CRATES[art.crateTier].name}`) || !spend(a, art.price)) {
-      void room.send('actionRejected', { action: 'purchase', reason: `you need ${shortOf(a, art.price)} more coins`, antiCheat: false }, { to: [a] })
+    if (!bankToCover(a, price, `to buy a ${CRATES[art.crateTier].name}`) || !spend(a, price)) {
+      void room.send('actionRejected', { action: 'purchase', reason: `you need ${shortOf(a, price)} more coins`, antiCheat: false }, { to: [a] })
       return
     }
 
-    if (!startConvoy(a, art.crateTier, art.price, { x: pos.x, z: pos.z })) {
+    // The convoy carries the LIST price, which an outbid is computed on, and what was paid, which is refunded.
+    if (!startConvoy(a, art.crateTier, art.price, { x: pos.x, z: pos.z }, price)) {
       addCrate(a, art.crateTier)
       void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     }
+    // The one cheap box is used up by this purchase, on whatever step it was made: the client is told.
+    if (price !== art.price) { takeFirstBox(a); pushTutorial(a) }
     stepDone(a, 'buy')
     advanceQuest(a, 'acheter')
     pushQuests(a)
@@ -162,8 +168,8 @@ export function startBelt(): void {
     const name = displayName(a)
     const c = Belt.getMutableOrNull(art.entity)
     if (c !== null) c.buyerName = name
-    void room.send('bought', { byName: name, crateTier: art.crateTier, price: art.price })
-    log(`${name} bought a ${CRATES[art.crateTier].name} for ${art.price}`)
+    void room.send('bought', { byName: name, crateTier: art.crateTier, price })
+    log(`${name} bought a ${CRATES[art.crateTier].name} for ${price}${price !== art.price ? ` (first box, list ${art.price})` : ''}`)
     retirer(art)
   })
 

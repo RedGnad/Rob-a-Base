@@ -438,8 +438,19 @@ export function setupVfx(): void {
     // The emitter is the avatar's child: the world offset is turned into the avatar's own axes.
     const q = me.rotation
     const local = Vector3.rotate(Vector3.create(leadX, 0, leadZ), Quaternion.create(-q.x, -q.y, -q.z, q.w))
-    const y = LAYER[WEATHER[airTheme]?.from ?? 'air'].y
-    if (Math.abs(t.position.x - local.x) > 0.05 || Math.abs(t.position.z - local.z) > 0.05) {
+    /*
+      And at the runner's own height. A theme born overhead falls slowly: ahead of a runner it
+      had 1.6 s to come down and was still a ceiling, seen and never run through (founder,
+      20 Nov 2026: "je dois m'arreter pour qu'elles tombent"). The layer is a thin slab and
+      its thickness is part of the ParticleSystem, which is not rewritten; so while the box
+      leads, its height is drawn anew every frame between knee and reach. A particle stays
+      where it was born, so a slab that moves every frame fills a volume. The share follows
+      the lead: standing still, the layer is exactly where the theme put it.
+    */
+    const rest = LAYER[WEATHER[airTheme]?.from ?? 'air'].y
+    const share = Math.min(1, Math.hypot(leadX, leadZ) / (AIR_SIDE / 2))
+    const y = share < 0.02 ? rest : rest + (0.6 + Math.random() * 3.2 - rest) * share
+    if (share >= 0.02 || Math.abs(t.position.x - local.x) > 0.05 || Math.abs(t.position.z - local.z) > 0.05 || t.position.y !== rest) {
       t.position = Vector3.create(local.x, y, local.z)
     }
   })

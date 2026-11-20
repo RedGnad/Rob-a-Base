@@ -45,7 +45,8 @@ export const MESSAGES = {
     joursPris: Schemas.Array(Schemas.Int)
   }),
   claimDaily: Schemas.Map({}),
-  tutorial: Schemas.Map({ etape: Schemas.Int, total: Schemas.Int }),
+  // `firstBox`: this account's one Basic Box at 800 is still to be bought (shared/tutorial.ts).
+  tutorial: Schemas.Map({ etape: Schemas.Int, total: Schemas.Int, firstBox: Schemas.Boolean }),
   timeGift: Schemas.Map({ crate: Schemas.Int, minutes: Schemas.Int }),
 
   /** client -> server: cancel the steal I started. */

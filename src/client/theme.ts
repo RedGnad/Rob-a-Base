@@ -252,7 +252,7 @@ export const TOAST = { result: 2500, warning: 4000, event: 6000 } as const
   32 px = 397 px (0.40 per lowercase letter). Still an estimate, since the client reports no
   text metrics; err on the wide side, a plate a little roomy beats a word cut off.
 */
-const ADVANCE = { upper: 0.68, lower: 0.44, digit: 0.58, space: 0.26, other: 0.36 }
+// (That class table, 0.68 em a capital and 0.44 a lowercase letter, was retired on 20 Nov 2026: see `largeurTexte`.)
 /*
   THE PHONE IS MEASURED FROM ITS OWN FONT FILE, and the screenshots only check the factor.
 
@@ -284,26 +284,24 @@ const INTER_ADVANCE = [
   237, 869, 585, 597, 609, 609, 372, 523, 364, 581, 557, 812, 540, 557, 541, 362, 327, 362, 659
 ]
 const INTER_INK = 0.97
-let onPhone: boolean | null = null
+/*
+  ONE TABLE FOR BOTH CLIENTS since 20 Nov 2026: the desktop sets text at the phone's widths now.
+
+  The desktop had its own table by character class (capitals 0.68 em, lowercase 0.44), read off
+  Unity screenshots in September. On the desktop client v0.198 the founder's step chip showed
+  "Open your box" running over its counter and its hint cut on the right: measured on a capture,
+  the title is 216 units wide at 32, where that table said 179 and this one says 216; "FREE BOX
+  IN 3:15" at 21 measures 163, where that table said 189 and this one 169. So lowercase was a
+  fifth wider than every box sized for it. The class table is gone rather than kept as a second
+  truth nobody re-measures.
+*/
 export function largeurTexte(t: string, taille: number): number {
-  // The forced phone layout forces the phone's text width too, or the desktop check lies.
-  if (onPhone === null) onPhone = isMobile() || FORCE_MOBILE_LAYOUT
   let em = 0
-  if (onPhone) {
-    for (const ch of t) {
-      const k = ch.charCodeAt(0) - 32
-      em += (k >= 0 && k < INTER_ADVANCE.length ? INTER_ADVANCE[k] : 600) / 1000
-    }
-    return Math.round(em * taille * INTER_INK)
-  }
   for (const ch of t) {
-    if (ch === ' ') em += ADVANCE.space
-    else if (ch >= '0' && ch <= '9') em += ADVANCE.digit
-    else if (ch >= 'A' && ch <= 'Z') em += ADVANCE.upper
-    else if (ch >= 'a' && ch <= 'z') em += ADVANCE.lower
-    else em += ADVANCE.other
+    const k = ch.charCodeAt(0) - 32
+    em += (k >= 0 && k < INTER_ADVANCE.length ? INTER_ADVANCE[k] : 600) / 1000
   }
-  return Math.round(em * taille)
+  return Math.round(em * taille * INTER_INK)
 }
 /** Lines after wrapping, counting the newlines already in the string. */
 export function lignesDeTexte(t: string, taille: number, largeur: number): number {

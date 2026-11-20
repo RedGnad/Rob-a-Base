@@ -10,6 +10,8 @@ import { room } from '../shared/messages'
 import { crate, formatIncome, crateSummary } from '../shared/loot-table'
 import { HUE, lisible } from './theme'
 import { LISIBLE_3D } from './texte3d'
+import { tutoView } from './tutorial'
+import { beltPriceFor } from '../shared/tutorial'
 
 export const beltView = {
   annonce: '',
@@ -44,7 +46,7 @@ const MAILLE = 2.6
  */
 const BELT_DIRECTION = -1
 
-type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendement: Entity; progres: number; vu: number; tombe: boolean }
+type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendement: Entity; progres: number; vu: number; tombe: boolean; prix: number }
 const views = new Map<number, View>()
 
 export function setupBelt(): void {
@@ -174,8 +176,22 @@ export function setupBelt(): void {
         Billboard.create(rendement, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(rendement, { text: crateSummary(b.crateTier), fontSize: 2.2, textColor: VERT, ...LISIBLE_3D })
 
-        v = { racine, item, label, nom, rendement, progres: b.progres, vu: b.progres, tombe: false }
+        v = { racine, item, label, nom, rendement, progres: b.progres, vu: b.progres, tombe: false, prix: b.price }
         views.set(b.articleId, v)
+      }
+      // The price THIS player pays: 800 on a Basic Box until their Buy step is done (shared/tutorial.ts).
+      const prix = beltPriceFor(b.crateTier, b.price, tutoView.etape, tutoView.firstBox)
+      if (prix !== v.prix) {
+        v.prix = prix
+        const lt = TextShape.getMutableOrNull(v.label)
+        if (lt !== null) lt.text = formatIncome(prix)
+        // The same price under the desktop cursor.
+        const rc = crate(b.crateTier)
+        PointerEvents.createOrReplace(v.item, {
+          pointerEvents: [
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { showFeedback: false, button: InputAction.IA_POINTER, hoverText: `Buy ${rc.name}  ${formatIncome(prix)}  ·  ${crateSummary(b.crateTier)}` } }
+          ]
+        })
       }
 
       // Advance locally; when the server's value moves, converge on it.
@@ -283,7 +299,7 @@ export function crateInReach(): { articleId: number; price: number; crateTier: n
     if (b.buyerName !== '') continue
     const p = beltPosition(b.progres)
     const d = Math.hypot(t.position.x - p.x, t.position.z - p.z)
-    if (d < dist) { dist = d; best = { articleId: b.articleId, price: b.price, crateTier: b.crateTier } }
+    if (d < dist) { dist = d; best = { articleId: b.articleId, price: beltPriceFor(b.crateTier, b.price, tutoView.etape, tutoView.firstBox), crateTier: b.crateTier } }
   }
   return best
 }

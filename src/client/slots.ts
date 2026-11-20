@@ -348,8 +348,9 @@ export function setupSlots(): void {
     if (te !== null) {
       // 3.6 m: the large, jumping text rides clear above the player's own name tag, which hangs
       // over the head at the very spot where the player stands, and above the gold arrow that
-      // points the way from a refused square (guidage.ts, 2.75 m) (captures, 18 Nov 2026).
-      te.position = Vector3.create(x, 3.6, z)
+      // points the way from a refused square (captures, 18 Nov 2026). On a refused square the
+      // arrow hangs at 3.25 m since 20 Nov, clear of the name tag, so the text goes to 4.05 m.
+      te.position = Vector3.create(x, slotView.valid ? 3.6 : 4.05, z)
       te.scale = muet ? Vector3.Zero() : Vector3.create(0.7, 0.7, 0.7)
     }
     /*

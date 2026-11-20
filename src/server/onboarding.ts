@@ -1,7 +1,7 @@
 import { room } from '../shared/messages'
 import { log } from './log'
 import {
-  addCrate, cratesOf, tutorialStepOf, advanceTutorial, displayName,
+  addCrate, cratesOf, tutorialStepOf, advanceTutorial, displayName, firstBoxAvailable,
   playedTime, addPlayedTime, giftsTaken, markGiftTaken
 } from './plots'
 import { TUTORIAL_STEPS, TutorialStep, stepIndex, stepAt } from '../shared/tutorial'
@@ -52,7 +52,7 @@ const REPLI_S = 60
 
 export function pushTutorial(address: string): void {
   const e = tutorialStepOf(address)
-  void room.send('tutorial', { etape: e, total: TUTORIAL_STEPS.length }, { to: [address] })
+  void room.send('tutorial', { etape: e, total: TUTORIAL_STEPS.length, firstBox: firstBoxAvailable(address) }, { to: [address] })
 }
 
 /*

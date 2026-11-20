@@ -264,6 +264,8 @@ export const Pouce = (props: {
    * Ignored when frames are given, since a swing already is that cue.
    */
   pulse?: boolean
+  /** One extra swell of the icon, as a factor: a reward just landed behind this control. 1 by default. */
+  bump?: number
   /**
    * Drawn but not pressable: the disc stays where the thumb knows it, at a lower value,
    * with no binding and no handler. The genre and the platform guidelines keep a disabled
@@ -338,7 +340,7 @@ export const Pouce = (props: {
     const t = Date.now() % periode
     if (t < 300) gonfle = 1 + 0.12 * Math.sin(Math.PI * t / 300)
   }
-  gonfle *= balance
+  gonfle *= balance * (props.bump ?? 1)
   const enfonce = toucheEnfoncee(props.presseePar ?? props.actions) || Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   /*
     The disc, not the plate. The nine-sliced plate passed for round at 86 px and showed
@@ -535,9 +537,17 @@ export const Btn = (props: {
   badge?: boolean
   /** A picture before the word, inside the plate: what the control is about (a crate, a floor). */
   icon?: string
+  /** The whole control drawn this many times its size, for a pulse or a press (quests-ui.tsx). 1 by default. */
+  scale?: number
+  /** The picture lifted by this many units: a hop with the pulse. */
+  iconLift?: number
+  /** A white veil over the plate, 0 to 1: the flash of a claim. */
+  flash?: number
 }) => {
-  const size = props.size ?? TYPE.body
-  const height = props.height ?? TAP.height
+  const k = props.scale ?? 1
+  const size = Math.round((props.size ?? TYPE.body) * k * 4) / 4
+  const height = Math.round((props.height ?? TAP.height) * k)
+  const width = Math.round(props.width * k)
   const actif = props.onClick !== undefined || props.bind !== undefined
   const cle = `${props.label}|${props.width}`
   const enfonce = actif && (toucheEnfoncee(props.bind) || Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS)
@@ -577,7 +587,7 @@ export const Btn = (props: {
   const contenu = (
     <UiEntity uiTransform={{ width: '100%', height, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
       {props.icon !== undefined && (
-        <UiEntity uiTransform={{ width: Math.round(size * 1.6), height: Math.round(size * 1.6), margin: props.label !== '' ? { right: Math.round(size * 0.45) } : undefined }}
+        <UiEntity uiTransform={{ width: Math.round(size * 1.6), height: Math.round(size * 1.6), margin: { right: props.label !== '' ? Math.round(size * 0.45) : 0, bottom: Math.round((props.iconLift ?? 0) * 2) } }}
           uiBackground={{ texture: { src: `assets/ui/${props.icon}` }, textureMode: 'stretch' }} />
       )}
       <UiEntity uiTransform={{ width: glyphWidth(props.label.toUpperCase(), size), height: size + 8 }}>
@@ -587,7 +597,7 @@ export const Btn = (props: {
   )
   if (props.skin === 'disabled') {
     return (
-      <Puce width={props.width} height={height} right={props.right}>
+      <Puce width={width} height={height} right={props.right}>
         <UiEntity uiTransform={{ width: '100%', height, opacity: 0.62 }}>
           {contenu}
         </UiEntity>
@@ -597,7 +607,7 @@ export const Btn = (props: {
   return (
     <UiEntity
       uiTransform={{
-        width: props.width, height,
+        width, height,
         margin: props.right !== undefined ? { right: props.right } : undefined,
         pointerFilter: 'block'
       }}
@@ -615,10 +625,15 @@ export const Btn = (props: {
       {enfonce && (
         <UiEntity
           uiTransform={{
-            width: props.width, height, positionType: 'absolute', position: { top: 0, left: 0 },
+            width, height, positionType: 'absolute', position: { top: 0, left: 0 },
             borderRadius: 26
           }}
           uiBackground={{ color: Color4.create(0.03, 0.08, 0.17, 0.30) }} />
+      )}
+      {(props.flash ?? 0) > 0 && (
+        <UiEntity
+          uiTransform={{ width, height, positionType: 'absolute', position: { top: 0, left: 0 }, borderRadius: 26 }}
+          uiBackground={{ color: Color4.create(1, 1, 1, 0.75 * Math.min(1, props.flash ?? 0)) }} />
       )}
       {/*
         A pip that sits ON the corner, not inside it.

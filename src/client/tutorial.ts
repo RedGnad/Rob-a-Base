@@ -40,7 +40,13 @@ const TEXTS: Record<TutorialStep, { titre: string; aide: string; verb: string; a
   */
   collect: { titre: 'Collect your coins', aide: '', verb: 'collect', actions: ['encaisser'] },
   buy: { titre: 'Buy a box', aide: 'tap a box on the belt before it falls', verb: 'crate', actions: ['acheter-caisse', 'surencherir'] },
-  steal: { titre: 'Steal from a neighbour', aide: 'tap an item, hold on, run it home', verb: 'steal', actions: ['voler'] }
+  /*
+    Steal OR gift (founder, 20 Nov 2026): a theft is not always possible, the only neighbour
+    may be sealed, shielded or closed to this player, and the last step then had no way out.
+    Giving a piece to a neighbour completes it too. The step keeps its id, 'steal': it is the
+    server's name for it.
+  */
+  steal: { titre: 'Steal or gift an item', aide: "take a neighbour's item, or give them one", verb: 'steal', actions: ['voler', 'poser-objet'] }
 }
 /** The steps in the server's order, from the one shared list: the two cannot disagree. */
 export const STEP_TEXTS: ReadonlyArray<{ id: TutorialStep; titre: string; aide: string; verb: string; actions: readonly string[] }> =
@@ -52,7 +58,7 @@ export function currentStep(): TutorialStep | null {
 }
 
 /** `since`: when the current step began, on this clock; the hint line waits on it. */
-export const tutoView = { etape: 0, total: STEP_TEXTS.length as number, since: Date.now() }
+export const tutoView = { etape: 0, total: STEP_TEXTS.length as number, since: Date.now(), firstBox: false }
 
 /*
   The help sentence is not shown at once. It appears after a while on the same step, the
@@ -95,7 +101,7 @@ export const giftView = { leftS: -1, totalS: 900 }
 export function setupTutorial(): void {
   room.onMessage('tutorial', (d) => {
     if (d.etape !== tutoView.etape) tutoView.since = Date.now()
-    tutoView.etape = d.etape; tutoView.total = d.total
+    tutoView.etape = d.etape; tutoView.total = d.total; tutoView.firstBox = d.firstBox
   })
   room.onMessage('giftProgress', (d) => { giftView.leftS = d.leftS; giftView.totalS = d.totalS })
   room.onMessage('timeGift', (d) => {

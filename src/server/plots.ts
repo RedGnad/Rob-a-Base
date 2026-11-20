@@ -110,6 +110,8 @@ type Profil = {
   tutorialVersion?: number
   /** Set on a brand-new account only: its first crate opened cannot roll a Common. */
   firstCrateFloor?: boolean
+  /** Set on a brand-new account only, until its first belt purchase: that one Basic Box costs 800 (shared/tutorial.ts). */
+  firstBoxCheap?: boolean
   questDay?: number
   /*
     Les trois quetes tirees pour la journee, ECRITES au moment du tirage.
@@ -801,6 +803,8 @@ export async function welcome(address: string): Promise<void> {
   }
   // A brand-new account: its welcome crate rolls with a floor on Common (see `takeFirstCrateFloor`).
   if (stocke === null) profile.firstCrateFloor = true
+  // One Basic Box at 800: a new account has it, and keeps it across visits until it is used.
+  if (stocke === null || stocke.firstBoxCheap === true) profile.firstBoxCheap = true
   // Arriver, c'est agir: la production part tout de suite, la regle anti-AFK compte depuis ici.
   profile.agiA = Date.now()
   profiles.set(address, profile)
@@ -2279,6 +2283,18 @@ export function advanceTutorial(address: string): void {
   is a flag written on the profile when it is created, and spent by the first opening: an
   account that existed before this rule never carries it, and no account carries it twice.
 */
+/** Is this account's one cheap Basic Box still to be bought? */
+export function firstBoxAvailable(address: string): boolean {
+  return profiles.get(address)?.firstBoxCheap === true
+}
+/** The cheap box has been bought: every box is at its list price from now on. */
+export function takeFirstBox(address: string): void {
+  const p = profiles.get(address)
+  if (!p || p.firstBoxCheap !== true) return
+  p.firstBoxCheap = undefined
+  dirtyProfiles.add(address)
+}
+
 export function takeFirstCrateFloor(address: string): boolean {
   const p = profiles.get(address)
   if (!p || p.firstCrateFloor !== true) return false

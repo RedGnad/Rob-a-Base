@@ -104,10 +104,27 @@ export function setLandedHook(fn: (address: string, code: number) => void): void
 let homeHook: (origin: string, code: number) => void = () => {}
 export function setHomeHook(fn: (origin: string, code: number) => void): void { homeHook = fn }
 
+/*
+  A piece that reaches a shelf without its owner's hand completes their Shelve step all the same.
+
+  The step only completed on the press that puts the piece down. A newcomer whose first piece
+  went home by itself (they left, held it too long, or the server restarted under them) came
+  back to "Shelve your piece" with empty hands and the piece already on its stand: nothing on
+  screen could finish the step (found 20 Nov 2026, when a reload of the preview took the piece
+  out of the founder's hands). `stepDone` does nothing for a player who is on another step.
+*/
+function shelvedBy(owner: string, where: string): void {
+  if (where === 'expose') stepDone(owner, 'shelve')
+}
+
 function rentrer(address: string, quoi: { code: number; origin: string }, pourquoi: string): void {
-  const chezOrigine = addItem(quoi.origin, quoi.code) !== 'plein'
+  const aLOrigine = addItem(quoi.origin, quoi.code)
+  const chezOrigine = aLOrigine !== 'plein'
+  if (chezOrigine) shelvedBy(quoi.origin, aLOrigine)
   if (chezOrigine && quoi.origin !== address) homeHook(quoi.origin, quoi.code)
-  const chezPorteur = !chezOrigine && addItem(address, quoi.code) !== 'plein'
+  const auPorteur = chezOrigine ? 'plein' : addItem(address, quoi.code)
+  const chezPorteur = !chezOrigine && auPorteur !== 'plein'
+  if (chezPorteur) shelvedBy(address, auPorteur)
   if (chezPorteur && quoi.origin !== address) landedHook(address, quoi.code)
   if (!chezOrigine && !chezPorteur) {
     /*
@@ -347,6 +364,8 @@ export function startCarry(): void {
     if (vise === origine) homeHook(vise, code)
     noter('don', displayName(a), displayName(vise), 0)
     advanceQuest(a, 'gift')
+    // A gift completes the tutorial's last step as a theft does (founder, 20 Nov 2026).
+    stepDone(a, 'steal')
     pushQuests(a)
 
     /*
@@ -520,7 +539,9 @@ export function startCarry(): void {
       if ((id & 0xffff) < 512) continue
       orphelins.add(id)
       if (!orphelinsVus.has(id)) continue
-      if (addItem(c.origin, c.code) === 'plein') continue
+      const home = addItem(c.origin, c.code)
+      if (home === 'plein') continue
+      shelvedBy(c.origin, home)
       log(`carry: an orphaned ${rarityOf(c.code)} was found in nobody's hands and sent home`)
       engine.removeEntity(e)
     }

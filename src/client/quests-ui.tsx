@@ -53,6 +53,118 @@ export function setupQuests(): void {
 function claim(slot: number): void { sendOrHold(() => { void room.send('claimQuest', { slot }) }) }
 function claimDaily(): void { sendOrHold(() => { void room.send('claimDaily', {}) }) }
 
+/*
+  A reward that waits calls for its press, and a press is answered (founder, 20 Nov 2026: "c'est
+  tres statique, on veut du juice", by the genre's reference and not at random).
+
+  The reference read is the write-up of Zynga's Empires & Allies (Game Developer, "Clicking and
+  rewards in Empires and Allies"): a waiting reward pulses; on the click, particles and a sound,
+  then the reward travels to its HUD element on a curved path, and that element "will quickly
+  pulse 30% bigger over around 1/4 second". Ours, with one rule of our own tutorial added, one
+  cue at a time:
+
+  - at rest, only the FIRST claimable control moves: it breathes six percent once a second and
+    its crate hops with it. Claim it and the next one takes the motion;
+  - on the press, the control squashes to 90 percent, pops to 112 and settles (squash and
+    stretch, as BUILD HERE does), under a white flash; the server's answer plays reward.wav;
+  - the crate leaves the button, swells 30 percent and falls in a curve towards the bottom of
+    the screen, where the OPEN button will hold it;
+  - when the HUD is back, that button's icon swells 30 percent for a quarter of a second.
+
+  Only sizes and positions of the interface change: nothing here is drawn by the world.
+*/
+const PRESS_MS = 320
+const FLY_MS = 620
+const BREATH_MS = 1000
+const pressedAt = new Map<string, number>()
+/** `day`: the streak day the press was made on. The server's answer moves `prochainJour` on while the crate is still in the air. */
+let flyer: { at: number; key: string; day: number } | null = null
+let dailyPressedDay = 0
+let landing = 0
+let landedAt = 0
+
+function pressing(key: string): boolean { return Date.now() - (pressedAt.get(key) ?? 0) < PRESS_MS }
+function press(key: string, send: () => void): void {
+  const now = Date.now()
+  pressedAt.set(key, now)
+  flyer = { at: now, key, day: questsView.prochainJour }
+  if (key === 'daily') dailyPressedDay = questsView.prochainJour
+  landing = now
+  landedAt = 0
+  send()
+}
+
+/** The first control that can be claimed, top to bottom then the streak: the one that moves. */
+function firstClaimable(): string | null {
+  for (let i = 0; i < questsView.ids.length; i++) {
+    if (questsView.progres[i] >= questsView.cibles[i] && questsView.pris[i] !== 1) return `q${i}`
+  }
+  if (allQuestsDone() && questsView.pris[3] !== 1) return 'q3'
+  return questsView.dailyDispo ? 'daily' : null
+}
+
+/** 0 to 1 and back, once a second: the breath of the control that waits. */
+function breath(): number { return 0.5 - 0.5 * Math.cos((2 * Math.PI * (Date.now() % BREATH_MS)) / BREATH_MS) }
+
+function claimScale(key: string): number {
+  const t = Date.now() - (pressedAt.get(key) ?? 0)
+  if (t < 80) return 1 - 0.10 * (t / 80)
+  if (t < 200) return 0.90 + 0.22 * ((t - 80) / 120)
+  if (t < PRESS_MS) return 1.12 - 0.12 * ((t - 200) / 120)
+  return key === firstClaimable() ? 1 + 0.06 * breath() : 1
+}
+function claimLift(key: string): number { return !pressing(key) && key === firstClaimable() ? 5 * breath() : 0 }
+function claimFlash(key: string): number {
+  const t = Date.now() - (pressedAt.get(key) ?? 0)
+  return t < 220 ? 1 - t / 220 : 0
+}
+
+/** The swell of the OPEN button's icon once the HUD is back after a claim: 30 percent, a quarter of a second. */
+export function claimLandingBump(): number {
+  if (landing === 0) return 1
+  const now = Date.now()
+  // A claim made far from home lands nowhere visible: the swell is not owed twenty seconds later.
+  if (now - landing > 20000) { landing = 0; return 1 }
+  if (landedAt === 0) landedAt = now
+  const t = now - landedAt
+  if (t >= 250) { landing = 0; landedAt = 0; return 1 }
+  return 1 + 0.3 * Math.sin((Math.PI * t) / 250)
+}
+
+/** The crate on its way out of the control that was claimed, drawn last so it rides over the rows. */
+function Flyer(): ReactEcs.JSX.Element | null {
+  if (flyer === null) return null
+  const k = (Date.now() - flyer.at) / FLY_MS
+  if (k >= 1) { flyer = null; return null }
+  const base = 34
+  const grow = k < 0.3 ? 1 + 0.3 * (k / 0.3) : 1.3 - 0.4 * ((k - 0.3) / 0.7)
+  const s = Math.round(base * grow)
+  const fade = k < 0.75 ? 1 : 1 - (k - 0.75) / 0.25
+  const a = (1 - k) * (1 - k), b = 2 * (1 - k) * k, c = k * k
+  const bottom = HAUTEUR_GOALS + 30
+  if (flyer.key === 'daily') {
+    const j = Math.max(0, flyer.day - 1)
+    const x0 = (j * (100 - 12.4)) / 6 + 6.2
+    const y0 = 3 * (ROW + ROW_GAP) + (ROW + 6) + (30 + ROW_GAP + 4) + STREAK_H / 2
+    const x = a * x0 + b * (x0 + 4) + c * 92
+    const y = a * y0 + b * (y0 - 110) + c * bottom
+    return (
+      <UiEntity uiTransform={{ width: s, height: s, positionType: 'absolute', position: { left: `${x}%`, top: Math.round(y - s / 2) }, zIndex: 5, opacity: fade }}
+        uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
+    )
+  }
+  const row = Number(flyer.key.slice(1))
+  // The crate's own place inside the 187-wide plate, which sits ten units in from the right edge.
+  const r0 = 146
+  const y0 = row * (ROW + ROW_GAP) + (row === 3 ? 6 : 0) + ROW / 2
+  const r = a * r0 + b * (r0 + 40) + c * 40
+  const y = a * y0 + b * (y0 - 110) + c * bottom
+  return (
+    <UiEntity uiTransform={{ width: s, height: s, positionType: 'absolute', position: { right: Math.round(r - s / 2), top: Math.round(y - s / 2) }, zIndex: 5, opacity: fade }}
+      uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
+  )
+}
+
 export function questsToClaim(): number {
   let n = 0
   for (let i = 0; i < questsView.ids.length; i++) {
@@ -109,10 +221,12 @@ function QuestRow(props: { i: number; key?: string }): ReactEcs.JSX.Element {
         color={Color4.fromHexString('#a8b2c0ff')}
         uiTransform={{ width: COL.compteur, height: TAP.menu }} textAlign="middle-center" />
       <UiEntity uiTransform={{ width: COL.action, height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>
-      {pris ? (
+      {pris && !pressing(`q${i}`) ? (
         <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" icon="ui-crate.png" />
       ) : fini ? (
-        <Btn label="CLAIM" width={187} height={TAP.menu} size={TYPE.caption} skin="success" icon="ui-crate.png" onClick={() => claim(i)} />
+        <Btn label="CLAIM" width={187} height={TAP.menu} size={TYPE.caption} skin="success" icon="ui-crate.png"
+          scale={claimScale(`q${i}`)} iconLift={claimLift(`q${i}`)} flash={claimFlash(`q${i}`)}
+          onClick={pris || pressing(`q${i}`) ? undefined : () => press(`q${i}`, () => claim(i))} />
       ) : (
         /*
           The reward, shown as a REWARD. It sat on a button plate reading "+1 CRATE" that
@@ -194,12 +308,13 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
           color={allDone ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString('#7d879bff')}
           uiTransform={{ width: '74%', height: 60 }} textAlign="middle-left" />
         <UiEntity uiTransform={{ width: COL.action, height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>
-          {questsView.pris[3] === 1 ? (
+          {questsView.pris[3] === 1 && !pressing('q3') ? (
             <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" icon="ui-crate.png" />
           ) : (
             <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} height={TAP.menu} size={TYPE.caption} icon="ui-crate.png"
               skin={allDone ? 'success' : 'disabled'}
-              onClick={allDone ? () => claim(3) : undefined} />
+              scale={allDone ? claimScale('q3') : 1} iconLift={allDone ? claimLift('q3') : 0} flash={claimFlash('q3')}
+              onClick={allDone && questsView.pris[3] !== 1 && !pressing('q3') ? () => press('q3', () => claim(3)) : undefined} />
           )}
         </UiEntity>
     </UiEntity>
@@ -243,14 +358,18 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
                 width: '12.4%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
                 borderRadius: RAD.card,
-                borderWidth: aReclamer ? 3 : actuel ? 2 : 0,
+                borderWidth: aReclamer ? (firstClaimable() === 'daily' ? 3 + Math.round(3 * breath()) : 3) : actuel ? 2 : 0,
                 borderColor: Color4.fromHexString((aReclamer ? '#a8e86e' : '#ffd166') + 'ff')
               }}
               uiBackground={{ color: aReclamer ? Color4.create(0.10, 0.28, 0.08, 0.95) : passe ? Color4.create(0.14, 0.30, 0.14, 0.9) : SURF.puce }}
               // Every action needs a reaction: this card is the only tappable surface that
               // is not a Btn, so it borrows the same click the buttons make.
-              onMouseDown={aReclamer ? (() => { tic(); claimDaily() }) : undefined}
+              onMouseDown={aReclamer && !pressing('daily') ? (() => { tic(); press('daily', claimDaily) }) : undefined}
             >
+              {dayN === dailyPressedDay && claimFlash('daily') > 0 && (
+                <UiEntity uiTransform={{ width: '100%', height: STREAK_H, positionType: 'absolute', position: { top: 0, left: 0 }, borderRadius: RAD.card }}
+                  uiBackground={{ color: Color4.create(1, 1, 1, 0.75 * claimFlash('daily')) }} />
+              )}
               {/* No star beside the day: the green rim, the fill and the word CLAIM already say
                   it, and the star was the character that pushed the line past the chip. */}
               <Label value={`DAY ${dayN}`} fontSize={chipSize}
@@ -259,7 +378,8 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
               {/* One word: "Basic Crate" wrapped into a third line the card never budgeted,
                   which is the clipped text the photographs showed. Every reward here IS a
                   crate; the card only has to say which. */}
-              <Label value={aReclamer ? 'CLAIM' : crate(t).name.split(' ')[0].toUpperCase()} fontSize={chipSize} textWrap="nowrap"
+              <Label value={aReclamer ? 'CLAIM' : crate(t).name.split(' ')[0].toUpperCase()} textWrap="nowrap"
+                fontSize={aReclamer && firstClaimable() === 'daily' ? chipSize * (1 + 0.06 * breath()) : chipSize}
                 color={aReclamer ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString(lisible(crate(t).color) + 'ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
             </UiEntity>
@@ -268,6 +388,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
     </UiEntity>
 
     </UiEntity>
+      <Flyer />
     </UiEntity>
   )
 }

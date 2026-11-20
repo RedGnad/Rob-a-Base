@@ -4,7 +4,7 @@ import { Plot, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { plastic } from './toy'
 import { currentStep } from './tutorial'
 import { nearestFreeSquare, slotView } from './slots'
-import { cratePosition, peutOuvrirIci } from './box'
+import { crateFoot } from './box'
 import { myClientAddress } from './theft'
 import { rushAgeS } from './events'
 
@@ -64,12 +64,15 @@ function cible(): Vector3 | null {
   }
   if (step === 'open') {
     // The crate being opened; before it stands, home, where the OPEN button will put it.
-    const caisse = cratePosition()
+    // Its FOOT: the ring lies on the ground under the target, and the crate's centre put it
+    // through the middle of the crate (founder, 20 Nov 2026).
+    const caisse = crateFoot()
     if (caisse !== null) return caisse
-    // Home only while the player is too far from it to open. A newcomer has just built where
-    // they stand, so "home" was their own head and the chevron sat on it (seen 18 Nov 2026):
-    // in range, the pulsing OPEN button is the one cue.
-    return peutOuvrirIci() ? null : maBase()
+    // Before the crate stands: the middle of the base, where the OPEN button will put it. Hidden
+    // for a few hours on 20 Nov 2026 because a newcomer builds where they stand and the chevron
+    // then hangs over their own head; the founder, watching the onboarding the same day, wants
+    // it there: it says "here, in your base" for the step.
+    return maBase()
   }
   if (step === 'shelve') return maBase()
   // Collecting is the button, and the button pulses with the amount on it: nowhere to go.
@@ -118,7 +121,14 @@ function chevronShown(): boolean {
   a little down so it still reads when it points away from the camera. Shown only while placing a
   first base on a refused square; the marker text sits above it (slots.ts, 3.6 m).
 */
-const HEAD_ARROW_Y = 2.75
+/*
+  3.25 m, from 2.75: at 2.75 it read as part of the name tag under it, and at 3.05 it still cut
+  the tag a little (founder, 20 Nov 2026). The marker text of a refused square went up with it
+  (slots.ts, 4.05 m).
+*/
+const HEAD_ARROW_Y = 3.25
+/** Within this distance of the belt's centre the Buy step's arrow steps aside: the player is there. */
+const BELT_NEAR_M = 10
 const PARKED = Vector3.create(0, -50, 0)
 
 function setupHeadArrow(): void {
@@ -135,7 +145,8 @@ function setupHeadArrow(): void {
   const shaft = engine.addEntity()
   Transform.create(shaft, { parent: nudge, position: Vector3.create(0, 0, -0.28), scale: Vector3.create(0.17, 0.17, 0.72) })
   MeshRenderer.setBox(shaft)
-  Material.setPbrMaterial(shaft, plastic(OR, 2.6))
+  // The same glow as the beacon: at 2.6 the gold burnt to white (capture, 20 Nov 2026).
+  Material.setPbrMaterial(shaft, plastic(OR, 1))
   const head = engine.addEntity()
   // A cone whose point is turned from +Y to +Z, the direction the arrow points.
   Transform.create(head, {
@@ -143,14 +154,23 @@ function setupHeadArrow(): void {
     rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(0.52, 0.46, 0.52)
   })
   MeshRenderer.setCylinder(head, 0.5, 0)
-  Material.setPbrMaterial(head, plastic(OR, 2.6))
+  Material.setPbrMaterial(head, plastic(OR, 1))
 
   engine.addSystem(() => {
     const t = Transform.getMutableOrNull(root)
     if (t === null) return
-    const show = currentStep() === 'place' && slotView.active && slotView.auto && !slotView.valid
-    const me = show ? Transform.getOrNull(engine.PlayerEntity) : null
-    const spot = show ? nearestFreeSquare() : null
+    /*
+      Two moments ask "which way": a first base on a refused square, and the Buy step, whose
+      target, the belt, is often behind a newcomer who has just shelved inside their base
+      (founder, 20 Nov 2026). Shown whichever way the camera looks: for an hour it hid while
+      the belt was on screen, and the founder, facing the belt, looked for it and found nothing.
+    */
+    const step = currentStep()
+    const placing = step === 'place' && slotView.active && slotView.auto && !slotView.valid
+    const me = placing || step === 'buy' ? Transform.getOrNull(engine.PlayerEntity) : null
+    let spot: { x: number; z: number } | null = null
+    if (me !== null && placing) spot = nearestFreeSquare()
+    else if (me !== null && Math.hypot(CENTER.x - me.position.x, CENTER.z - me.position.z) > BELT_NEAR_M) spot = CENTER
     if (me === null || spot === null) {
       if (t.scale.x !== 0) { t.scale = Vector3.Zero(); t.position = PARKED }
       return
@@ -173,23 +193,30 @@ export function setupGuidage(): void {
   anneau = engine.addEntity()
   Transform.create(anneau, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
   MeshRenderer.setCylinder(anneau, 0.5, 0.5)
-  Material.setPbrMaterial(anneau, plastic(OR, 2.2))
+  // A glow the gold survives: at 2.2 and 2.6 the emissive ran every channel past white and the
+  // marker read as a white disc and a white cone (capture, 20 Nov 2026).
+  Material.setPbrMaterial(anneau, plastic(OR, 1))
   fleche = engine.addEntity()
   Transform.create(fleche, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
   // A cone with its apex at the bottom: an arrowhead pointing at the spot.
   MeshRenderer.setCylinder(fleche, 0, 0.5)
-  Material.setPbrMaterial(fleche, plastic(OR, 2.6))
+  Material.setPbrMaterial(fleche, plastic(OR, 1))
 
-  let acc = 0
+  /*
+    The TARGET is looked up five times a second, the MOTION is written every frame.
+
+    Both ran on the five-a-second tick, so the chevron bobbed and turned in five steps a second
+    (founder, 20 Nov 2026: "le chevron est a 4 fps"). Finding the target walks the bases and is
+    worth throttling: a target moves at walking pace. Two Transforms a frame are not.
+  */
+  let acc = 1
+  let ou: Vector3 | null = null
   engine.addSystem((dt) => {
-    // Five checks a second: a beacon target moves at walking pace, not at frame pace.
     acc += dt
-    if (acc < 0.2) return
-    acc = 0
+    if (acc >= 0.2) { acc = 0; ou = cible() }
     const c = anneau === null ? null : Transform.getMutableOrNull(anneau)
     const f = fleche === null ? null : Transform.getMutableOrNull(fleche)
     if (c === null || f === null) return
-    const ou = cible()
     if (ou === null) {
       if (c.scale.x !== 0) { c.scale = Vector3.Zero(); f.scale = Vector3.Zero() }
       return
@@ -200,7 +227,8 @@ export function setupGuidage(): void {
     c.position = Vector3.create(ou.x, ou.y + 0.06, ou.z)
     c.scale = Vector3.create(souffle, 0.04, souffle)
     const bob = Math.sin(t / 320) * 0.35
-    filage = (filage + 4.2) % 360
+    // 21 degrees a second, what 4.2 degrees a tick gave at five ticks a second.
+    filage = (filage + 21 * dt) % 360
     f.position = Vector3.create(ou.x, ou.y + 2.6 + bob, ou.z)
     f.scale = chevronShown() ? Vector3.create(0.9, 0.75, 0.9) : Vector3.Zero()
     const ft = Transform.getMutableOrNull(fleche as Entity)

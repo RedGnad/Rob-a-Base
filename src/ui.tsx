@@ -31,7 +31,7 @@ import { revealToyView } from './client/reveal-toy'
 
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
 import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
-import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
+import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS, claimLandingBump } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { verb } from './client/verb'
@@ -959,6 +959,7 @@ const PadControls = () => {
           presseePar={tirDesktop}
           frames={!combatView.aiming && peutConstruireIci(a) ? posesDe(a.icon) : undefined}
           pulse={!combatView.aiming && stepExpects(a.id) && peutConstruireIci(a)}
+          bump={a.id === 'ouvrir-caisse' ? claimLandingBump() : 1}
           periodMs={cadenceDe(a.id)} touche={touche('E')}
           amount={combatView.aiming ? undefined : a.amount} />
       ) : (
@@ -2820,7 +2821,8 @@ const LoadingScreen = () => {
     remplissait et l'image sortait decalee et coupee de travers. Et la dimension qui commande
     n'est pas toujours la largeur: on compare les deux rapports plutot que de supposer.
   */
-  const RATIO = 1440 / 960
+  // The cover of 19 Nov 2026 (the golden king), the same file as the World's thumbnail: 1920 x 1080.
+  const RATIO = 1920 / 1080
   const z = zoneEcran()
   const iw = z.w / z.h > RATIO ? z.w : Math.round(z.h * RATIO)
   const ih = z.w / z.h > RATIO ? Math.round(z.w / RATIO) : z.h
@@ -2836,8 +2838,11 @@ const LoadingScreen = () => {
       uiBackground={{ color: Color4.fromHexString('#0f1524ff') }}
     >
       <UiEntity uiTransform={{ width: iw, height: ih, positionType: 'absolute', position: { top: haut, left: gauche } }}
-        uiBackground={{ texture: { src: 'images/base-war-thumbnail.png' }, textureMode: 'stretch' }} />
-      <Spinner />
+        uiBackground={{ texture: { src: 'images/rob-a-base-cover.jpg' }, textureMode: 'stretch' }} />
+      {/* Bottom right, on the grass: the centre of this image is the character and the title. */}
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { right: 56, bottom: 48 } }}>
+        <Spinner />
+      </UiEntity>
     </UiEntity>
   )
 }
