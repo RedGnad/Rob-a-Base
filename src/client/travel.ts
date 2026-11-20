@@ -84,21 +84,18 @@ function arrivalTarget(p: { x: number; z: number }, autres: Array<{ x: number; z
 }
 
 /*
-  Where the camera looks when a newcomer is set down on their square: across it, away from the
-  belt. The square is where they stand, so "facing it" means the avatar on the green marker
-  with the beacon over it and the open field beyond, and the belt behind the camera: the first
-  moving thing in the frame is the beacon, not the crates (design page 1, point 1, "the eye
-  goes to movement before text", core-loop-and-ftue.md).
+  Where the camera looks when a newcomer is set down on their square: at the belt and the plaza,
+  the centre of the world (founder, 20 Nov 2026: "ca le detourne du monde et donc de l'effet wow").
+
+  From 17 Nov it looked the other way, across the square with the belt behind the camera, because
+  at the playtest the moving crates drew newcomers to the belt before they built (design page 1,
+  point 1). What changed since: BUILD HERE is twice the size and animated over the player's own
+  head, so it is in this frame too, and a refused square now shows FOLLOW THE ARROW with the
+  arrow over the head. The founder takes the first look at the world back; the server log gives
+  the time from arrival to the base being placed, to read at the next playtest.
 */
-const ARRIVAL_LOOK_M = 10
-function lookAcross(square: { x: number; z: number }): Vector3 {
-  const dx = square.x - CENTER.x
-  const dz = square.z - CENTER.z
-  const d = Math.hypot(dx, dz)
-  // A square at the very centre cannot be legal, but a direction is owed all the same: north.
-  const ux = d < 0.01 ? 0 : dx / d
-  const uz = d < 0.01 ? 1 : dz / d
-  return Vector3.create(square.x + ux * ARRIVAL_LOOK_M, 1, square.z + uz * ARRIVAL_LOOK_M)
+function lookAtWorld(): Vector3 {
+  return Vector3.create(CENTER.x, 1.6, CENTER.z)
 }
 
 function arriveHome(): void {
@@ -180,7 +177,7 @@ function arriveHome(): void {
     settle()
     if (free === null) return
     const stayed = target.x === p.x && target.z === p.z
-    moveTo(stayed ? 'arrival on a free square' : 'arrival in the emptiest wedge', Vector3.create(free.x, 0, free.z), lookAcross(free))
+    moveTo(stayed ? 'arrival on a free square' : 'arrival in the emptiest wedge', Vector3.create(free.x, 0, free.z), lookAtWorld())
   })
 }
 
