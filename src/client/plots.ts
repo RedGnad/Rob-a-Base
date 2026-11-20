@@ -65,7 +65,7 @@ function goUpOneFloor(v: View): void {
     Vector3.create(t.position.x + el.dx, y + 1.0, t.position.z + el.dz)
   )
 }
-import { steal, myClientAddress, alerter, lockBase, theftView } from './theft'
+import { steal, myClientAddress, alerter, lockBase, theftView, unqueue } from './theft'
 import { boltBetween } from './combat'
 import { zapBurst } from './vfx'
 import { sentryLight } from './lights'
@@ -657,24 +657,38 @@ function keptOutOf(ownerId: string, baseX: number, baseZ: number, floors: number
 }
 
 /*
-  A wall that stops you says why (founder, 18 Nov 2026).
+  A wall that stops you says why, for as long as you touch it (founder, 18 and 20 Nov 2026).
 
-  Pressed against a base's force field or its glass, the player gets one short line: whose base,
-  and for how long. Without it a wall that lets others through and not you reads as a bug.
-  Once every few seconds per base, so walking along the wall does not stack toasts.
+  Pressed against a base's force field or its glass, the player reads one short line: whose base,
+  and for how long. Without it a wall that lets others through and not you reads as a bug. It
+  first came as a four-second toast, so it stayed on screen after the player had stepped back;
+  the founder wants it to go the moment the contact ends. So the line is held only while the
+  player stands against the wall, refreshed every frame, and withdrawn on the first frame they
+  are not.
 */
-const wallToastAt = new Map<string, number>()
+let wallLine: string | null = null
+/** Counted in frames, not milliseconds: a phone at fifteen frames a second must not blink the line. */
+let wallFrame = 0
+let wallTouchedFrame = -1
 function warnAtWall(ownerId: string, baseX: number, baseZ: number, floors: number, text: () => string): void {
   const me = Transform.getOrNull(engine.PlayerEntity)
   if (me === null) return
   const half = BASE_SIDE / 2 + SHIELD_MARGIN
   const d = Math.max(Math.abs(me.position.x - baseX), Math.abs(me.position.z - baseZ))
   if (d < half - 0.1 || d > half + 0.7 || me.position.y > floors * FLOOR_HEIGHT + 0.6) return
-  const key = ownerId.toLowerCase()
-  const now = Date.now()
-  if (now - (wallToastAt.get(key) ?? 0) < TOAST.warning + 1000) return
-  wallToastAt.set(key, now)
-  alerter(text(), '#ffd166', TOAST.warning)
+  const line = text()
+  // A line whose countdown ticked over replaces the old one rather than stacking under it.
+  if (wallLine !== null && wallLine !== line) unqueue(wallLine)
+  alerter(line, '#ffd166', 600)
+  wallLine = line
+  wallTouchedFrame = wallFrame
+}
+/** Once a frame, before the bases are walked: no contact during the last frame, no line. */
+function releaseWallLine(): void {
+  wallFrame += 1
+  if (wallLine === null || wallTouchedFrame >= wallFrame - 1) return
+  unqueue(wallLine)
+  wallLine = null
 }
 
 function expulser(base: Vector3, floors: number, toast = 'SEALED  ·  you were pushed out'): void {
@@ -1634,6 +1648,7 @@ export function setupPlots(): void {
     // En premier, et avant tout retour anticipe plus bas: une base qui rentre sous terre doit
     // finir de rentrer meme les images ou la position du joueur n'est pas encore lisible.
     retirerLesMourantes()
+    releaseWallLine()
     const vivantes = new Set<number>()
 
     /*
