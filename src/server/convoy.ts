@@ -12,6 +12,7 @@ import {
 } from './plots'
 import { crate } from '../shared/loot-table'
 import { bankToCover } from './collect'
+import { stepDone } from './onboarding'
 
 type State = {
   id: number
@@ -139,6 +140,8 @@ export function runConvoys(): void {
     void room.send('outbidWon', { fromName: displayName(previous), price, crateTier: e.crateTier }, { to: [a] })
     void room.send('outbidFeed', { byName: displayName(a), fromName: displayName(previous), price })
     advanceQuest(a, 'outbid')
+    // An outbid is a purchase: the tutorial's Buy step pulses on OUTBID too, and it now completes on it.
+    stepDone(a, 'buy')
     pushQuests(a)
     log(`convoy ${e.id}: ${displayName(a)} outbid ${displayName(previous)} for ${price}`)
   })

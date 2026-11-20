@@ -83,7 +83,7 @@ const ETATS: Record<string, () => string> = {
   main: () => 'IN YOUR HAND  ·  put it on any pedestal',
   expose: () => 'placed on your base',
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
-  plein: () => 'your base is full  ·  make room'
+  plein: () => 'base full  ·  sell, fuse or buy a floor'
 }
 import { slotView, togglePlacing, placeHere, shakeMarkerText } from './client/slots'
 import { ico, ICONES_VERBES } from './client/icones'

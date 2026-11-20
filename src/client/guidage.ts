@@ -4,7 +4,7 @@ import { Plot, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { plastic } from './toy'
 import { currentStep } from './tutorial'
 import { nearestFreeSquare, slotView } from './slots'
-import { cratePosition } from './box'
+import { cratePosition, peutOuvrirIci } from './box'
 import { myClientAddress } from './theft'
 import { rushAgeS } from './events'
 
@@ -65,7 +65,11 @@ function cible(): Vector3 | null {
   if (step === 'open') {
     // The crate being opened; before it stands, home, where the OPEN button will put it.
     const caisse = cratePosition()
-    return caisse !== null ? caisse : maBase()
+    if (caisse !== null) return caisse
+    // Home only while the player is too far from it to open. A newcomer has just built where
+    // they stand, so "home" was their own head and the chevron sat on it (seen 18 Nov 2026):
+    // in range, the pulsing OPEN button is the one cue.
+    return peutOuvrirIci() ? null : maBase()
   }
   if (step === 'shelve') return maBase()
   // Collecting is the button, and the button pulses with the amount on it: nowhere to go.

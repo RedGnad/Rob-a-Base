@@ -1,7 +1,7 @@
 
 export type QuestType =
   | 'ouvrir'      // open any crate
-  | 'ouvrirRare'  // ouvrir une crate de type 1 ou mieux
+  | 'ouvrirRare'  // open a crate of tier 1 (Good Box) or better; no box is called "uncommon" (playtest, 17 Nov 2026)
   | 'acheter'     // buy a crate from the belt
   | 'voler'       // rapporter chez soi un objet vole a un voisin
   | 'vendre'      // sell un item
@@ -19,7 +19,7 @@ export const QUESTS: readonly Quest[] = [
   { type: 'vendre',     cible: 3,    texte: 'Sell 3 items' },
   { type: 'poser',      cible: 6,    texte: 'Shelve 6 items at home' },
   { type: 'gagner',  cible: 2000, texte: 'Earn 2,000 from your shelves' },
-  { type: 'ouvrirRare', cible: 2,    texte: 'Open 2 uncommon boxes' },
+  { type: 'ouvrirRare', cible: 2,    texte: 'Open 2 Good Boxes or better' },
   { type: 'gift',     cible: 1,    texte: 'Gift an item to a neighbour' },
   { type: 'outbid',   cible: 1,    texte: 'Outbid a box in transit' }
 ]
