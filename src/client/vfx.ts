@@ -343,6 +343,8 @@ const WEATHER: Record<number, Weather> = {
  * spent its life over the player's head (captures, 3 Nov).
  */
 const AIR_SIDE = 16
+/** How far ahead of a runner the box slides, in seconds of their own travel. */
+const AIR_LEAD_S = 0.8
 const LAYER: Record<Weather['from'], { y: number; h: number }> = {
   ground: { y: 0.3, h: 0.5 },
   sky: { y: 4.5, h: 1 },
@@ -394,6 +396,53 @@ export function setupVfx(): void {
   Transform.create(a, { parent: engine.PlayerEntity, position: Vector3.create(0, LAYER.air.y, 0) })
   ParticleSystem.create(a, { ...weatherLook(WEATHER[1]), playbackState: PBParticleSystem_PlaybackState.PS_STOPPED })
   air = a
+
+  /*
+    The rush's air is born AHEAD of a running player (founder, 20 Nov 2026).
+
+    The box sat centred on the player and its particles stay where they are born, so a runner
+    left the cloud behind: at 10 m/s a spot ahead had been inside the box for 0.8 s when the
+    player reached it. The box now slides forward along the player's own velocity, 0.8 s of
+    travel, up to half its side: the spot the player reaches has been inside it for 1.6 s.
+    Simulated at 10 m/s on the 3.5 s theme: 22 particles in the eight metres ahead instead of
+    8 (61 standing still), and 28 behind instead of 22, so looking back loses nothing.
+
+    It is what a box twice as wide would give ahead of a runner, without paying for the half
+    behind them: same emitter, same particle count, and only the Transform is written, never
+    the ParticleSystem (a write to that one rebuilds the emitter on the phone). Standing or
+    walking slowly, the box is where it always was.
+  */
+  let lastX = 0, lastZ = 0, known = false
+  let leadX = 0, leadZ = 0
+  engine.addSystem((dt: number) => {
+    if (air === null || airTheme < 0 || bossAura || dt <= 0) { known = false; return }
+    const me = Transform.getOrNull(engine.PlayerEntity)
+    const t = Transform.getMutableOrNull(air)
+    if (me === null || t === null) return
+    let vx = 0, vz = 0
+    if (known) {
+      const dx = me.position.x - lastX, dz = me.position.z - lastZ
+      // A jump of more than five metres in one tick is a teleport, not a run.
+      if (Math.hypot(dx, dz) < 5) { vx = dx / dt; vz = dz / dt }
+    }
+    lastX = me.position.x; lastZ = me.position.z; known = true
+    const speed = Math.hypot(vx, vz)
+    // Nothing under a walk; then 0.8 s of travel, capped at half the box.
+    const want = speed < 3 ? 0 : Math.min(AIR_SIDE / 2, speed * AIR_LEAD_S)
+    const wx = speed > 0 ? (vx / speed) * want : 0
+    const wz = speed > 0 ? (vz / speed) * want : 0
+    // Eased, so a stop or a turn slides the box instead of snapping it.
+    const k = 1 - Math.exp(-dt / 0.35)
+    leadX += (wx - leadX) * k
+    leadZ += (wz - leadZ) * k
+    // The emitter is the avatar's child: the world offset is turned into the avatar's own axes.
+    const q = me.rotation
+    const local = Vector3.rotate(Vector3.create(leadX, 0, leadZ), Quaternion.create(-q.x, -q.y, -q.z, q.w))
+    const y = LAYER[WEATHER[airTheme]?.from ?? 'air'].y
+    if (Math.abs(t.position.x - local.x) > 0.05 || Math.abs(t.position.z - local.z) > 0.05) {
+      t.position = Vector3.create(local.x, y, local.z)
+    }
+  })
 
   // Names each shape once on the parked crate channel, one a tick, so both clients have every
   // texture before the first moment that wants it (see HOW A BURST IS FIRED).
