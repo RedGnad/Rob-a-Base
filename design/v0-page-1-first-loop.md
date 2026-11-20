@@ -1,8 +1,18 @@
 # V0, page 1: from arrival to the first purchase
 
-Status: approved by the founder on 17 Nov 2026 (block 0, design, page 1). Not built.
-Other pages to come: the lexicon (every word the player reads), then the mechanics (shooting economy, shield,
-outbid, known bugs).
+Status: accepted by the founder on 17 Nov 2026, built and live the same evening. Points 1 and 2 are superseded,
+point 5 is extended; the record below is kept as decided, and the decisions that replace it are listed here.
+
+- **Point 1, the arrival:** superseded on 20 Nov 2026. A newcomer is still set down on a free square, but the
+  camera faces the belt and the plaza, not away from them (founder: turning the player's back to the world took the
+  first look away from it). BUILD HERE, now large and animated over the player, and the arrow over the head on a
+  refused square carry the guidance the turned camera used to.
+- **Point 2, the hammer always builds:** superseded on 18 Nov 2026. On a refused square the hammer does not build;
+  FOLLOW THE ARROW is shown and a gold arrow over the player's head points to the nearest free square.
+- **Point 5, the welcome box floor:** extended on 20 Nov 2026. A new account's first Basic Box on the belt costs 800
+  instead of 2,018, once.
+- The last step of the tutorial is "Steal or gift an item" since 20 Nov 2026, so it can be completed when no theft is
+  possible.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # Rob a Base
 
-![Rob a Base](images/base-war-thumbnail.png)
+![Rob a Base](images/rob-a-base-cover.jpg)
 
 **How rich can you get before someone robs you?**
 
@@ -17,19 +17,21 @@ World: `basewar.dcl.eth`.
 
 ## The loop
 
-The first five steps are the in-game tutorial, in its order.
+The first six steps are the in-game tutorial, in its order.
 
-1. **Place your base.** Put it on the green ground. A starter crate is already waiting.
+1. **Place your base.** Put it on a green square. A starter crate is already waiting.
 2. **Smash a crate.** Three hits, out comes your first item. 7 rarities, 14 mutations.
-3. **Put your item on show.** It earns while you play and while you sleep. Come back, tap COLLECT.
-4. **Buy a crate.** Crates roll past and fall off the end. Yours walks home on its own, and
+3. **Put your item on show.** It earns while you play and while you sleep, and its coins wait
+   above it.
+4. **Collect.** Tap COLLECT, or walk into one of the waiting coins.
+5. **Buy a crate.** Crates roll past and fall off the end. Yours walks home on its own, and
    anyone can outbid you on the way.
-5. **Rob a base.** Tap a neighbour's item, stay put while the bar fills, run it home. They get
-   the alert the moment you touch it. The way out is a shootout.
-6. **Defend yours.** Lock the door, arm a sentry on every storey, lay traps, cloak, taser, bomb.
-7. **Grow.** Twelve storeys, fusion, luck, skins, prestige, quests, daily rewards, a world
+6. **Rob a base, or gift one.** Tap a neighbour's item, stay put while the bar fills, run it
+   home. They get the alert the moment you touch it. The way out is a shootout.
+7. **Defend yours.** Lock the door, arm a sentry on every storey, lay traps, cloak, taser, bomb.
+8. **Grow.** Twelve storeys, fusion, luck, skins, prestige, quests, daily rewards, a world
    leaderboard.
-8. **Show up for the rush.** Random rushes, a grand rush every day at the same hour, boss battles on
+9. **Show up for the rush.** Random rushes, a grand rush every day at the same hour, boss battles on
    the plaza, raids on other bases.
 
 ## Mobile first
@@ -49,6 +51,8 @@ The first five steps are the in-game tutorial, in its order.
 ## Social by design
 
 - Everything on show can be stolen. The owner is alerted by name. Leaving is a shootout.
+- Several players can raid one base: a theft closes the base to that thief only, and a sleeping
+  owner never loses more than a quarter of their items.
 - Any crate on its way home can be outbid by anyone watching.
 - Gift a base, or rob it.
 - Sentry shots, door seals and rush calls are seen and heard by everyone on the plaza.
@@ -70,8 +74,9 @@ The first five steps are the in-game tutorial, in its order.
   server keeps a ledger of 385, each base charged what it really costs. When the ledger is
   full, the base of the player absent for longest steps off the field: nothing lost, it stops
   earning, it stands again on their return. A player who is present is never removed.
-- **Detail follows the same budget.** Nearest bases in full, far ones as silhouettes, yours
-  always full. A storey is 4 merged meshes instead of 23 objects; item models are shared.
+- **Detail follows the same budget.** Every base keeps its items and its name sign at any
+  distance; the nearest get their full detail as the budget allows, yours always. A storey is
+  4 merged meshes instead of 23 objects; item models and sign letters are shared files.
 
 ## Under the hood
 
@@ -80,8 +85,8 @@ The first five steps are the in-game tutorial, in its order.
   No private backend.
 - The server is authoritative: every roll, price, distance and theft is decided server-side.
   Clients only send intent.
-- 94 message types, 34 server handlers, 13 validators on synced components, about 24,500
-  lines of TypeScript, CI on every push.
+- 103 message types, 37 server handlers, 15 validators on synced components, about 30,000
+  lines of TypeScript, a build on every push.
 
 ```
 src/
@@ -89,7 +94,7 @@ src/
   shared/     synced components, messages, economy, loot table, quests
   server/     belt, convoys, loot, theft, combat, gear, fusion, raids, events, records
   client/     rendering, input pad, HUD, plots, combat feel, toys, preload
-tools/        generators for every asset, deploy and duo scripts, economy simulator
+tools/        generators for every asset, deploy and duo scripts, economy simulator, budget counter
 ```
 
 ## Run it

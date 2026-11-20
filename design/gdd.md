@@ -1,4 +1,4 @@
-# Rob a Base
+# Rob a Base - GDD & V0 / V1 Scope
 
 **Decentraland Creator Success Program**
 
@@ -6,9 +6,9 @@
 |---|---|
 | Public experience title | Rob a Base. IP and [Content Policy](https://decentraland.org/content/) self-check: clear. Own name, own code, own models and UI. The tycoon-and-theft genre is not owned; the concept was inspired by the Roblox game Steal a Brainrot, and nothing of it is reused: no asset, no name, no character, no trade dress. |
 | Deployment target | World `basewar.dcl.eth`, live |
-| Studio / team name | `TBD:` |
+| Studio / team name | Red.G |
 | Date | 2026-09-25 |
-| Contact (Discord + email) | `TBD:` |
+| Contact (Discord + email) | Given in the program's copy of this document |
 
 ---
 
@@ -18,7 +18,7 @@
 |---|---|
 | **Player promise** | You are a tycoon on a public street. You display loot to earn while you sleep, and anyone can walk in and rob it. |
 | **Primary player** | For players who already enjoy Roblox-style tycoon and steal games or idle progression, arriving alone from Discover or the mobile app, looking for a three-minute visit that pays out on a street where someone might rob them. |
-| **Current status** | Live and publicly listed since 27 August, current build deployed 11 September, highlighted in Places. The full loop is playable on phone and desktop: https://mobile.dclexplorer.com/open?realm=basewar.dcl.eth (desktop: https://decentraland.org/jump?realm=basewar.dcl.eth). 4th place, Decentraland Friendzone Mobile Buildathon, September 2026. |
+| **Current status** | Live and publicly listed since 27 August, current build deployed 20 November (11 September when this document was written), highlighted in Places. The full loop is playable on phone and desktop: https://mobile.dclexplorer.com/open?realm=basewar.dcl.eth (desktop: https://decentraland.org/jump?realm=basewar.dcl.eth). 4th place, Decentraland Friendzone Mobile Buildathon, September 2026. |
 | **Requested round** | v0 (vertical slice) |
 | **Live at end of the round** | A player can arrive alone at any hour, collect what their shelves earned, open and shelve loot, grow a tower up to twelve storeys, and rob any standing base on the street whether its owner is online or asleep, while their sentries answer for them in their absence. What the round adds: a finished street to look at, a first minute measured against the 5/10 rule, and an exposure balance tuned from the dashboard's own numbers. |
 
@@ -65,7 +65,7 @@ The tycoon-and-steal loop is fun and addictive, it gives players a strong reason
 |---|---|---|---|
 | 1 | Open | Tap the action button three times on a crate, the lid bursts and the item is revealed with its rarity and mutation, the item goes to your hands | The roll is different every time: 7 rarities and 14 mutations, and the rare rolls are what the street sees. |
 | 2 | Shelve | Tap SHELVE at a free slot, the item takes its place on the storey and a coin counter appears above it, your income per second rises | Income is cumulative and permanent, and every shelved item is also bait. |
-| 3 | Collect | Tap COLLECT on the banner, the coins fly to your total, the counters reset | Coins are the only way to buy the next storey, the next crate and the gear. |
+| 3 | Collect | Tap COLLECT on the action button (since November, walking into a coin above an item collects too), the coins fly to your total, the counters reset | Coins are the only way to buy the next storey, the next crate and the gear. |
 | 4 | Rob | Tap a neighbour's item and stay within twelve metres for six seconds plus two per rarity. The owner is alerted by name the moment you touch it, and if they are away the alert waits at their door. You carry the item home under fire from their sentries | Their best shelf is always worth more than your next crate, it can be taken whether they are online or asleep, and they now owe you a visit. |
 | 5 | Defend | Tap LOCK on your door for sixty seconds, arm a sentry on a storey, lay a trap, cloak, taser or bomb | Everything you built is on display, and the alert tells you when it is happening. |
 
@@ -108,7 +108,7 @@ Currency: coins are earned by shelf income and by selling items, and spent on cr
 
 | Selected hook | Exact trigger or timing | What the player anticipates | Reminder channel plus no-reminder fallback |
 |---|---|---|---|
-| **1.** Appointment timer, the offline shelf income | Shelves earn at 35 percent of normal income while the player is away, and the clock stops at 24 hours. Whatever happened meanwhile waits too: every theft and every sentry report is written to the absent owner's profile and read on arrival, and a base robbed while its owner was away seals for up to eight hours, so a sleeping player loses one item and not the shelf | The payout waiting at the door, the name of whoever came, and what their sentries did about it | Fallback without any reminder: the exit banner shows the offline clock and the cap before the player leaves, and the welcome-back screen pays it out on arrival |
+| **1.** Appointment timer, the offline shelf income | Shelves earn at 35 percent of normal income while the player is away, and the clock stops at 24 hours. Whatever happened meanwhile waits too: every theft and every sentry report is written to the absent owner's profile and read on arrival, and since November an absent owner loses at most a quarter of their items before the base seals for up to eight hours, so a sleeping player never loses the shelf | The payout waiting at the door, the name of whoever came, and what their sentries did about it | Fallback without any reminder: the exit banner shows the offline clock and the cap before the player leaves, and the welcome-back screen pays it out on arrival |
 | **2.** Recurring scheduled event, the grand rush | Every day at 20:00 UTC, ten minutes, double tempo on every crate and every shelf | The one hour where the street is crowded and everything pays twice | Event listing on decentraland.org, plus a Community post. Fallback without reminder: a countdown to the grand rush on the plaza sign, and random rushes of five minutes every fifteen minutes in between |
 
 ---
@@ -137,7 +137,7 @@ Currency: coins are earned by shelf income and by selling items, and spent on cr
 |---|---|
 | Open | Tap the single action button three times, its glyph is a fist |
 | Shelve | Tap the same button at a free slot, its glyph becomes a shelf |
-| Collect | Tap COLLECT on the bottom banner |
+| Collect | Tap COLLECT on the action button, which shows the amount waiting |
 | Rob | Tap the item, then stay inside twelve metres while the bar fills; one glyph, one timer |
 | Defend | Tap LOCK on the door post, tap ARM on a sentry, and the four gear discs are one tap each |
 
@@ -163,7 +163,7 @@ A public street where every tenant pays for their tower by putting their loot wh
 
 **Visual direction.**
 
-Towers are flat coloured slabs with a lit owner sign, so the street reads as a row of names at a distance. Objectives are the only lit things: shelved items glow on their slot, a sealed door goes red, an armed sentry glows, and the item in a thief's hands is held above their head so a bystander can follow the theft across the plaza on a small screen. Our signature shot: a twelve-storey tower at night, its shelves lit, one avatar carrying a stolen item down the ramp.
+Towers are flat coloured slabs with a lit owner sign, so the street reads as a row of names at a distance. Objectives are the only lit things: shelved items glow on their slot, a sealed base stands behind red glass, an armed sentry glows, and the item in a thief's hands is held above their head so a bystander can follow the theft across the plaza on a small screen. Our signature shot: a twelve-storey tower in full daylight, its shelves lit, one avatar carrying a stolen item down the ramp.
 
 ---
 
@@ -191,36 +191,108 @@ Players who want their progress protected; here everything on display can be tak
 
 ---
 
-## 9. 4 Week Plan (v0 scope)
+## 9. V0 Scope & Sign-Off Criteria
 
-The loop, the authoritative server, the twelve storeys, the gear, the rushes, the boss, the raids and the asynchronous theft are live and have been played in public since 27 August, through a buildathon and its judging where the game placed 4th. The four weeks are not spent proving the loop. They go into the three things the shipped version is thinnest on: the environment's visuals, the onboarding, and the depth of the gameplay that already exists.
+### V0 Objective
 
-| Week | What is playable / done |
-|---|---|
-| 1 Environment visuals | The street becomes a place instead of a field: ground and plaza materials, night lighting on the lit signs and the shelves, a horizon that closes the world edge, and districts so an address is memorable. Every addition re-measured against the content budget, since decor already spends 106 of the 385 objects and the mobile material cap is 400 |
-| 2 Onboarding | Time real arrivals against the 5/10 rule, first useful action under five seconds and the goal stated under ten, and cut what fails. Two known mobile faults go first: the gear roulette sits too far right and the timer on the door post disagrees with the banner by a second. A returning player sees the waiting alerts and the offline payout before anything else |
-| 3 Gameplay depth | Tune the exposure balance on measurement, the share of standing bases a lone arrival can actually rob per hour, deepen the theft counterplay that already exists (the sentry charge is spent on the robbed storey, so finding the soft floor is the attacker's read), and verify the ledger's eviction at about 25 bases standing |
-| 4 The pass together | Mobile playtest with a frame-rate figure on a named phone, the look locked, the first week of daily grand rushes scheduled and announced, and D1 and D7 read on the program dashboard as the scoreboard rather than on our own counters |
+Make the existing tycoon-and-theft game immediately understandable, reliable and balanced for new players.
 
-**What keeps the experience changing after launch.**
+The 17 November playtest confirmed that the core game is enjoyable, particularly stealing, collecting and base progression. V0 focuses on resolving onboarding, usability, gameplay bugs and balance issues rather than adding features.
 
-- Without building a new level, we can rotate the three daily quests out of nine every day, and the rush themes out of ten every five minutes.
-- If an update is skipped, the roll table (7 rarities by 14 mutations), the luck windows and the other players' towers still create variation.
-- Progression resets only by choice: prestige clears the base and keeps the multiplier and the collection. A new or returning player can compete within three minutes, because the starter crate and the daily reward are immediate and theft ignores tower height: a one-storey player can take the best item on the street.
-- One player behaviour that would change what we build next: if players lock their doors and stop shelving their best items, the income has to move further onto display risk.
+### Required V0 Deliverables
 
-**Not building in v0.**
+**1. First-session onboarding**
 
-1. Tradable or on-chain rewards. Standing non-goal: never tradable loot, because it turns a theft into real-value theft and the game stops being a game.
-2. A second street or map. First cut to come back in v1 if v0 hits its numbers.
-3. Voice or free text chat. The pad stays glyphs only, so the game does not depend on a shared language.
+- Guide players through placing a base, opening a crate, shelving an item and collecting income.
+- Explain that shelved items generate income and can be stolen.
+- Make the next objective clear without lengthy tutorials.
 
-**Top risk plus fallback.**
+Sign-off: 4 of 5 new players complete the first loop without coaching.
 
-Exposure balance, not concurrency. Because theft also works against absent owners, the game lives or dies on how much of the street is robbable at a given hour: seal too much and an arriving player finds nothing to take, seal too little and sleeping players get farmed and stop coming back. Today that balance is one function, ramping the post-theft shield from one minute for an owner standing there to eight hours for one away four hours or more, with a revenge mark that walks through any shield. Fallback: it is a single tunable curve, so v0 measures the share of robbable bases per hour and retunes it without touching the loop; if the street still reads as sealed, a base becomes robbable once per visitor instead of once per window. The grand rush at a fixed hour and the Event listing remain the answer for the live half.
+**2. Controls and UI**
+
+- Ensure contextual actions reliably perform the displayed function.
+- Show available coins clearly when shopping.
+- Clarify messages including "pot full" and "floor full".
+- Reduce UI clutter and distinguish important interactive objects.
+
+Sign-off: Players understand essential controls and can progress without confusion or becoming stuck.
+
+**3. Gameplay reliability**
+
+- Fix failed base placement, item selling and placement bugs.
+- Resolve conflicting contextual actions around the fuser and income collection.
+- Fix outbidding and cooldown errors.
+
+Sign-off: The full build, collect, upgrade and rob loop works without blocking bugs.
+
+### V0 Validation
+
+- 4 of 5 new players complete the initial loop independently.
+- Essential controls and UI are clear.
+- No gameplay-blocking bugs remain.
+- Multiplayer and asynchronous theft work reliably.
+- Core gameplay works on desktop and mobile.
 
 ---
 
-**One last question.**
+## 10. V1 Direction
 
-Section 5, the disappearance test. We first wrote that the theft half of the game needed a second player online, and playtesting said otherwise: robbing an absent neighbour's tower is what people liked most, so the asynchronous layer became a design decision instead of a consolation.
+Following V0 sign-off, possible focus on:
+
+- A complete environment and 3D asset pass to the Creator Success marketable quality standard.
+- Improved presentation and visibility of important gameplay systems.
+- Further gameplay balancing informed by player data.
+- Engagement and retention improvements based on observed player behaviour.
+
+Full V1 will be defined after the V0 playtest.
+
+**V0 success:** New players can independently build, collect, earn, steal and defend, with reliable controls.
+
+---
+
+## 11. V0 Report
+
+**Build:** live on basewar.dcl.eth since 20 November 2026 (build 2460). Everything below is in that build. The sign-off figures are to be measured at the playtest: the server logs every tutorial step reached and every collect, per player.
+
+### 1. First-session onboarding
+
+| Scope item | What changed | Status |
+|---|---|---|
+| Guide players through placing a base, opening a crate, shelving an item and collecting income | A six-step guide: Place your base, Open your box, Shelve your piece, Collect your coins, Buy a box, Steal or gift an item. One step at a time, and the button to press pulses. A new player arrives on a free square, facing the plaza, under a large animated BUILD HERE. On a square that cannot be built, the text says FOLLOW THE ARROW and a gold arrow over the player points to the nearest free square. | Live |
+| Explain that shelved items generate income and can be stolen | A coin rises from each shelved item and lands in a gold coin that waits above it. The amount waiting grows on the COLLECT button. Pressing COLLECT, or walking into a coin, banks everything. The last step asks the player to steal from a neighbour or gift them an item. | Live |
+| Make the next objective clear without lengthy tutorials | A step chip in the corner carries the icon of the button to press. A help line appears only after twelve seconds without progress. A marker and an arrow show where to go. No text screens. | Live |
+| First purchase within reach | The welcome box never rolls the lowest rarity, and a new account's first Basic Box costs 800 instead of 2,018, once. | Live |
+| **Sign-off: 4 of 5 new players complete the first loop without coaching** | | To measure at the playtest |
+
+### 2. Controls and UI
+
+| Scope item | What changed | Status |
+|---|---|---|
+| Contextual actions reliably perform the displayed function | A press on a square that cannot be built no longer does nothing. SELL works with a mouse click on desktop, not just a key press anymore. A purchase with a short balance collects the waiting coins first instead of refusing. COLLECT is offered first during its step. | Live |
+| Show available coins clearly when shopping | The main coin counter stays on screen while the menu is open. | Live |
+| Clarify messages including "pot full" and "floor full" | The word "pot" is gone: "full: collect to keep earning". A full base now reads "BASE FULL · SELL, FUSE OR BUY A FLOOR". A quest that named a box that does not exist was renamed. | Live |
+| Reduce UI clutter and distinguish important interactive objects | A duplicate balance was removed from the menu header. The fuser was rebuilt to read as a machine. Step texts now fit their plates on desktop. Claim buttons animate one at a time. | Live, partial: no wider pass yet |
+| **Sign-off: players understand essential controls and can progress without becoming stuck** | Three dead ends were closed: gliding out of the map, a first item returning to its shelf by itself, and a last step that needed a theft when no theft was possible. | To confirm at the playtest |
+
+### 3. Gameplay reliability
+
+| Scope item | What changed | Status |
+|---|---|---|
+| Failed base placement | The dead press on a refused square is fixed. The reported case of a press on a valid square doing nothing was not reproduced. Every refused or ignored placement is now logged. | Live, one case under watch |
+| Item selling | Fixed on desktop (see above). | Live |
+| Item placement | No placement bug was reproduced. | Nothing open |
+| Conflicting actions around the fuser and income collection | Players read "pot" as the fuser. The word is gone and the fuser no longer looks like a container. | Live |
+| Outbidding and cooldown errors | The 30-second lock that stopped a bidding duel after two outbids is removed. The player who is outbid is refunded. An outbid now completes the Buy step. | Live |
+| Raids by several players | The game was designed for neighbours to raid a base together, and the shield worked against it: after the first theft it closed the base to everyone. A theft now closes the base to that thief only, behind a force field everyone sees, so other players can keep raiding and a defended base rewards cooperation. | Live |
+| **Sign-off: the full build, collect, upgrade and rob loop works without blocking bugs** | | To confirm at the playtest |
+
+### V0 validation
+
+| Criterion | Where it stands |
+|---|---|
+| 4 of 5 new players complete the initial loop independently | To measure at the playtest, from the server log. |
+| Essential controls and UI are clear | To confirm at the playtest. |
+| No gameplay-blocking bugs remain | None known. One minor desktop issue is open: after aiming, the camera can stop following the mouse until the weapon is drawn again. |
+| Multiplayer and asynchronous theft work reliably | Reworked since 17 November. Several players can raid one base (see above). An absent owner loses at most a quarter of their items, then the base is sealed behind glass for up to eight hours. A trap freezes, expels, and closes the base to the intruder. Shooting income is capped, and a player hit six times in three seconds is safe for three more, under a bubble everyone sees. Built and live, checked alone against test bases, not yet with two live players. |
+| Core gameplay works on desktop and mobile | Desktop: played end to end as a new account on 20 November. Mobile: the scene's content budget is counted and kept under the mobile limits, and name signs now show on every base. The November changes have not yet been checked on a handset. |
