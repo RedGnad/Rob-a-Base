@@ -69,6 +69,9 @@ export const MESSAGES = {
   slap: Schemas.Map({ x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
   /** server -> shooter: what the shot did. */
   shotResult: Schemas.Map({ hitName: Schemas.String, dropped: Schemas.Int, reason: Schemas.String, loot: Schemas.Int64 }),
+  // To everyone: this player is immune to hits for `ms` (a burst of hits just ended), and a round was just stopped by it.
+  immune: Schemas.Map({ id: Schemas.String, ms: Schemas.Int }),
+  shotBlocked: Schemas.Map({ id: Schemas.String }),
   /** server -> the target: they were hit and lost coins on the spot. */
   wasShot: Schemas.Map({ byName: Schemas.String, lost: Schemas.Int64 }),
   /** server -> the picker: they collected a pile. */

@@ -1,3 +1,4 @@
+import { playRicochet } from './immunity'
 import { plasticDe, spinLoop } from './toy'
 import { engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer, InputAction, inputSystem, PointerEventType, AudioSource, Tween, EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode, CameraType, CameraModeArea, AvatarMask, timers, MaterialTransparencyMode, MeshCollider, ColliderLayer, pointerEventsSystem } from '@dcl/sdk/ecs'
 import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
@@ -489,6 +490,7 @@ export function setupCombat(): void {
     // Hit six times in three seconds: safe for a moment (server/combat.ts, `immuneNow`).
     if (d.reason === 'immune') {
       alerter(`${String(d.hitName).toUpperCase()} IS SAFE FOR 3S`, '#ffd166', TOAST.result)
+      playRicochet()
     }
   })
   /*

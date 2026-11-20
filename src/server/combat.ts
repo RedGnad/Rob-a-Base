@@ -106,6 +106,8 @@ export function startCombat(): void {
     if (hits.length >= HIT_BURST) {
       immuneUntil.set(target, now + HIT_IMMUNE_MS)
       recentHits.delete(target)
+      // Everyone is told, so every client raises the bubble round them (client/immunity.ts).
+      void room.send('immune', { id: target, ms: HIT_IMMUNE_MS })
       log(`${displayName(target)} is immune to hits for ${HIT_IMMUNE_MS / 1000} s after ${HIT_BURST} in ${HIT_BURST_MS / 1000} s`)
       return
     }
@@ -168,6 +170,8 @@ export function startCombat(): void {
     }
     if (immuneNow(best.addr, now)) {
       void room.send('shotResult', { hitName: displayName(best.addr), dropped: 0, reason: 'immune', loot: 0 }, { to: [a] })
+      // The bubble takes the round: it kicks on every client, and the one inside hears it.
+      void room.send('shotBlocked', { id: best.addr })
       return
     }
     noteHit(best.addr, now)

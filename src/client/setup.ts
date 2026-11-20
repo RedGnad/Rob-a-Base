@@ -37,6 +37,7 @@ import { setupGear } from './gear'
 import { setupEvents } from './events'
 import { setupToy } from './toy'
 import { setupLootUi } from './loot-ui'
+import { setupImmunity } from './immunity'
 import { setupGains } from './gains'
 import { setupPotCoins } from './pot-coins'
 import { setupPreload } from './preload'
@@ -161,6 +162,7 @@ export function startClient(): void {
   setupSlots()
   setupConvoy()
   setupCombat()
+  setupImmunity()
   setupQuests()
   setupTutorial()
   setupGuidage()
