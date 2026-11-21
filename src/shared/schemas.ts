@@ -686,7 +686,8 @@ export const SENTRY_MIN_PRICE = 240
  * something before leaving, not to be immune.
  */
 export const SENTRY_FREEZE_MS = 7000
-export const SENTRY_LOCK_MS = 60_000
+/** How long a sentry shot keeps the thief it hit out of that base: the thief alone, behind the force field. */
+export const SENTRY_KEEP_OUT_MS = 60_000
 
 export const CROWD_BONUS_EACH = 0.15
 export const CROWD_BONUS_CAP = 0.60

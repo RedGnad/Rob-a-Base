@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers, executeTask } from '@dcl
 import { Vector3 } from '@dcl/sdk/math'
 import { Storage } from '@dcl/sdk/server'
 import {
-  STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
+  STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_KEEP_OUT_MS,
   LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, SHIELD_MAX_MS, REVENGE_MS, SLOTS_PER_FLOOR, VIDE, occupe
 } from '../shared/schemas'
 
@@ -42,15 +42,6 @@ type Larcin = { thief: string; victim: string; code: number; quand: number; land
 const larcins: Larcin[] = []
 /** Until when a thief frozen by a sentry may not start a theft: the freeze used to be client-side only. */
 const geles = new Map<string, number>()
-/*
-  Until when a sentry's shot holds a base, for everyone.
-
-  The shot raises the base's lock for SENTRY_LOCK_MS, and a revenge goes through any lock:
-  the one thief the hold was for walked straight back in after their seven-second freeze and
-  spent a charge every time, a guard's three in about twenty seconds. Kept apart from the
-  lock so the revenge still opens the shield it was meant to open.
-*/
-const tenues = new Map<string, number>()
 
 /*
   Revenge rights survive the server.
@@ -361,9 +352,20 @@ export function startTheft(): void {
       const tier = useSentryCharge(v.victim, targetFloor)
       if (tier >= 0) {
         const left = sentriesOnFloor(v.victim, targetFloor)
-        // Never shorter than the shield already up: an 8 h absence shield must not fall to 60 s.
-        setLock(v.victim, Math.max(lockOf(v.victim), maintenant + SENTRY_LOCK_MS))
-        tenues.set(v.victim, maintenant + SENTRY_LOCK_MS)
+        /*
+          The shot closes the base to the thief it hit, and to nobody else (founder, 21 Nov 2026).
+
+          It used to seal the base for everyone for a minute: one shot at one raider shut out
+          the four beside them, which is the opposite of letting several players bring a
+          fortress down together. Now it is the theft's own rule: the thief alone is kept out,
+          behind the force field everyone sees. A ban holds through revenge too (the steal
+          check reads it before anything else), so the thief cannot walk back in after the
+          freeze and spend the floor's charges one by one.
+        */
+        const keptOutUntil = maintenant + SENTRY_KEEP_OUT_MS
+        banFromBase(thief, v.victim, keptOutUntil)
+        raiseKeepOutField(v.victim, keptOutUntil)
+        void room.send('bannedFrom', { ownerId: v.victim, leftMs: SENTRY_KEEP_OUT_MS }, { to: [thief] })
         enCours.delete(thief)
         // The shot is SEEN by everyone in the world, not only felt by the thief: a bolt from
         // the cone to the thief on every client, so a newcomer reads the defence at work.
@@ -392,8 +394,8 @@ export function startTheft(): void {
 
         geles.set(thief, maintenant + SENTRY_FREEZE_MS)
         void room.send('sentryBlocked', {
-          ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left,
-          lockSec: Math.round(SENTRY_LOCK_MS / 1000), lost: pris, floor: targetFloor + 1
+          ownerId: v.victim, ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left,
+          lockSec: Math.round(SENTRY_KEEP_OUT_MS / 1000), lost: pris, floor: targetFloor + 1
         }, { to: [thief] })
         void room.send('stealFailed', { reason: 'the sentry stopped you' }, { to: [thief] })
         const info = { type: 'sentry', byName: displayName(thief), left, taken: pris }
@@ -526,12 +528,6 @@ export function startTheft(): void {
       const ferme = bannedUntil(thief, c.address)
       if (ferme > maintenant) {
         refus(thief, 'steal', `${c.name} is closed to you for ${shortDuration(ferme - maintenant)}`)
-        continue
-      }
-      // A sentry's shot holds the base for everyone, revenge included (see `tenues`).
-      const tenue = tenues.get(c.address) ?? 0
-      if (tenue > maintenant) {
-        refus(thief, 'steal', `${c.name}'s sentry holds it for ${Math.ceil((tenue - maintenant) / 1000)}s`)
         continue
       }
       if (occupe(c.items) === 0) { refus(thief, 'steal', `${c.name} has nothing to take`); continue }
@@ -818,8 +814,6 @@ export function startTheft(): void {
     // Kept as long as revenge lasts, since the list IS the revenge list now.
     const t = Date.now() - REVENGE_MS
     while (larcins.length > 0 && larcins[0].quand < t) { larcins.shift(); revengesChanged() }
-    const now = Date.now()
-    for (const [a, until] of tenues) if (until <= now) tenues.delete(a)
     if (revengesDirty) saveRevenges()
   }, 10000)
   loadRevenges()

@@ -321,7 +321,8 @@ export function setupTheft(): void {
       sum in the first, and naming the floor stays, since another storey may have nothing on it.
     */
     // The sum floats off the counter; the toast says what happened and what to do next.
-    alerter(`DEFENDED  ·  frozen ${Math.round(d.gelMs / 1000)}s, sealed ${d.lockSec}s`, '#ff6b6b', TOAST.warning)
+    // `lockSec` is how long this base stays closed to you alone (server/theft.ts), not a seal.
+    alerter(`DEFENDED  ·  frozen ${Math.round(d.gelMs / 1000)}s, closed to you ${d.lockSec}s`, '#ff6b6b', TOAST.warning)
     if (d.lost > 0) alerter('YOUR COINS ARE ON THE FLOOR', '#ff6b6b', TOAST.warning)
   })
   room.onMessage('sentryTriggered', (d) => {
