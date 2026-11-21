@@ -285,6 +285,7 @@ Full V1 will be defined after the V0 playtest.
 | Conflicting actions around the fuser and income collection | Players read "pot" as the fuser. The word is gone and the fuser no longer looks like a container. | Live |
 | Outbidding and cooldown errors | The 30-second lock that stopped a bidding duel after two outbids is removed. The player who is outbid is refunded. An outbid now completes the Buy step. | Live |
 | Raids by several players | The game was designed for neighbours to raid a base together, and the shield worked against it: after the first theft it closed the base to everyone. A theft now closes the base to that thief only, behind a force field everyone sees, so other players can keep raiding and a defended base rewards cooperation. | Live |
+| Shooting economy | A tester reached 300,000 coins by shooting other players. Shooting now pays at most a tenth of the shooter's own production, repeat hits on the same target pay less, and a player hit six times in three seconds is briefly shielded. | Live |
 | **Sign-off: the full build, collect, upgrade and rob loop works without blocking bugs** | | To confirm at the playtest |
 
 ### V0 validation
@@ -294,5 +295,5 @@ Full V1 will be defined after the V0 playtest.
 | 4 of 5 new players complete the initial loop independently | To measure at the playtest, from the server log. |
 | Essential controls and UI are clear | To confirm at the playtest. |
 | No gameplay-blocking bugs remain | None known. One minor desktop issue is open: after aiming, the camera can stop following the mouse until the weapon is drawn again. |
-| Multiplayer and asynchronous theft work reliably | Reworked since 17 November. Several players can raid one base (see above). An absent owner loses at most a quarter of their items, then the base is sealed behind glass for up to eight hours. A trap freezes, expels, and closes the base to the intruder. Shooting income is capped, and a player hit six times in three seconds is safe for three more, under a bubble everyone sees. Built and live, checked alone against test bases, not yet with two live players. |
+| Multiplayer and asynchronous theft work reliably | Reworked since 17 November. Several players can raid one base (see above). An absent owner loses at most a quarter of their items, then the base is sealed behind glass for up to eight hours. A trap freezes, expels, and closes the base to the intruder. Shooting rewards are capped (see above). Built and live, checked alone against test bases, not yet with two live players. |
 | Core gameplay works on desktop and mobile | Desktop: played end to end as a new account on 20 November. Mobile: the scene's content budget is counted and kept under the mobile limits, and name signs now show on every base. The November changes have not yet been checked on a handset. |
