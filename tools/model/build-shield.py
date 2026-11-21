@@ -129,6 +129,62 @@ def main_glass():
         f.write(struct.pack('<III', 0x46546C67, 2, total)); f.write(struct.pack('<II', len(j), 0x4E4F534A)); f.write(j); f.write(rest)
     print(f'{GLASS}  {os.path.getsize(chemin) / 1024:.1f} KB, both shells')
 
+AVATAR = 'shield-avatar.glb'
+
+def build_avatar(segments=24, rings=6, radius=0.5, wall=0.78):
+    """A unit capsule open at the feet: a wall up to `wall`, then a dome to y = 1.
+
+    Rounded, as the founder asked on 20 Nov 2026: a cylinder with a flat lid read as a tube. The
+    code scales it to the avatar, so the dome becomes a soft half-ellipsoid over the head.
+    """
+    import math
+    pos, nor, uv, idx = [], [], [], []
+    # Profile from the feet to the crown: (ring radius, height, normal's radial part, normal's y).
+    profile = [(radius, 0.0, 1.0, 0.0), (radius, wall, 1.0, 0.0)]
+    for k in range(1, rings + 1):
+        t = (math.pi / 2) * k / rings
+        profile.append((radius * math.cos(t), wall + (1.0 - wall) * math.sin(t), math.cos(t), math.sin(t)))
+    for inner in (False, True):
+        base = len(pos)
+        for j, (r, y, nr, ny) in enumerate(profile):
+            for i in range(segments + 1):
+                a = 2 * math.pi * i / segments
+                c, sn = math.cos(a), math.sin(a)
+                n = (nr * c, ny, nr * sn)
+                if inner: n = (-n[0], -n[1], -n[2])
+                pos.append((r * c, y, r * sn)); nor.append(n)
+                uv.append((i / segments, 0.98 - 0.96 * (y / 1.0)))
+        cols = segments + 1
+        for j in range(len(profile) - 1):
+            for i in range(segments):
+                a0 = base + j * cols + i; a1 = a0 + 1; b0 = a0 + cols; b1 = b0 + 1
+                idx.extend((a0, a1, b0, b0, a1, b1) if not inner else (a0, b0, a1, b0, b1, a1))
+    return {'pos': pos, 'nor': nor, 'uv': uv, 'uv_atlas': uv, 'idx': idx}
+
+def main_avatar():
+    """The immunity a burst of hits grants one player (founder, 20 Nov 2026): the force field's own
+    look, the same banded texture and material as shield.glb, fitted round the avatar instead of a
+    base. A sphere read as a bubble, too big and off centre; a field this close to the body reads as
+    a shield, and it is the game's one look for "you cannot touch this"."""
+    import json, struct
+    atlas = Image.open(os.path.join(OUT, TEX))
+    chemin = os.path.join(OUT, AVATAR)
+    aplatir.ecrire_glb(chemin, [(True, [build_avatar()])], atlas, image_uri=TEX)
+    b = open(chemin, 'rb').read(); L = struct.unpack_from('<I', b, 12)[0]; js = json.loads(b[20:20 + L])
+    m = js['materials'][0]
+    # Quieter than a base's field: it hugs a body in the middle of a fight and must not hide it (founder, 20 Nov).
+    m['pbrMetallicRoughness'].update({'baseColorFactor': [0.45, 0.85, 1.0, 0.2], 'metallicFactor': 0.0, 'roughnessFactor': 0.25})
+    m['emissiveTexture'] = {'index': 0}
+    m['emissiveFactor'] = [0.2, 0.42, 0.52]
+    m['alphaMode'] = 'BLEND'
+    m['doubleSided'] = True
+    j = json.dumps(js, separators=(',', ':')).encode(); j += b' ' * ((4 - len(j) % 4) % 4)
+    rest = b[20 + L:]
+    with open(chemin, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, 12 + 8 + len(j) + len(rest))); f.write(struct.pack('<II', len(j), 0x4E4F534A)); f.write(j); f.write(rest)
+    print(f'{AVATAR}  {os.path.getsize(chemin) / 1024:.1f} KB')
+
 if __name__ == '__main__':
     main()
     main_glass()
+    main_avatar()

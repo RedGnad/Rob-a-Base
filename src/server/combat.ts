@@ -106,7 +106,7 @@ export function startCombat(): void {
     if (hits.length >= HIT_BURST) {
       immuneUntil.set(target, now + HIT_IMMUNE_MS)
       recentHits.delete(target)
-      // Everyone is told, so every client raises the bubble round them (client/immunity.ts).
+      // Everyone is told, so every client raises the shield round them (client/immunity.ts).
       void room.send('immune', { id: target, ms: HIT_IMMUNE_MS })
       log(`${displayName(target)} is immune to hits for ${HIT_IMMUNE_MS / 1000} s after ${HIT_BURST} in ${HIT_BURST_MS / 1000} s`)
       return
