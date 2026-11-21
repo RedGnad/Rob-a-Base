@@ -286,6 +286,7 @@ Full V1 will be defined after the V0 playtest.
 | Outbidding and cooldown errors | The 30-second lock that stopped a bidding duel after two outbids is removed. The player who is outbid is refunded. An outbid now completes the Buy step. | Live |
 | Raids by several players | The game was designed for neighbours to raid a base together, and the shield worked against it: after the first theft it closed the base to everyone. A theft, or a sentry shot, now closes the base to that thief only, behind a force field everyone sees, so other players can keep raiding and a defended base rewards cooperation. | Live |
 | Shooting economy | A tester reached 300,000 coins by shooting other players. Shooting now pays at most a tenth of the shooter's own production, repeat hits on the same target pay less, and a player hit six times in three seconds is briefly shielded. | Live |
+| Defences | A tester found the trap too expensive for what it did: a visible plate that lasted thirty minutes and only stopped someone empty-handed. The trap now waits in its owner's base until someone steps on it, puts them out at the door, closes the base to them and sends a stolen item back to its shelf. A sentry shot puts the thief out the same way, without the seven-second freeze. | Live |
 | **Sign-off: the full build, collect, upgrade and rob loop works without blocking bugs** | | To confirm at the playtest |
 
 ### V0 validation
