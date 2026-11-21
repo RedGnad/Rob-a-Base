@@ -85,7 +85,7 @@ export const MESSAGES = {
 
   buySentry: Schemas.Map({ tier: Schemas.Int }),
   sentryBought: Schemas.Map({ charges: Schemas.Int, cost: Schemas.Int64, floor: Schemas.Int }),
-  sentryBlocked: Schemas.Map({ ownerId: Schemas.String, ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int, lost: Schemas.Int64, floor: Schemas.Int }),
+  sentryBlocked: Schemas.Map({ ownerId: Schemas.String, ownerName: Schemas.String, left: Schemas.Int, lockSec: Schemas.Int, lost: Schemas.Int64, floor: Schemas.Int }),
   sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int, taken: Schemas.Int64 }),
   /** To everyone: which base's sentry fired, on which storey, at whom (their position), so every client draws the shot. */
   sentryShot: Schemas.Map({ ownerId: Schemas.String, floor: Schemas.Int, x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
@@ -112,7 +112,7 @@ export const MESSAGES = {
   // A base now closed to this player alone, and for how long: their client raises its shield for them only.
   bannedFrom: Schemas.Map({ ownerId: Schemas.String, leftMs: Schemas.Int }),
   /** server -> the owner, live or deferred. */
-  trapSprung: Schemas.Map({ byName: Schemas.String }),
+  trapSprung: Schemas.Map({ byName: Schemas.String, saved: Schemas.Boolean }),
   /** client -> server: pull the cloak on. Server answers by writing the Cloaked component. */
   cloak: Schemas.Map({}),
   taser: Schemas.Map({ x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),

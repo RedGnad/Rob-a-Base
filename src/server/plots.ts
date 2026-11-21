@@ -52,13 +52,17 @@ type Base = {
   /** The mutation skin on the building, 0 for none; kept on the base so an absent owner's stays painted. */
   skin: number
   /** Mines set inside the base: kept until stepped on, whoever is away, and regrown at every server start. */
-  mines: Mine[]
+  mines: PlacedGear[]
   /** Pieces stolen during the owner's current absence, counted from `awayLossesSince` (see `recordAwayLoss`). */
   awayLosses?: number
   /** The `lastSeen` the count belongs to: a new departure starts a new count. */
   awayLossesSince?: number
 }
-export type Mine = { x: number; y: number; z: number }
+/**
+  Gear set down in a base and kept with it until somebody steps on it: a mine, or a trap's plate
+  (`plate`). Stored under the base's `mines` key, which predates the plates.
+*/
+export type PlacedGear = { x: number; y: number; z: number; plate?: boolean }
 type Profil = {
   coins: number
   items: number[]
@@ -304,7 +308,7 @@ function publish(b: Base, ici?: Set<string>): void {
   c.sentryFloors = [...b.sentryFloors]
 }
 
-type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number; skin: number; mines: Mine[] }
+type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number; skin: number; mines: PlacedGear[] }
 const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0, vols: 0, skin: 0, mines: [] }
 /** The shopfront of a base its owner carries in hand (folded while empty): put back by `placeBase`. */
 const vitrineEnMain = new Map<string, Vitrine>()
@@ -1612,8 +1616,10 @@ export function marquerTrait(address: string): number | null {
   Inside the owner's own footprint only: a mine that never expires on the plaza would be a
   permanent trap for everyone, which is griefing, not defence.
 */
-export function minesDe(address: string): Mine[] { return [...(bases.get(address)?.mines ?? [])] }
-export function placeMine(address: string, m: Mine): boolean {
+/** Everything set down in this base and still waiting: mines and trap plates. */
+export function placedOnBase(address: string): PlacedGear[] { return [...(bases.get(address)?.mines ?? [])] }
+/** Set it down, inside the owner's own base and nowhere else; false when they stand outside it. */
+export function placeOnBase(address: string, m: PlacedGear): boolean {
   const b = bases.get(address)
   if (!b) return false
   if (Math.abs(m.x - b.x) > BASE_SIDE / 2 || Math.abs(m.z - b.z) > BASE_SIDE / 2) return false
@@ -1621,11 +1627,13 @@ export function placeMine(address: string, m: Mine): boolean {
   dirtyBases.add(address)
   return true
 }
-export function retirerMine(address: string, at: { x: number; z: number }): void {
+/** The one of that kind nearest to where it fired, gone from the record. */
+export function removeFromBase(address: string, at: { x: number; z: number }, plate: boolean): void {
   const b = bases.get(address)
   if (!b) return
   let k = -1, best = 0.5
   for (let i = 0; i < b.mines.length; i++) {
+    if ((b.mines[i].plate === true) !== plate) continue
     const d = Math.abs(b.mines[i].x - at.x) + Math.abs(b.mines[i].z - at.z)
     if (d < best) { best = d; k = i }
   }

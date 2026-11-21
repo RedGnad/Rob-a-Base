@@ -1,6 +1,6 @@
 import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat, itemFile, poolTier } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
-import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction, TweenLoop, timers } from '@dcl/sdk/ecs'
+import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction, TweenLoop } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { replay } from './sfx'
 import {
@@ -699,12 +699,12 @@ function expulser(base: Vector3, floors: number, toast = 'SEALED  ·  you were p
   if (!dedans) return
   const o = orientToBase(base.z, 0, BASE_SIDE / 2 + 2.5)
   const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
-  if (moveTo('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
+  if (moveTo('expulsion', porte, Vector3.create(base.x, 2, base.z)) && toast !== '') {
     alerter(toast, '#ffd166', TOAST.warning)
   }
 }
 
-/** Put the player out at the door of this owner's base, if they stand inside it (a trap's catch, gear.ts). */
+/** Put the player out at the door of this owner's base, if they stand inside it (a trap's or a sentry's catch). An empty toast says nothing. */
 export function expelFromBaseOf(ownerId: string, toast: string): void {
   const id = ownerId.toLowerCase()
   for (const [e, p] of engine.getEntitiesWith(Plot)) {
@@ -1609,12 +1609,9 @@ export function setupPlots(): void {
   sealEmitter = emitter('assets/sounds/seal.wav', 0.7)
   room.onMessage('sentryShot', (d) => tirDeSentinelle(d.ownerId, d.floor, Vector3.create(d.x, d.y, d.z)))
   room.onMessage('bannedFrom', (d) => { keptOut.set(d.ownerId.toLowerCase(), Date.now() + d.leftMs) })
-  // A sentry's catch is put out at the door when the freeze ends, as a trap's is: the seal
-  // that used to push everyone out now closes the base to this thief alone (founder, 21 Nov 2026).
-  room.onMessage('sentryBlocked', (d) => {
-    const left = shortDuration(Math.max(0, d.lockSec * 1000 - d.gelMs))
-    timers.setTimeout(() => expelFromBaseOf(d.ownerId, `${d.ownerName.toUpperCase()}'S BASE  ·  closed to you ${left}`), d.gelMs)
-  })
+  // A sentry's catch is put out at the door at once: the seal that used to push everyone out now
+  // closes the base to this thief alone, and the thief's own toast already says it (founder, 21 Nov 2026).
+  room.onMessage('sentryBlocked', (d) => { expelFromBaseOf(d.ownerId, '') })
   engine.addSystem(() => {
     // Pedestals carry no collider on mobile, and a far base has none to tap: neither is polled.
     if (isMobile()) return

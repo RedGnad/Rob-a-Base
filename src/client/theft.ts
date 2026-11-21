@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
 import { rarity, formatIncome, crate } from '../shared/loot-table'
 import { indexView } from './index-ui'
-import { applyThiefPenalty, applyFreeze } from './locomotion'
+import { applyThiefPenalty } from './locomotion'
 import { flashDamage, floatAmount, playHurt, playCash } from './juice'
 import { decideWelcome } from './welcome'
 import { tutoView } from './tutorial'
@@ -311,7 +311,6 @@ export function setupTheft(): void {
     flashDamage()
     floatAmount(d.lost, true)
     playHurt()
-    applyFreeze(d.gelMs)
     // The coins are on the floor at your feet, not in their pocket: worth saying, because it
     // is the difference between a punishment and a scramble you can still win.
     /*
@@ -322,7 +321,7 @@ export function setupTheft(): void {
     */
     // The sum floats off the counter; the toast says what happened and what to do next.
     // `lockSec` is how long this base stays closed to you alone (server/theft.ts), not a seal.
-    alerter(`DEFENDED  ·  frozen ${Math.round(d.gelMs / 1000)}s, closed to you ${d.lockSec}s`, '#ff6b6b', TOAST.warning)
+    alerter(`DEFENDED  ·  closed to you ${d.lockSec}s`, '#ff6b6b', TOAST.warning)
     if (d.lost > 0) alerter('YOUR COINS ARE ON THE FLOOR', '#ff6b6b', TOAST.warning)
   })
   room.onMessage('sentryTriggered', (d) => {

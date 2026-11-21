@@ -1,7 +1,7 @@
 import { shortDuration } from '../shared/duration'
 import { TOY, plasticDe } from './toy'
 import { sendOrHold } from './intent'
-import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Trap, GEARS, Cloaked, Bomb, CENTER } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -162,15 +162,15 @@ export function setupGear(): void {
     alerter(`${GEARS[d.gear].name} SET  ·  ${d.held} left`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('trapped', (d) => {
-    applyFreeze(d.gelMs)
-    alerter(d.mine
-      ? `${d.ownerName.toUpperCase()}'S MINE  ·  frozen ${Math.round(d.gelMs / 1000)}s`
-      : `${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', TOAST.warning)
-    // A trap's catch is put out at the door when the freeze ends, and that base stays closed to
-    // them for `banMs` (server/gear.ts, founder 18 Nov 2026).
-    if (!d.mine && d.banMs > 0) {
-      timers.setTimeout(() => expelFromBaseOf(d.ownerId, `${d.ownerName.toUpperCase()}'S BASE  ·  closed to you ${shortDuration(d.banMs)}`), d.gelMs)
+    if (d.mine) {
+      applyFreeze(d.gelMs)
+      alerter(`${d.ownerName.toUpperCase()}'S MINE  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', TOAST.warning)
+      return
     }
+    // A trap's catch is put out at the door at once, no freeze, and that base stays closed to
+    // them for `banMs` (server/gear.ts, founder 18 and 21 Nov 2026).
+    alerter(`${d.ownerName.toUpperCase()}'S TRAP  ·  closed to you ${shortDuration(d.banMs)}`, '#ff6b6b', TOAST.warning)
+    expelFromBaseOf(d.ownerId, '')
   })
   room.onMessage('tased', (d) => {
     applyFreeze(d.gelMs)
@@ -186,7 +186,7 @@ export function setupGear(): void {
       : `${d.ownerName.toUpperCase()}'S BOMB went off`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('trapSprung', (d) => {
-    alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}`, '#4dd2ff', TOAST.warning, true)
+    alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}${d.saved ? '  ·  item back' : ''}`, '#4dd2ff', TOAST.warning, true)
     pushToFeed(`${d.byName} stepped on a trap`)
   })
 

@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers, executeTask } from '@dcl
 import { Vector3 } from '@dcl/sdk/math'
 import { Storage } from '@dcl/sdk/server'
 import {
-  STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_KEEP_OUT_MS,
+  STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_KEEP_OUT_MS,
   LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, SHIELD_MAX_MS, REVENGE_MS, SLOTS_PER_FLOOR, VIDE, occupe
 } from '../shared/schemas'
 
@@ -40,8 +40,6 @@ import {
 */
 type Larcin = { thief: string; victim: string; code: number; quand: number; landed: boolean; payback: boolean }
 const larcins: Larcin[] = []
-/** Until when a thief frozen by a sentry may not start a theft: the freeze used to be client-side only. */
-const geles = new Map<string, number>()
 
 /*
   Revenge rights survive the server.
@@ -359,8 +357,13 @@ export function startTheft(): void {
           the four beside them, which is the opposite of letting several players bring a
           fortress down together. Now it is the theft's own rule: the thief alone is kept out,
           behind the force field everyone sees. A ban holds through revenge too (the steal
-          check reads it before anything else), so the thief cannot walk back in after the
-          freeze and spend the floor's charges one by one.
+          check reads it before anything else), so the thief cannot walk back in and spend the
+          floor's charges one by one.
+
+          And no freeze: the thief is put out at the door at once (client/plots.ts). The seven
+          seconds came from the reference, where the owner kills a frozen thief; nothing here
+          follows them, least of all for an absent owner, and the ban already does the other
+          job the freeze had, stopping a retry (founder, 21 Nov 2026).
         */
         const keptOutUntil = maintenant + SENTRY_KEEP_OUT_MS
         banFromBase(thief, v.victim, keptOutUntil)
@@ -392,9 +395,8 @@ export function startTheft(): void {
           if (montant > 0 && spend(thief, montant)) { dropAt(thief, montant, p); pris = montant }
         }
 
-        geles.set(thief, maintenant + SENTRY_FREEZE_MS)
         void room.send('sentryBlocked', {
-          ownerId: v.victim, ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left,
+          ownerId: v.victim, ownerName: b.name, left,
           lockSec: Math.round(SENTRY_KEEP_OUT_MS / 1000), lost: pris, floor: targetFloor + 1
         }, { to: [thief] })
         void room.send('stealFailed', { reason: 'the sentry stopped you' }, { to: [thief] })
@@ -505,7 +507,6 @@ export function startTheft(): void {
   room.onMessage('stealItem', (d, ctx) => {
     const thief = ctx?.from?.toLowerCase()
     if (!thief) return
-    if ((geles.get(thief) ?? 0) > Date.now()) { refus(thief, 'steal', 'you are frozen'); return }
     const vise = (d.ownerId ?? '').toLowerCase()
     if (vise === thief) { refus(thief, 'steal', 'that is your own base'); return }
 

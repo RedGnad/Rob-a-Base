@@ -457,7 +457,7 @@ export function shieldFor(absenceMs: number): number {
   defense on your best" items). A cloak has an answer, and the answer is five rungs above it.
 */
 export const GEARS = [
-  { id: 0, name: 'TRAP', prestige: 0, ratio: 0.0020, max: 5, kind: 'place', verb: 'freezes the first thief who steps on it, 7 s' },
+  { id: 0, name: 'TRAP', prestige: 0, ratio: 0.0020, max: 5, kind: 'place', verb: 'waits in your base: the first intruder is put out, your item goes home' },
   { id: 1, name: 'SPEED COIL', prestige: 0, ratio: 4.0, max: 1, kind: 'wear', verb: 'run 50% faster, always on, off while carrying' },
   { id: 2, name: 'SLAP', prestige: 1, ratio: 0.0017, max: 1, kind: 'wear', verb: 'replaces the gun: two and a half metres, two and a half times the force' },
   { id: 3, name: 'CLOAK', prestige: 4, ratio: 0.0030, max: 1, kind: 'toggle', verb: 'invisible for 20 s, breaks the moment you touch loot' },
@@ -476,7 +476,6 @@ export function prixGear(gear: number): number {
   return Math.max(GEAR_MIN_PRICE, Math.round(g.ratio * prestigeCost(g.prestige + 1)))
 }
 
-export const TRAP_FREEZE_MS = 7_000
 /*
   The coil's share, from the reference: "increases your move speed by 50% (from 34 to 51)".
   It is a passive that is OFF while carrying, the genre's rule that gear never helps the walk
@@ -655,8 +654,6 @@ export const Trap = engine.defineComponent('basetycoon::trap', {
 })
 export const MINE_FREEZE_MS = 3_000
 
-/** Traps expire, because a floor that fills with old plates is a floor nobody can cross. */
-export const TRAP_LIFETIME_MS = 30 * 60_000
 export const TRAP_TRIGGER_RANGE = 1.1
 
 export const SENTRY_TIERS = [
@@ -685,7 +682,6 @@ export const SENTRY_MIN_PRICE = 240
  * back half of this design are for. The answer to being robbed while away is to have armed
  * something before leaving, not to be immune.
  */
-export const SENTRY_FREEZE_MS = 7000
 /** How long a sentry shot keeps the thief it hit out of that base: the thief alone, behind the force field. */
 export const SENTRY_KEEP_OUT_MS = 60_000
 

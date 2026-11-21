@@ -139,7 +139,7 @@ const Rang = (props: {
   because it is a display decision, not a rule of the game.
 */
 const COURT: Record<number, string> = {
-  0: 'freezes a thief, 7 s',
+  0: 'thief out, your item back',
   1: '+50% run speed',
   2: 'melee, x2.5 force',
   3: 'invisible, 20 s',
