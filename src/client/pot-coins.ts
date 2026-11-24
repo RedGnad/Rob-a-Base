@@ -5,6 +5,7 @@ import { PENDING_CAP_S } from '../shared/schemas'
 import { theftView, pendingShown } from './theft'
 import { sendOrHold } from './intent'
 import { replay, volumeInitial } from './sfx'
+import { currentStep } from './tutorial'
 
 /*
   The pot, seen where it is made (founder, 19 Nov 2026).
@@ -29,6 +30,14 @@ import { replay, volumeInitial } from './sfx'
   every two seconds and only near the base.
 
   Your own base only: the pot is nobody else's business.
+
+  One exception to "a coin shows once a rising coin lands in it": the tutorial's collect step.
+  A new player shelved their first piece and was told to collect while nothing showed for a few
+  seconds, the first rising coin and the first coin in the pot still on their way; a newcomer
+  told to do something with nothing to do it on looks elsewhere or leaves (founder, 24 Nov
+  2026). On that step the coin over a shelved piece appears at once, before the pot holds its
+  first coin, which takes at most a second. A touch still waits for the pot (`pot > 0` below),
+  so walking into it then collects real money. Once, until the first collect of the session.
 */
 
 const COIN = 'assets/Models/coin.glb'
@@ -70,6 +79,8 @@ type Waiting = {
 const waiting = new Map<number, Waiting>()
 let lastTouch = 0
 let lastFlight = 0
+/** The first collect of the session happened: the collect step's early coin is over. */
+let collectedOnce = false
 let lastTink = 0
 let tink: Entity | null = null
 let lastSync = 0
@@ -172,6 +183,7 @@ export function setupPotCoins(): void {
 
   // The server banked the pot (button, touch, or a purchase that collected first): the coins go.
   room.onMessage('collected', () => {
+    collectedOnce = true
     const now = Date.now()
     if (now - lastFlight > 1000) flyAll(now)
   })
@@ -184,8 +196,9 @@ export function setupPotCoins(): void {
     const me = Transform.getOrNull(engine.PlayerEntity)
     const pot = pendingShown()
     const step = potStep()
+    const earlyCoin = !collectedOnce && currentStep() === 'collect'
     let touched = false
-    for (const w of waiting.values()) {
+    for (const [key, w] of waiting) {
       const t = Transform.getMutable(w.e)
       if (w.flight !== null) {
         const f = w.flight
@@ -226,8 +239,11 @@ export function setupPotCoins(): void {
         if (k >= 1) { t.scale = Vector3.Zero(); t.position = Vector3.create(w.x, w.y, w.z); w.flight = null }
         continue
       }
-      if (!w.landed || pot <= 0) {
-        w.landed = w.landed && pot > 0
+      // The collect step: the coin lands now rather than with the first rising coin (header).
+      if (earlyCoin && !w.landed) potCoinLanded(key)
+      const shown = pot > 0 || earlyCoin
+      if (!w.landed || !shown) {
+        w.landed = w.landed && shown
         if (t.scale.x !== 0) t.scale = Vector3.Zero()
         continue
       }

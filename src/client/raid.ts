@@ -227,6 +227,15 @@ export function setupRaid(): void {
   let shown: Entity | null | undefined = undefined
   let clipNow = ''
   let hitReactAt = -1e9
+  /*
+    The gait holds through a late packet (founder, 24 Nov 2026: the walk "resets" while it walks).
+    A glide lasts exactly one server tick, so a packet a little late left the monster at the end
+    of its segment with no pace: the clip fell to Idle, then back to Walk with its cursor reset,
+    several times a second. It stands only once no new step has come for STAND_AFTER_MS.
+  */
+  const STAND_AFTER_MS = 400
+  let movingAt = -1e9
+  let gait: 'Walk' | 'Run' = 'Walk'
   const play = (name: string): void => {
     if (shown === null || shown === undefined || name === clipNow) return
     clipNow = name
@@ -645,7 +654,10 @@ export function setupRaid(): void {
       else if (sinceImpact >= 0 && sinceImpact < JUMP_MS) play('Jump_Land')
       else if (rear > 0) play(now - windLocal < JUMP_MS ? 'Jump' : 'Jump_Idle')
       else if (now - hitReactAt < HIT_REACT_MS) play('HitReact')
-      else play(pace > 2 ? 'Run' : pace > 0.3 ? 'Walk' : 'Idle')
+      else {
+        if (pace > 0.3) { movingAt = now; gait = pace > 2 ? 'Run' : 'Walk' }
+        play(now - movingAt < STAND_AFTER_MS ? gait : 'Idle')
+      }
     }
 
     const share = Math.max(0, Math.min(1, r.hp / Math.max(1, r.hpMax)))
